@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SOUKHYA TECH — HR Enterprise</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js" defer></script>
+  <!-- Load Chart.js CDN for interactive analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<div id="far">
+
+  <!-- ── LOADING SCREEN ── -->
+  <div id="ld">
+    <div class="ldlogo">SOUKHYA TECH</div>
+    <div class="ldsub">FACE RECOGNITION ATTENDANCE SYSTEM</div>
+    <div class="pbar"><div class="pfill" id="pf"></div></div>
+    <div class="pmsg" id="pm">Initializing AI models...</div>
+  </div>
+
+  <!-- ── MAIN APP ── -->
+  <div id="ma">
+
+    <!-- Header / Nav -->
+    <div id="hdr">
+      <div class="brand">SOUKHYA TECH <em>HR ENTERPRISE v2.0</em></div>
+      <button class="tbtn"    data-tab="reg"  onclick="showTab('reg',this)">⬡ Register Employee</button>
+      <button class="tbtn"    data-tab="att"  onclick="showTab('att',this)">◎ Mark Attendance</button>
+      <button class="tbtn"    data-tab="hr"   onclick="showTab('hr',this)">▣ HR Dashboard</button>
+      <div class="hr">
+        <div class="hst">
+          <div class="mdot" id="mdot"></div>
+          <span id="mst">Loading...</span>
+        </div>
+        <div id="clk">--:--:--</div>
+      </div>
+    </div>
+
+    <!-- Secondary Navigation / Menu Bar -->
+    <div id="menu-bar">
+      <button class="mbtn on" onclick="showTab('dbd', this)">Dashboard</button>
+      <button class="mbtn" onclick="openMenuDrawer('masters')">Masters</button>
+      <button class="mbtn" onclick="openMenuDrawer('devices')">Device Management</button>
+      <button class="mbtn" onclick="openMenuDrawer('utilities')">Utilities</button>
+      <button class="mbtn" onclick="goToReportsMenu()">Reports</button>
+      <button class="mbtn" onclick="openMenuDrawer('payroll')">Pay Roll</button>
+      <button class="mbtn" onclick="openMenuDrawer('canteen')">Canteen</button>
+      <button class="mbtn" onclick="openMenuDrawer('users')">System User</button>
+      <button class="mbtn" onclick="openMenuDrawer('audit')">Audit Logs</button>
+      <button class="mbtn" onclick="openMenuDrawer('db-settings')">Database Settings</button>
+      <button class="mbtn" onclick="openMenuDrawer('password')">Change Password</button>
+      <button class="mbtn" onclick="openMenuDrawer('about')">About</button>
+      <button class="mbtn log-off" onclick="doLogOff()">Log Off</button>
+    </div>
+
+    <!-- Notification bar -->
+    <div id="ntf"></div>
+
+    <!-- Tab content -->
+    <div id="app">
+
+      <!-- ════════════════════════════════════ -->
+      <!-- ESSL DASHBOARD TAB                   -->
+      <!-- ════════════════════════════════════ -->
+      <div class="tc on" id="tab-dbd">
+        <div style="background:#fff; padding:20px; border-radius:10px; border:1px solid #ccc; font-family: Arial, sans-serif; color:#333; margin-bottom:20px">
+          
+          <!-- Title -->
+          <div style="font-size:18px; margin-bottom:20px; border-bottom:1px solid #eee; padding-bottom:10px; display:flex; align-items:baseline">
+            <strong style="color:#000; font-size:20px">Dashboard</strong> 
+            <span style="font-size:12px; color:#888; margin-left:8px">Biometric Attendance System</span>
+          </div>
+
+          <!-- 5 Cards Grid -->
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:12px; margin-bottom:20px">
+            <!-- Orange Card -->
+            <div style="background:#e05e2b; color:#fff; padding:15px; border-radius:4px; min-height:80px; box-shadow: 1px 1px 3px rgba(0,0,0,0.1)">
+              <div id="essl-card-reg" style="font-size:24px; font-weight:bold; font-family:var(--mo)">0</div>
+              <div style="font-size:12px; margin-top:8px">Registered Employees</div>
+            </div>
+            <!-- Blue Card -->
+            <div style="background:#106ba3; color:#fff; padding:15px; border-radius:4px; min-height:80px; box-shadow: 1px 1px 3px rgba(0,0,0,0.1)">
+              <div id="essl-card-act" style="font-size:24px; font-weight:bold; font-family:var(--mo)">0</div>
+              <div style="font-size:12px; margin-top:8px">Active Employees</div>
+            </div>
+            <!-- Green Card -->
+            <div style="background:#6b8f42; color:#fff; padding:15px; border-radius:4px; min-height:80px; box-shadow: 1px 1px 3px rgba(0,0,0,0.1)">
+              <div id="essl-card-pres" style="font-size:24px; font-weight:bold; font-family:var(--mo)">0</div>
+              <div style="font-size:12px; margin-top:8px">Present Employees</div>
+            </div>
+            <!-- Brown Card -->
+            <div style="background:#7c5a3b; color:#fff; padding:15px; border-radius:4px; min-height:80px; box-shadow: 1px 1px 3px rgba(0,0,0,0.1)">
+              <div id="essl-card-dev-on" style="font-size:24px; font-weight:bold; font-family:var(--mo)">0</div>
+              <div style="font-size:12px; margin-top:8px">Online Devices</div>
+            </div>
+            <!-- Red Card -->
+            <div style="background:#a01b22; color:#fff; padding:15px; border-radius:4px; min-height:80px; box-shadow: 1px 1px 3px rgba(0,0,0,0.1)">
+              <div id="essl-card-dev-off" style="font-size:24px; font-weight:bold; font-family:var(--mo)">0</div>
+              <div style="font-size:12px; margin-top:8px">Offline Devices</div>
+            </div>
+          </div>
+
+          <!-- Filters Bar -->
+          <div style="background:#f4f7f6; border:1px solid #ddd; padding:10px; border-radius:4px; display:flex; gap:15px; align-items:center; flex-wrap:wrap; font-size:12px; font-family: Arial, sans-serif; color:#333; margin-bottom:15px">
+            <div>
+              <strong>Device Status: Location</strong>
+              <select id="dbd-filter-loc" onchange="renderDbdGrid()" style="padding:4px 8px; font-size:11px; margin-left:4px">
+                <option value="All">All</option>
+                <option value="BLR_RAJKUMAR">BLR_RAJKUMAR</option>
+                <option value="HQ - Bangalore">HQ - Bangalore</option>
+                <option value="Delhi Office">Delhi Office</option>
+              </select>
+            </div>
+            <div>
+              <strong>Status</strong>
+              <select id="dbd-filter-status" onchange="renderDbdGrid()" style="padding:4px 8px; font-size:11px; margin-left:4px">
+                <option value="All">All</option>
+                <option value="online">Online</option>
+                <option value="offline">Offline</option>
+              </select>
+            </div>
+            <div style="display:flex; align-items:center; gap:4px">
+              <strong>Auto refresh every</strong>
+              <input type="number" id="dbd-refresh-interval" value="30" min="0" max="60" style="width:40px; text-align:center; padding:3px; font-size:11px" onchange="setupAutoRefresh()" />
+              <span>seconds</span>
+              <button class="btn bsm" onclick="manualRefreshDbd()" style="padding:3px 10px; font-size:11px; background:#e0e0e0; color:#333; border:1px solid #ccc; height:auto; margin-left:8px">Refresh</button>
+            </div>
+          </div>
+
+          <!-- Table Grid -->
+          <div style="overflow-x:auto; border:1px solid #ccc; border-radius:4px; background:#fff">
+            <table style="width:100%; border-collapse:collapse; font-size:11px; font-family: Arial, sans-serif; color:#333">
+              <thead>
+                <tr style="background:#e0e8f5; border-bottom:1px solid #ccc; color:#224488">
+                  <th style="text-align:left; padding:8px; border-right:1px solid #ccc">DeviceSName</th>
+                  <th style="text-align:left; padding:8px; border-right:1px solid #ccc">DeviceFName</th>
+                  <th style="text-align:left; padding:8px; border-right:1px solid #ccc">Serial No.</th>
+                  <th style="text-align:left; padding:8px; border-right:1px solid #ccc">Location</th>
+                  <th style="text-align:left; padding:8px; border-right:1px solid #ccc">Last Ping</th>
+                  <th style="text-align:left; padding:8px">Status</th>
+                </tr>
+              </thead>
+              <tbody id="dbd-grid-body">
+                <!-- Filled dynamically -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Table Footer -->
+          <div style="background:#f0f4fa; border:1px solid #ccc; border-top:none; padding:6px 12px; display:flex; align-items:center; justify-content:space-between; font-size:11px; font-family: Arial, sans-serif; color:#333; border-bottom-left-radius:4px; border-bottom-right-radius:4px">
+            <div>
+              <span>Records per page:</span>
+              <select style="font-size:11px; padding:1px; background:#fff; border:1px solid #ccc">
+                <option>50</option>
+                <option>100</option>
+              </select>
+            </div>
+            <div>
+              <span style="margin-right:15px; color:#0055aa; cursor:pointer" id="dbd-grid-filter-status" onclick="notify('Filter details: Showing active device lists', 'ok')">Show Filter</span>
+              <span id="dbd-grid-info" style="color:#333">Records: 1 - 1 of 1</span>
+              <span style="margin-left:15px">Pages: 
+                <button disabled style="padding:1px 3px; font-size:9px">|&lt;</button>
+                <button disabled style="padding:1px 3px; font-size:9px">&lt;</button>
+                <span style="margin:0 4px; font-weight:bold">1</span>
+                <button disabled style="padding:1px 3px; font-size:9px">&gt;</button>
+                <button disabled style="padding:1px 3px; font-size:9px">&gt;|</button>
+              </span>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /tab-dbd -->
+
+      <!-- ════════════════════════════════════ -->
+      <!-- REGISTER TAB                         -->
+      <!-- ════════════════════════════════════ -->
+      <div class="tc" id="tab-reg">
+        <div class="g2">
+
+          <!-- Left: Form + Camera -->
+          <div>
+            <div class="card">
+              <div class="ct">📋 Employee Details</div>
+              
+              <div class="modal-grid-2">
+                <!-- Column 1 -->
+                <div>
+                  <div class="fg">
+                    <label class="fl">Employee Name</label>
+                    <input class="fi" id="r-name" placeholder="Saurabh Sharma" />
+                  </div>
+                  <div class="fg">
+                    <label class="fl">Device Code</label>
+                    <input class="fi" id="r-device-code" placeholder="KCC031" />
+                  </div>
+                  <div class="fg">
+                    <label class="fl">Department</label>
+                    <select class="fs" id="r-dept">
+                      <option>Engineering</option>
+                      <option>HR</option>
+                      <option>Finance</option>
+                      <option>Marketing</option>
+                      <option>Operations</option>
+                      <option>Sales</option>
+                      <option>IT</option>
+                    </select>
+                  </div>
+                  <div class="fg">
+                    <label class="fl">Sub Department</label>
+                    <select class="fs" id="r-sub-dept">
+                      <option>None</option>
+                      <option>P&D</option>
+                      <option>QA Testing</option>
+                      <option>Operations Team</option>
+                      <option>Talent Acquisition</option>
+                      <option>Accounts</option>
+                    </select>
+                  </div>
+                  <div class="fg">
+                    <label class="fl">Grade</label>
+                    <select class="fs" id="r-grade">
+                      <option>G1</option>
+                      <option>G2</option>
+                      <option>G3</option>
+                      <option>G4</option>
+                      <option>Grade A</option>
+                      <option>Grade B</option>
+                    </select>
+                  </div>
+                  <div class="fg">
+                    <label class="fl">Location</label>
+                    <select class="fs" id="r-location">
+                      <option>HQ - Bangalore</option>
+                      <option>Branch - Mumbai</option>
+                      <option>Branch - Chennai</option>
+                      <option>Delhi Office</option>
+                    </select>
+                  </div>
+                  <div class="fg">
+                    <label class="fl">Category</label>
+                    <select class="fs" id="r-category">
+                      <option>Default</option>
+                      <option>Staff</option>
+                      <option>Management</option>
+                    </select>
+                  </div>
+                  <div class="fg">
+                    <label class="fl">Shift Group</label>
+                    <select class="fs" id="r-shift-group">
+                      <option>None</option>
+                      <option>General Shift Group</option>
+                      <option>Night Shift Group</option>
+                    </select>
+                  </div>
+                  <div class="fg">
+                    <label class="fl">Date of joining</label>
+                    <div class="date-selects-row" id="r-join-date-grp"></div>
+                  </div>
+                  <div class="fg">
+                    <label class="fl">Status (Employment)</label>
+                    <select class="fs" id="r-status" onchange="toggleRegHibFields(this.value)">
+                      <option value="Working">Working</option>
+                      <option value="Not Working">Not Working</option>
+                    </select>
+                  </div>
+                  <div class="fg">
+                    <label class="fl">Sex</label>
+                    <div class="radio-grp">
+                      <label class="frad"><input type="radio" name="r-sex" id="r-sex-male" value="Male" checked /> Male</label>
+                      <label class="frad"><input type="radio" name="r-sex" id="r-sex-female" value="Female" /> Female</label>
+                    </div>
+                  </div>
+                  <div class="fg">
+                    <label class="fl">Card Number</label>
+                    <input class="fi" id="r-card-number" placeholder="KCC031" />
+                  </div>
+                  <div class="fg chk-fg">
+                    <label class="fchk-label">
+                      <input type="checkbox" id="r-expiry-rule" />
+                      <span>Is Device Expiry Rule Applicable</span>
+                    </label>
+                  </div>
+                  <div class="fg">
+                    <label class="fl">Expiry Start Date</label>
+                    <div class="date-selects-row" id="r-exp-start-grp"></div>
+                  </div>
+                </div>
+                
+                <!-- Column 2 -->
+                <div>
+                  <div class="fg">
+                    <label class="fl">Employee Code *</label>
+                    <input class="fi" id="r-id" placeholder="EMP031" />
+                  </div>
+                  <div class="fg">
+                    <label class="fl">Company</label>
+                    <select class="fs" id="r-company">
+                      <option>Default</option>
+                      <option>KRIDE</option>
+                      <option>GC</option>
+                    </select>
+                  </div>
+                  <div class="fg">
+                    <label class="fl">Designation</label>
+                    <input class="fi" id="r-role" placeholder="Dy. Manager" />
+                  </div>
+                  <div class="fg">
+                    <label class="fl">Division</label>
+                    <select class="fs" id="r-division">
+                      <option>None</option>
+                      <option>Division A</option>
+                      <option>Division B</option>
+                      <option>Division C</option>
+                    </select>
+                  </div>
+                  <div class="fg">
+                    <label class="fl">Team</label>
+                    <select class="fs" id="r-team">
+                      <option>None</option>
+                      <option>Team Alpha</option>
+                      <option>Team Beta</option>
+                      <option>Team Delta</option>
+                    </select>
+                  </div>
+                  <div class="fg">
+                    <label class="fl">Employment Type</label>
+                    <select class="fs" id="r-emp-type">
+                      <option>Permanent</option>
+                      <option>Contract</option>
+                      <option>Temporary</option>
+                      <option>Intern</option>
+                    </select>
+                  </div>
+                  <div class="fg">
+                    <label class="fl">Holiday Group</label>
+                    <select class="fs" id="r-holiday-group">
+                      <option>None</option>
+                      <option>General Holidays</option>
+                      <option>State Holidays</option>
+                    </select>
+                  </div>
+                  <div class="fg">
+                    <label class="fl">Shift Roster</label>
+                    <select class="fs" id="r-shift-roster">
+                      <option>None</option>
+                      <option>Standard Roster</option>
+                      <option>Rotating Roster</option>
+                    </select>
+                  </div>
+                  <div class="fg">
+                    <label class="fl">Date of Confirmation</label>
+                    <div class="date-selects-row" id="r-confirm-date-grp"></div>
+                  </div>
+                  <div class="fg">
+                    <label class="fl">Last Working Day</label>
+                    <div class="date-selects-row" id="r-last-working-grp"></div>
+                  </div>
+                  <div class="fg">
+                    <label class="fl">Aadhaar Number</label>
+                    <input class="fi" id="r-aadhaar" placeholder="12-digit Aadhaar ID" />
+                  </div>
+                  <div class="fg">
+                    <label class="fl">Geofence</label>
+                    <select class="fs" id="r-geofence">
+                      <option>--Select--</option>
+                      <option>HQ Geofence</option>
+                      <option>Regional Geofence</option>
+                    </select>
+                  </div>
+                  <div class="fg">
+                    <label class="fl">Verification Type</label>
+                    <select class="fs" id="r-verification-type">
+                      <option>Finger or Face or Card or Pin</option>
+                      <option>Face Only</option>
+                      <option>Card Only</option>
+                      <option>Finger Only</option>
+                    </select>
+                  </div>
+                  <div class="fg">
+                    <label class="fl">Expiry End Date</label>
+                    <div class="date-selects-row" id="r-exp-end-grp"></div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Compliance fields for completeness -->
+              <div class="modal-extra-grid" style="margin-bottom:12px">
+                <div class="fg">
+                  <label class="fl">PAN Number</label>
+                  <input class="fi" id="r-pan" placeholder="10-character PAN ID" />
+                </div>
+                <div class="fg">
+                  <label class="fl">Phone No</label>
+                  <input class="fi" id="r-phone" placeholder="+91 9xxxx xxxxx" />
+                </div>
+                <div class="fg">
+                  <label class="fl">Email</label>
+                  <input class="fi" id="r-email" placeholder="jane@company.com" />
+                </div>
+                <div class="fg">
+                  <label class="fl">Reporting To</label>
+                  <input class="fi" id="r-reporting-to" placeholder="EMP001" />
+                </div>
+              </div>
+
+              <!-- Hibernate fields for Register tab -->
+              <div id="r-hib-fields-row" style="display:none; margin-top:8px; border-top:1px dashed var(--br); padding-top:8px" class="modal-hib-grid">
+                <div class="fg">
+                  <label class="fl">Hibernate Start Date *</label>
+                  <input class="fi" type="date" id="r-hib-start" />
+                </div>
+                <div class="fg">
+                  <label class="fl">Hibernate End Date *</label>
+                  <input class="fi" type="date" id="r-hib-end" />
+                </div>
+                <div class="fg" style="grid-column: span 2">
+                  <label class="fl">Hibernate Reason *</label>
+                  <input class="fi" id="r-hib-reason" placeholder="Reason for hibernation" />
+                </div>
+              </div>
+
+              <!-- Bottom Buttons Row -->
+              <div class="modal-ftr" style="border-radius:6px; margin-top:8px">
+                <button class="btn btn-sec-sync bsm" onclick="syncRegFormDevices()">Add To All Devices</button>
+                <button class="btn btn-sec-del bsm" onclick="unsyncRegFormDevices()">Delete From All Devices</button>
+                <div class="modal-link-wrap"></div>
+                <div class="modal-actions-right">
+                  <button class="btn btnp bsm" id="rcap-lnk" onclick="doRegister()">Save</button>
+                  <button class="btn bsm" onclick="resetRegForm()">Close</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="card mt">
+              <div class="ct">📷 Face Capture Module</div>
+              <div class="cambox" id="rcb">
+                <video id="rv" autoplay muted playsinline></video>
+                <canvas id="rc"></canvas>
+                <div class="cpla" id="rp">
+                  <!-- corner icon -->
+                  <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+                    <rect x="2" y="2" width="10" height="2" fill="currentColor"/>
+                    <rect x="2" y="2" width="2" height="10" fill="currentColor"/>
+                    <rect x="24" y="2" width="10" height="2" fill="currentColor"/>
+                    <rect x="32" y="2" width="2" height="10" fill="currentColor"/>
+                    <rect x="2" y="32" width="10" height="2" fill="currentColor"/>
+                    <rect x="2" y="24" width="2" height="10" fill="currentColor"/>
+                    <rect x="24" y="32" width="10" height="2" fill="currentColor"/>
+                    <rect x="32" y="24" width="2" height="10" fill="currentColor"/>
+                  </svg>
+                  <span>Camera offline</span>
+                </div>
+                <div class="ctl"></div><div class="ctr"></div>
+                <div class="cbl"></div><div class="cbr"></div>
+              </div>
+              <img id="cprev" alt="Captured face" />
+              <div style="display:flex;gap:8px;margin-top:10px">
+                <button class="btn" id="rsc" onclick="startRegCam()">▶ Start Camera</button>
+                <button class="btn btnp btnw" id="rcap" onclick="doRegister()" disabled>⊙ Capture &amp; Register</button>
+              </div>
+              <div id="rst" style="margin-top:8px"></div>
+            </div>
+          </div>
+
+          <!-- Right: Employee list with Filters -->
+          <div>
+            <div class="card" style="height:100%; display:flex; flex-direction:column">
+              <div class="ct" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                <span>👥 Registered Employees</span>
+                <span id="ecnt" style="font-family:var(--mo);color:var(--ac);font-size:11px">0 employees</span>
+              </div>
+              
+              <!-- Directory Filtering pills -->
+              <div class="emp-filters" style="display:flex;gap:4px;margin-bottom:10px;overflow-x:auto;padding-bottom:4px">
+                <button class="ef-pill active" onclick="filterEmpDirectory('All', this)">All</button>
+                <button class="ef-pill" onclick="filterEmpDirectory('Active', this)">Active</button>
+                <button class="ef-pill" onclick="filterEmpDirectory('Hibernate', this)">Hibernate</button>
+                <button class="ef-pill" onclick="filterEmpDirectory('On Leave', this)">On Leave</button>
+                <button class="ef-pill" onclick="filterEmpDirectory('Resigned', this)">Resigned</button>
+              </div>
+
+              <!-- Search Bar -->
+              <div style="margin-bottom:10px">
+                <input type="text" id="emp-search" oninput="renderEL()" placeholder="🔍 Search employee by name, ID, dept..." style="width:100%; padding:8px 12px; font-size:12px; background:var(--s2); border:1px solid var(--br); border-radius:6px; color:var(--tx); outline:none; font-family:var(--sa); box-sizing:border-box" />
+              </div>
+
+              <div class="elist" id="elist" style="flex:1">
+                <div class="emp">No employees yet.<br>Register your first employee →</div>
+              </div>
+              
+              <div style="margin-top:12px;padding:10px;background:var(--s2);border-radius:6px;border:1px solid var(--br)">
+                <div style="font-family:var(--mo);font-size:10px;color:var(--mu);margin-bottom:6px">SYSTEM INFO</div>
+                <div style="font-size:11px;color:var(--mu);line-height:1.6">
+                  ✓ Face encoding: 128-dimensional vector<br>
+                  ✓ Status rules: Active / Hibernate / On Leave / Resigned<br>
+                  ✓ Hibernate status disables and rejects attendance logs<br>
+                  ✓ Click on any employee list item to view full enterprise profile details
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /tab-reg -->
+
+      <!-- ════════════════════════════════════ -->
+      <!-- ATTENDANCE TAB                       -->
+      <!-- ════════════════════════════════════ -->
+      <div class="tc" id="tab-att">
+        <div class="g2">
+
+          <!-- Left: camera -->
+          <div>
+            <div class="card">
+              <div class="ct">📷 Live Recognition Camera</div>
+              <div class="cambox" id="acb">
+                <video id="av" autoplay muted playsinline></video>
+                <canvas id="ac"></canvas>
+                <div class="cpla" id="ap">
+                  <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+                    <rect x="2" y="2" width="10" height="2" fill="currentColor"/>
+                    <rect x="2" y="2" width="2" height="10" fill="currentColor"/>
+                    <rect x="24" y="2" width="10" height="2" fill="currentColor"/>
+                    <rect x="32" y="2" width="2" height="10" fill="currentColor"/>
+                    <rect x="2" y="32" width="10" height="2" fill="currentColor"/>
+                    <rect x="2" y="24" width="2" height="10" fill="currentColor"/>
+                    <rect x="24" y="32" width="10" height="2" fill="currentColor"/>
+                    <rect x="32" y="24" width="2" height="10" fill="currentColor"/>
+                  </svg>
+                  <span>Click Start to begin scanning</span>
+                </div>
+                <div class="ctl"></div><div class="ctr"></div>
+                <div class="cbl"></div><div class="cbr"></div>
+                <div class="sl" id="sl"></div>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
+                <button class="btn" id="asc" onclick="startAttCam()">▶ Start Camera</button>
+                <button class="btn btnd bsm" id="asto" onclick="stopAttCam()" style="display:none">■ Stop</button>
+                <div class="det" id="det" style="display:none">● Scanning...</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: result + log -->
+          <div>
+            <div class="card">
+              <div class="ct">🎯 Recognition Result</div>
+              <div class="res" id="rb">
+                <div style="color:var(--mu);font-size:12px;text-align:center;padding:12px">
+                  Start camera and face the lens to mark attendance
+                </div>
+              </div>
+              <div class="cbar" id="cbr2" style="display:none">
+                <div class="cfill" id="cfll"></div>
+              </div>
+            </div>
+
+            <div class="card mt">
+              <div class="ct">🕐 Today's Live Log</div>
+              <div class="loglist" id="alog">
+                <div class="emp">No attendance logged yet today.</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /tab-att -->
+
+      <!-- ════════════════════════════════════ -->
+      <!-- HR DASHBOARD TAB                     -->
+      <!-- ════════════════════════════════════ -->
+      <div class="tc" id="tab-hr">
+
+        <!-- Sub-Tabs Navigation -->
+        <div class="sub-tabs-container">
+          <button class="sub-tbtn on" onclick="showSubTab('sub-tab-hr-analytics', this)">📊 Dashboard &amp; Analytics</button>
+          <button class="sub-tbtn" onclick="showSubTab('sub-tab-hr-reports', this)">📋 Monthly Status Report</button>
+        </div>
+
+        <!-- SUB-TAB: ANALYTICS & LOGS -->
+        <div class="sub-tc on" id="sub-tab-hr-analytics">
+          <!-- Attendance Stats row -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div class="ct" style="margin-bottom:0">📊 Attendance Summary Today</div>
+            <button class="btn bsm" onclick="resetSeedDatabase()" style="font-family:var(--mo);font-size:10px;border-color:rgba(79,142,247,.3);color:var(--ac2)">⚡ Reset &amp; Seed 100 Employees</button>
+          </div>
+          <div class="g3" id="sr" style="margin-bottom:18px">
+            <div class="sc"><div class="sv" id="spd" style="color:var(--ok)">0</div><div class="sl2">Present Today</div></div>
+            <div class="sc"><div class="sv" id="slt" style="color:var(--warn)">0</div><div class="sl2">Late Today</div></div>
+            <div class="sc"><div class="sv" id="sall">0</div><div class="sl2">Total Logs</div></div>
+            <div class="sc"><div class="sv" id="st">0</div><div class="sl2">Total Roster</div></div>
+          </div>
+
+          <!-- Roster Status row -->
+          <div class="ct" style="margin-bottom:10px">👥 Employee Status Counts</div>
+          <div class="g3" id="sr-status" style="margin-bottom:20px">
+            <div class="sc card-active"><div class="sv" id="s-active" style="color:var(--ok)">0</div><div class="sl2">Active Employees</div></div>
+            <div class="sc card-hibernate"><div class="sv" id="s-hibernate" style="color:#f59e0b">0</div><div class="sl2">Hibernate Mode</div></div>
+            <div class="sc card-leave"><div class="sv" id="s-leave" style="color:var(--ac2)">0</div><div class="sl2">On Leave</div></div>
+            <div class="sc card-resigned"><div class="sv" id="s-resigned" style="color:var(--mu)">0</div><div class="sl2">Resigned</div></div>
+          </div>
+
+          <!-- Analytics charts (Doughnut and Bar) -->
+          <div class="g2" style="margin-bottom:18px">
+            <div class="card">
+              <div class="ct">📈 Roster Distribution %</div>
+              <div class="chart-box" style="position:relative;height:200px;display:flex;justify-content:center">
+                <canvas id="rosterChart"></canvas>
+              </div>
+            </div>
+            <div class="card">
+              <div class="ct">🏫 Hibernate Count by Department</div>
+              <div class="chart-box" style="position:relative;height:200px">
+                <canvas id="deptChart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Trend Chart (Area Line Chart) -->
+          <div class="card" style="margin-bottom:18px">
+            <div class="ct">📅 Monthly Hibernate Trend</div>
+            <div class="chart-box" style="position:relative;height:160px">
+              <canvas id="trendChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Records table -->
+          <div class="card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+              <div class="ct" style="margin-bottom:0">📋 Detailed Attendance Records</div>
+              <button class="btn bsm" onclick="exportCSV()">⬇ Export CSV</button>
+            </div>
+            <div class="flt">
+              <input class="fi3" id="fs" placeholder="🔍 Search name / ID..." oninput="filt()" style="flex:1;min-width:120px" />
+              <input class="fi3" type="date" id="fd" oninput="filt()" />
+              <select class="fi3" id="fdd" onchange="filt()">
+                <option value="">All Depts</option>
+                <option>Engineering</option><option>HR</option><option>Finance</option>
+                <option>Marketing</option><option>Operations</option><option>Sales</option><option>IT</option>
+              </select>
+              <select class="fi3" id="fst" onchange="filt()">
+                <option value="">All Status</option>
+                <option>Present</option><option>Late</option>
+              </select>
+              <button class="btn bsm" onclick="clrFilt()">✕</button>
+            </div>
+            <div class="aw">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Emp ID</th><th>Name</th><th>Department</th>
+                    <th>Role</th><th>Date</th><th>Time</th><th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="atb">
+                  <tr><td colspan="7" class="emp">No records yet. Mark attendance first.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div style="margin-top:8px;font-family:var(--mo);font-size:10px;color:var(--mu);text-align:right" id="tc2"></div>
+          </div>
+        </div>
+
+        <!-- SUB-TAB: REPORT VIEW -->
+        <div class="sub-tc" id="sub-tab-hr-reports">
+          <!-- Top Control Bar (inputs to configure report) -->
+          <div class="card" style="margin-bottom:15px; border:1px solid var(--br)">
+            <div class="ct" style="margin-bottom:10px">⚙️ Configure Monthly Status Report</div>
+            <div style="display:flex; gap:15px; align-items:flex-end; flex-wrap:wrap">
+              <div class="fg" style="margin:0; flex:1; min-width:140px">
+                <label class="fl">From Date</label>
+                <input class="fi" type="date" id="rep-from" value="2026-04-01" style="padding:6px 10px; font-size:12px" />
+              </div>
+              <div class="fg" style="margin:0; flex:1; min-width:140px">
+                <label class="fl">To Date</label>
+                <input class="fi" type="date" id="rep-to" value="2026-04-21" style="padding:6px 10px; font-size:12px" />
+              </div>
+              <div class="fg" style="margin:0; flex:1; min-width:140px">
+                <label class="fl">Company</label>
+                <select class="fs" id="rep-company" style="padding:6px 10px; font-size:12px">
+                  <option value="All">All Companies</option>
+                  <option value="KRIDE" selected>KRIDE</option>
+                  <option value="GC">GC</option>
+                  <option value="Default">Default</option>
+                </select>
+              </div>
+              <div class="fg" style="margin:0; flex:1; min-width:140px">
+                <label class="fl">Department</label>
+                <select class="fs" id="rep-dept" style="padding:6px 10px; font-size:12px">
+                  <option value="All" selected>All Departments</option>
+                  <option value="Engineering">Engineering</option>
+                  <option value="HR">HR</option>
+                  <option value="Finance">Finance</option>
+                  <option value="Marketing">Marketing</option>
+                  <option value="Operations">Operations</option>
+                  <option value="Sales">Sales</option>
+                  <option value="IT">IT</option>
+                </select>
+              </div>
+              <div style="margin-bottom:0">
+                <button class="btn btnp" onclick="generateMonthlyReport()" style="padding:8px 16px; font-size:12px; height:auto">Generate Report</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Report Sheet Viewer -->
+          <div class="card" style="padding:0; overflow:hidden; display:flex; flex-direction:column; background:#fff; border:1px solid var(--br)">
+            <!-- Toolbar -->
+            <div style="background:#f0f0f0; border-bottom:1px solid #ccc; padding:6px 12px; display:flex; align-items:center; justify-content:space-between; font-size:11px; font-family: Tahoma, Arial, sans-serif; color:#333;">
+              <div style="display:flex; align-items:center; gap:8px">
+                <!-- Navigation Controls -->
+                <button class="rep-tool-btn" title="First Page" onclick="alert('Viewing page 1 of 1')">|◀</button>
+                <button class="rep-tool-btn" title="Previous Page" onclick="alert('Viewing page 1 of 1')">◀</button>
+                <span style="margin:0 4px; color:#333">Page <input type="text" value="1" style="width:25px; text-align:center; border:1px solid #ccc; font-size:11px; padding:1px; color:#333; background:#fff" disabled /> of 1</span>
+                <button class="rep-tool-btn" title="Next Page" onclick="alert('Viewing page 1 of 1')">▶</button>
+                <button class="rep-tool-btn" title="Last Page" onclick="alert('Viewing page 1 of 1')">▶|</button>
+                
+                <span style="color:#ccc; margin:0 4px">|</span>
+                
+                <input type="text" id="rep-find" placeholder="Find text..." style="border:1px solid #ccc; font-size:11px; padding:3px 6px; width:120px; color:#000; background:#fff; border-radius:3px; outline:none" />
+                <button class="rep-tool-btn" onclick="findInReport()">Find</button>
+                
+                <span style="color:#ccc; margin:0 4px">|</span>
+                <button class="rep-tool-btn" title="Refresh" onclick="generateMonthlyReport()">🔄</button>
+              </div>
+              
+              <div>
+                <button class="rep-tool-btn" style="font-weight:bold" onclick="generateMonthlyReport()">Regenerate Report</button>
+              </div>
+            </div>
+
+            <!-- Printable Sheet Backdrop -->
+            <div id="report-sheet-container" style="padding:20px; overflow-x:auto; background:#7f7f7f; display:flex; justify-content:center">
+              <div id="report-sheet" style="background:#fff; width:100%; box-shadow:0 0 10px rgba(0,0,0,0.5); padding:30px; font-family: Arial, sans-serif; color:#000; min-height:600px; box-sizing:border-box">
+                <div style="text-align:center; padding:100px; color:#666; font-size:14px; font-family:var(--sa)">
+                  Click <strong>Generate Report</strong> above to compile the Monthly Status Report.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /tab-hr -->
+
+      <!-- ════════════════════════════════════ -->
+      <!-- COMPANY LIST TAB                     -->
+      <!-- ════════════════════════════════════ -->
+      <div class="tc" id="tab-company">
+        <div style="background:#fff; padding:20px; border-radius:10px; border:1px solid #ccc; font-family: Arial, sans-serif; color:#333; margin-bottom:20px">
+          
+          <!-- Title / Header exactly like reference image -->
+          <div style="background:linear-gradient(to bottom, #7292af, #4a6c8d); color:#fff; padding:10px 15px; font-weight:bold; font-size:14px; border-top-left-radius:4px; border-top-right-radius:4px; border:1px solid #3d5e7d">
+            Company List
+          </div>
+
+          <!-- Table Grid -->
+          <div style="overflow-x:auto; border:1px solid #ccc; border-top:none; background:#fff">
+            <table style="width:100%; border-collapse:collapse; font-size:11px; font-family: Arial, sans-serif; color:#333">
+              <thead>
+                <tr style="background:#e0e8f5; border-bottom:1px solid #ccc; color:#224488">
+                  <th style="text-align:left; padding:8px; border-right:1px solid #ccc; cursor:pointer" onclick="sortCompanies('name')">Company Name ▲</th>
+                  <th style="text-align:left; padding:8px; border-right:1px solid #ccc; cursor:pointer" onclick="sortCompanies('short')">Short Name ⇅</th>
+                  <th style="text-align:center; padding:8px; border-right:1px solid #ccc; width:80px">Logo</th>
+                  <th style="text-align:center; padding:8px; border-right:1px solid #ccc; width:60px">Edit</th>
+                  <th style="text-align:center; padding:8px; width:60px">Delete</th>
+                </tr>
+              </thead>
+              <tbody id="company-grid-body">
+                <!-- Filled dynamically -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Table Footer exactly like reference image -->
+          <div style="background:#f0f4fa; border:1px solid #ccc; border-top:none; padding:6px 12px; display:flex; align-items:center; justify-content:space-between; font-size:11px; font-family: Arial, sans-serif; color:#333; border-bottom-left-radius:4px; border-bottom-right-radius:4px">
+            <div>
+              <span>Records per page:</span>
+              <input type="number" id="company-records-limit" value="10" min="1" max="10000" style="width:60px; padding:2px; font-size:11px; text-align:center" onchange="updateCompanyPagination()" />
+            </div>
+            <div>
+              <a href="#" onclick="openAddCompanyModal()" style="color:#0055aa; text-decoration:none; font-weight:bold">Add</a>
+              <span style="color:#aaa; margin:0 6px">|</span>
+              <a href="#" onclick="notify('Filter enabled. Search for companies.', 'ok')" style="color:#0055aa; text-decoration:none; font-weight:bold">Show Filter</a>
+              <span style="color:#aaa; margin:0 6px">|</span>
+              <span id="company-grid-info" style="color:#333">Records: 1 - 3 of 3</span>
+              <span style="color:#aaa; margin:0 6px">|</span>
+              <span style="margin-left:5px">Pages: 
+                <button onclick="prevCompanyPage()" style="padding:1px 3px; font-size:9px">◀</button>
+                <span id="company-page-num" style="margin:0 4px; font-weight:bold">1</span>
+                <button onclick="nextCompanyPage()" style="padding:1px 3px; font-size:9px">▶</button>
+              </span>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /tab-company -->
+
+      <!-- ════════════════════════════════════ -->
+      <!-- EMPLOYEE LIST TAB                    -->
+      <!-- ════════════════════════════════════ -->
+      <div class="tc" id="tab-employee-list">
+        <div style="background:#fff; padding:20px; border-radius:10px; border:1px solid #ccc; font-family: Arial, sans-serif; color:#333; margin-bottom:20px">
+          
+          <!-- Title / Header with filter controls exactly like reference image -->
+          <div style="background:linear-gradient(to bottom, #7292af, #4a6c8d); color:#fff; padding:10px 15px; font-weight:bold; font-size:14px; border-top-left-radius:4px; border-top-right-radius:4px; border:1px solid #3d5e7d; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px">
+            <span style="font-size:14px">Employees List</span>
+            <div style="display:flex; gap:10px; align-items:center; font-weight:normal; font-size:11px; flex-wrap:wrap">
+              <div>
+                <span>Company:</span>
+                <select id="emp-list-filter-company" style="padding:2px 4px; font-size:11px; color:#000; background:#fff; border:1px solid #ccc; border-radius:3px">
+                  <!-- Dynamically populated -->
+                </select>
+              </div>
+              <div>
+                <span>Designation:</span>
+                <select id="emp-list-filter-designation" style="padding:2px 4px; font-size:11px; color:#000; background:#fff; border:1px solid #ccc; border-radius:3px">
+                  <!-- Dynamically populated -->
+                </select>
+              </div>
+              <div>
+                <span>Status:</span>
+                <select id="emp-list-filter-status" style="padding:2px 4px; font-size:11px; color:#000; background:#fff; border:1px solid #ccc; border-radius:3px">
+                  <option value="All">All</option>
+                  <option value="Active">Active</option>
+                  <option value="Hibernate">Hibernate</option>
+                  <option value="On Leave">On Leave</option>
+                  <option value="Resigned">Resigned</option>
+                </select>
+              </div>
+              <div>
+                <span>Employment Type:</span>
+                <select id="emp-list-filter-emptype" style="padding:2px 4px; font-size:11px; color:#000; background:#fff; border:1px solid #ccc; border-radius:3px">
+                  <option value="All">All</option>
+                  <option value="Permanent">Permanent</option>
+                  <option value="Contract">Contract</option>
+                  <option value="Temporary">Temporary</option>
+                  <option value="Intern">Intern</option>
+                </select>
+              </div>
+              <button onclick="filterEmployeeGrid()" style="padding:2px 10px; font-size:11px; background:#f0f0f0; color:#333; border:1px solid #999; border-radius:3px; cursor:pointer; font-weight:bold">Refresh</button>
+            </div>
+          </div>
+
+          <!-- Table Grid -->
+          <div style="overflow-x:auto; border:1px solid #ccc; border-top:none; background:#fff">
+            <table style="width:100%; border-collapse:collapse; font-size:11px; font-family: Arial, sans-serif; color:#333">
+              <thead>
+                <tr style="background:#e0e8f5; border-bottom:1px solid #ccc; color:#224488">
+                  <th style="text-align:left; padding:8px; border-right:1px solid #ccc; cursor:pointer" onclick="sortEmployeesList('id')">Emp Code ⇅</th>
+                  <th style="text-align:left; padding:8px; border-right:1px solid #ccc; cursor:pointer" onclick="sortEmployeesList('name')">Emp Name ⇅</th>
+                  <th style="text-align:left; padding:8px; border-right:1px solid #ccc; cursor:pointer" onclick="sortEmployeesList('company')">Company ⇅</th>
+                  <th style="text-align:left; padding:8px; border-right:1px solid #ccc; cursor:pointer" onclick="sortEmployeesList('department')">Department ⇅</th>
+                  <th style="text-align:left; padding:8px; border-right:1px solid #ccc; cursor:pointer" onclick="sortEmployeesList('role')">Designation ⇅</th>
+                  <th style="text-align:left; padding:8px; border-right:1px solid #ccc; cursor:pointer" onclick="sortEmployeesList('location')">Location ⇅</th>
+                  <th style="text-align:left; padding:8px; border-right:1px solid #ccc; cursor:pointer" onclick="sortEmployeesList('category')">Category ⇅</th>
+                  <th style="text-align:center; padding:8px; border-right:1px solid #ccc; width:90px">Leave Summary</th>
+                  <th style="text-align:center; padding:8px; border-right:1px solid #ccc; width:80px">Shift Details</th>
+                  <th style="text-align:center; padding:8px; border-right:1px solid #ccc; width:80px">Other Details</th>
+                  <th style="text-align:center; padding:8px; border-right:1px solid #ccc; width:80px">Pay Details</th>
+                  <th style="text-align:center; padding:8px; border-right:1px solid #ccc; width:50px">Photo</th>
+                  <th style="text-align:center; padding:8px; border-right:1px solid #ccc; width:50px">Delete</th>
+                  <th style="text-align:center; padding:8px; border-right:1px solid #ccc; width:50px">Edit</th>
+                  <th style="text-align:center; padding:8px; width:110px">Register</th>
+                </tr>
+              </thead>
+              <tbody id="emp-list-grid-body">
+                <!-- Filled dynamically -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Table Footer -->
+          <div style="background:#f0f4fa; border:1px solid #ccc; border-top:none; padding:6px 12px; display:flex; align-items:center; justify-content:space-between; font-size:11px; font-family: Arial, sans-serif; color:#333; border-bottom-left-radius:4px; border-bottom-right-radius:4px">
+            <div>
+              <span>Records per page:</span>
+              <input type="number" id="emp-list-records-limit" value="20" min="1" max="10000" style="width:60px; padding:2px; font-size:11px; text-align:center" onchange="updateEmpListPagination()" />
+            </div>
+            <div>
+              <span id="emp-list-grid-info" style="color:#333">Records: 0 - 0 of 0</span>
+              <span style="color:#aaa; margin:0 6px">|</span>
+              <span style="margin-left:5px">Pages: 
+                <button onclick="prevEmpListPage()" style="padding:1px 3px; font-size:9px">◀</button>
+                <span id="emp-list-page-num" style="margin:0 4px; font-weight:bold">1</span>
+                <button onclick="nextEmpListPage()" style="padding:1px 3px; font-size:9px">▶</button>
+              </span>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /tab-employee-list -->
+
+    </div><!-- /#app -->
+  </div><!-- /#ma -->
+  
+  <!-- ── EMPLOYEE DETAILS MODAL (eTimeTrackLite Replica) ── -->
+  <div id="emp-modal" class="modal-overlay" style="display:none">
+    <div class="modal-box animate-zoom">
+      <div class="modal-hdr">
+        <span class="modal-title">⬡ Employee Details</span>
+        <button class="modal-close-x" onclick="closeEmpModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-grid-2">
+          
+          <!-- Column 1 -->
+          <div>
+            <div class="fg">
+              <label class="fl">Employee Name</label>
+              <input class="fi" id="m-name" placeholder="Saurabh Sharma" />
+            </div>
+            <div class="fg">
+              <label class="fl">Device Code</label>
+              <input class="fi" id="m-device-code" placeholder="KCC031" />
+            </div>
+            <div class="fg">
+              <label class="fl">Department</label>
+              <select class="fs" id="m-dept">
+                <option>Engineering</option>
+                <option>HR</option>
+                <option>Finance</option>
+                <option>Marketing</option>
+                <option>Operations</option>
+                <option>Sales</option>
+                <option>IT</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="fl">Sub Department</label>
+              <select class="fs" id="m-sub-dept">
+                <option>None</option>
+                <option>P&D</option>
+                <option>QA Testing</option>
+                <option>Operations Team</option>
+                <option>Talent Acquisition</option>
+                <option>Accounts</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="fl">Grade</label>
+              <select class="fs" id="m-grade">
+                <option>G1</option>
+                <option>G2</option>
+                <option>G3</option>
+                <option>G4</option>
+                <option>Grade A</option>
+                <option>Grade B</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="fl">Location</label>
+              <select class="fs" id="m-location">
+                <option>HQ - Bangalore</option>
+                <option>Branch - Mumbai</option>
+                <option>Branch - Chennai</option>
+                <option>Delhi Office</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="fl">Category</label>
+              <select class="fs" id="m-category">
+                <option>Default</option>
+                <option>Staff</option>
+                <option>Management</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="fl">Shift Group</label>
+              <select class="fs" id="m-shift-group">
+                <option>None</option>
+                <option>General Shift Group</option>
+                <option>Night Shift Group</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="fl">Date of joining</label>
+              <div class="date-selects-row" id="m-join-date-grp"></div>
+            </div>
+            <div class="fg">
+              <label class="fl">Employment Status</label>
+              <select class="fs" id="m-status" onchange="toggleModalHibFields(this.value)">
+                <option value="Active">Active</option>
+                <option value="Hibernate">Hibernate</option>
+                <option value="On Leave">On Leave</option>
+                <option value="Resigned">Resigned</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="fl">Sex</label>
+              <div class="radio-grp">
+                <label class="frad"><input type="radio" name="m-sex" id="m-sex-male" value="Male" checked /> Male</label>
+                <label class="frad"><input type="radio" name="m-sex" id="m-sex-female" value="Female" /> Female</label>
+              </div>
+            </div>
+            <div class="fg">
+              <label class="fl">Card Number</label>
+              <input class="fi" id="m-card-number" placeholder="KCC031" />
+            </div>
+            
+            <div class="fg chk-fg">
+              <label class="fchk-label">
+                <input type="checkbox" id="m-expiry-rule" />
+                <span>Is Device Expiry Rule Applicable</span>
+              </label>
+            </div>
+            
+            <div class="fg">
+              <label class="fl">Expiry Start Date</label>
+              <div class="date-selects-row" id="m-exp-start-grp"></div>
+            </div>
+          </div>
+          
+          <!-- Column 2 -->
+          <div>
+            <div class="fg">
+              <label class="fl">Employee Code *</label>
+              <input class="fi" id="m-id" readonly title="Employee Code (ID) cannot be edited" style="background:var(--s1);border-color:var(--s3);color:var(--mu);cursor:not-allowed" />
+            </div>
+            <div class="fg">
+              <label class="fl">Company</label>
+              <select class="fs" id="m-company">
+                <option>Default</option>
+                <option>KRIDE</option>
+                <option>GC</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="fl">Designation (Role)</label>
+              <input class="fi" id="m-role" placeholder="Dy. Manager" />
+            </div>
+            <div class="fg">
+              <label class="fl">Division</label>
+              <select class="fs" id="m-division">
+                <option>None</option>
+                <option>Division A</option>
+                <option>Division B</option>
+                <option>Division C</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="fl">Team</label>
+              <select class="fs" id="m-team">
+                <option>None</option>
+                <option>Team Alpha</option>
+                <option>Team Beta</option>
+                <option>Team Delta</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="fl">Employment Type</label>
+              <select class="fs" id="m-emp-type">
+                <option>Permanent</option>
+                <option>Contract</option>
+                <option>Temporary</option>
+                <option>Intern</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="fl">Holiday Group</label>
+              <select class="fs" id="m-holiday-group">
+                <option>None</option>
+                <option>General Holidays</option>
+                <option>State Holidays</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="fl">Shift Roster</label>
+              <select class="fs" id="m-shift-roster">
+                <option>None</option>
+                <option>Standard Roster</option>
+                <option>Rotating Roster</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="fl">Date of Confirmation</label>
+              <div class="date-selects-row" id="m-confirm-date-grp"></div>
+            </div>
+            <div class="fg">
+              <label class="fl">Last Working Day</label>
+              <div class="date-selects-row" id="m-last-working-grp"></div>
+            </div>
+            <div class="fg">
+              <label class="fl">Aadhaar Number</label>
+              <input class="fi" id="m-aadhaar" placeholder="12-digit Aadhaar ID" />
+            </div>
+            <div class="fg">
+              <label class="fl">Geofence</label>
+              <select class="fs" id="m-geofence">
+                <option>--Select--</option>
+                <option>HQ Geofence</option>
+                <option>Regional Geofence</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="fl">Verification Type</label>
+              <select class="fs" id="m-verification-type">
+                <option>Finger or Face or Card or Pin</option>
+                <option>Face Only</option>
+                <option>Card Only</option>
+                <option>Finger Only</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="fl">Expiry End Date</label>
+              <div class="date-selects-row" id="m-exp-end-grp"></div>
+            </div>
+          </div>
+          
+        </div>
+        
+        <!-- Extraneous fields for complete compliance (PAN, Phone, Email, ReportingTo) -->
+        <div class="modal-extra-grid">
+          <div class="fg">
+            <label class="fl">PAN Number</label>
+            <input class="fi" id="m-pan" placeholder="10-character PAN ID" />
+          </div>
+          <div class="fg">
+            <label class="fl">Phone No</label>
+            <input class="fi" id="m-phone" placeholder="+91 9xxxx xxxxx" />
+          </div>
+          <div class="fg">
+            <label class="fl">Email</label>
+            <input class="fi" id="m-email" placeholder="jane@company.com" />
+          </div>
+          <div class="fg">
+            <label class="fl">Reporting To</label>
+            <input class="fi" id="m-reporting-to" placeholder="EMP001" />
+          </div>
+        </div>
+        
+        <!-- Hibernate specific conditional inputs in modal -->
+        <div id="m-hib-fields-row" style="display:none; margin-top:8px; border-top:1px dashed var(--br); padding-top:8px" class="modal-hib-grid">
+          <div class="fg">
+            <label class="fl">Hibernate Start Date *</label>
+            <input class="fi" type="date" id="m-hib-start" />
+          </div>
+          <div class="fg">
+            <label class="fl">Hibernate End Date *</label>
+            <input class="fi" type="date" id="m-hib-end" />
+          </div>
+          <div class="fg" style="grid-column: span 2">
+            <label class="fl">Hibernate Reason *</label>
+            <input class="fi" id="m-hib-reason" placeholder="Reason for hibernation" />
+          </div>
+        </div>
+
+      </div>
+      
+      <!-- Footer Buttons -->
+      <div class="modal-ftr">
+        <button class="btn btn-sec-sync" onclick="syncAllDevices()">Add To All Devices</button>
+        <button class="btn btn-sec-del" onclick="unsyncAllDevices()">Delete From All Devices</button>
+        
+        <div class="modal-link-wrap">
+          <a class="modal-lnk" href="#" onclick="alert('Access rules updated: Login permitted at Bangalore HQ readers.')">Update Employee Login And Department Access Details</a>
+        </div>
+        
+        <div class="modal-actions-right">
+          <button class="btn btnp" onclick="saveEmpModal()">Save</button>
+          <button class="btn" onclick="closeEmpModal()">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── COMPANY DETAILS MODAL ── -->
+  <div id="company-modal" class="modal-overlay" style="display:none">
+    <div class="modal-box animate-zoom" style="max-width:400px">
+      <div class="modal-hdr">
+        <span class="modal-title" id="comp-modal-title">Company Configuration</span>
+        <button class="modal-close-x" onclick="closeCompanyModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:15px">
+        <input type="hidden" id="comp-edit-index" value="" />
+        <div class="fg">
+          <label class="fl">Company Name *</label>
+          <input class="fi" id="comp-name" placeholder="Rail Infrastructure Development Company Ltd" />
+        </div>
+        <div class="fg" style="margin-top:10px">
+          <label class="fl">Short Name *</label>
+          <input class="fi" id="comp-short" placeholder="KRIDE" />
+        </div>
+      </div>
+      <div class="modal-ftr" style="margin-top:10px">
+        <div class="modal-actions-right">
+          <button class="btn btnp" onclick="saveCompanyModal()">Save</button>
+          <button class="btn" onclick="closeCompanyModal()">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /#far -->
+
+<!-- ── POPUP DRAWER WINDOWS FOR ROSTER INTERACTIONS ── -->
+<div id="info-drawer" class="drawer-overlay" style="display:none" onclick="closeInfoDrawer()">
+  <div class="drawer-box animate-slide-in" onclick="event.stopPropagation()">
+    <div class="drawer-hdr">
+      <span class="drawer-title" id="dr-title">Information Details</span>
+      <button class="modal-close-x" onclick="closeInfoDrawer()">✕</button>
+    </div>
+    <div class="drawer-body" id="dr-body">
+      <!-- Content populated dynamically -->
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
