@@ -5,7 +5,12 @@ target/
 database/*.db
 database/*.db-journal
 database/*.db-wal
+database/*.db-shm
 .idea/
 .vscode/
 build/
 bin/
+obj/
+*.user
+*.suo
+.vs/
