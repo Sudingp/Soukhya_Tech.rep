@@ -24,5 +24,14 @@ namespace SoukhyaTech.FaceAttendance.Models
 
         [JsonPropertyName("status")]
         public virtual string Status { get; set; } = "Present";
+
+        [JsonPropertyName("logged_by")]
+        public virtual string? LoggedBy { get; set; }
+
+        [JsonPropertyName("ip_address")]
+        public virtual string? IpAddress { get; set; }
+
+        [JsonPropertyName("user_agent")]
+        public virtual string? UserAgent { get; set; }
     }
 }

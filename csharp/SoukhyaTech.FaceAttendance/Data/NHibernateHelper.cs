@@ -10,7 +10,7 @@ namespace SoukhyaTech.FaceAttendance.Data
     public static class NHibernateHelper
     {
         private static ISessionFactory? _sessionFactory;
-        private static readonly object _lock = new object();
+        private static readonly object _lock = new();
 
         public static ISessionFactory GetSessionFactory(IConfiguration? configuration = null)
         {
@@ -29,43 +29,18 @@ namespace SoukhyaTech.FaceAttendance.Data
 
         private static ISessionFactory BuildSessionFactory(IConfiguration? configuration)
         {
-            string dbPath = configuration?["Database:Path"] ?? "";
-
-            if (string.IsNullOrWhiteSpace(dbPath))
-            {
-                // Traverse up to find database directory or root
-                string baseDir = AppContext.BaseDirectory;
-                string candidatePath = Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..", "database", "attendance.db"));
-                
-                if (File.Exists(candidatePath) || Directory.Exists(Path.GetDirectoryName(candidatePath)))
-                {
-                    dbPath = candidatePath;
-                }
-                else
-                {
-                    dbPath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "database", "attendance.db"));
-                }
-            }
-
+            string dbPath = configuration?["Database:Path"] ?? "database/attendance.db";
             var dbDir = Path.GetDirectoryName(dbPath);
             if (!string.IsNullOrEmpty(dbDir) && !Directory.Exists(dbDir))
-            {
                 Directory.CreateDirectory(dbDir);
-            }
 
             var fluentConfig = Fluently.Configure()
                 .Database(SQLiteConfiguration.Standard.UsingFile(dbPath))
                 .Mappings(m => m.FluentMappings.AddFromAssemblyOf<EmployeeMap>())
                 .ExposeConfiguration(cfg =>
                 {
-                    try
-                    {
-                        new SchemaUpdate(cfg).Execute(false, true);
-                    }
-                    catch
-                    {
-                        // Ignore schema update issues if tables already exist
-                    }
+                    // Use SchemaValidate instead of SchemaUpdate in production
+                    new SchemaUpdate(cfg).Execute(false, true);
                 });
 
             return fluentConfig.BuildSessionFactory();

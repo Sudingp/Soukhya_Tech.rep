@@ -13,10 +13,13 @@ namespace SoukhyaTech.FaceAttendance.Repositories
             _session = session;
         }
 
-        public async Task<List<Employee>> GetAllAsync()
+        public async Task<List<Employee>> GetAllAsync(int page, int size)
         {
-            var list = await _session.Query<Employee>().ToListAsync();
-            return list.OrderByDescending(e => e.CreatedAt).ToList();
+            return await _session.Query<Employee>()
+                .OrderByDescending(e => e.CreatedAt)
+                .Skip((page - 1) * size)
+                .Take(size)
+                .ToListAsync();
         }
 
         public async Task<Employee?> GetByIdAsync(string id)
@@ -40,8 +43,7 @@ namespace SoukhyaTech.FaceAttendance.Repositories
 
         public async Task<bool> ExistsAsync(string id)
         {
-            var emp = await _session.GetAsync<Employee>(id);
-            return emp != null;
+            return await _session.GetAsync<Employee>(id) != null;
         }
 
         public async Task<long> CountAsync()
@@ -59,52 +61,38 @@ namespace SoukhyaTech.FaceAttendance.Repositories
         public async Task<List<object>> GetDeptHibernateCountsAsync()
         {
             var sql = @"
-                SELECT department as Department, COUNT(*) as Count 
-                FROM employees 
-                WHERE status = 'Hibernate' 
+                SELECT department as Department, COUNT(*) as Count
+                FROM employees
+                WHERE status = 'Hibernate'
                 GROUP BY department";
-
             var results = await _session.CreateSQLQuery(sql)
                 .SetResultTransformer(NHibernate.Transform.Transformers.AliasToEntityMap)
                 .ListAsync<System.Collections.IDictionary>();
 
-            var list = new List<object>();
-            foreach (var row in results)
+            return results.Select(row => new
             {
-                list.Add(new
-                {
-                    department = row["Department"]?.ToString() ?? "",
-                    count = Convert.ToInt64(row["Count"])
-                });
-            }
-            return list;
+                department = row["Department"]?.ToString() ?? "",
+                count = Convert.ToInt64(row["Count"])
+            }).Cast<object>().ToList();
         }
 
         public async Task<List<object>> GetMonthlyHibernateTrendsAsync()
         {
             var sql = @"
-                SELECT 
-                  substr(hibernate_start_date, 1, 7) as Month, 
-                  COUNT(*) as Count 
-                FROM employees 
+                SELECT substr(hibernate_start_date, 1, 7) as Month, COUNT(*) as Count
+                FROM employees
                 WHERE status = 'Hibernate' AND hibernate_start_date IS NOT NULL AND hibernate_start_date != ''
-                GROUP BY Month 
+                GROUP BY Month
                 ORDER BY Month ASC";
-
             var results = await _session.CreateSQLQuery(sql)
                 .SetResultTransformer(NHibernate.Transform.Transformers.AliasToEntityMap)
                 .ListAsync<System.Collections.IDictionary>();
 
-            var list = new List<object>();
-            foreach (var row in results)
+            return results.Select(row => new
             {
-                list.Add(new
-                {
-                    month = row["Month"]?.ToString() ?? "",
-                    count = Convert.ToInt64(row["Count"])
-                });
-            }
-            return list;
+                month = row["Month"]?.ToString() ?? "",
+                count = Convert.ToInt64(row["Count"])
+            }).Cast<object>().ToList();
         }
     }
 }

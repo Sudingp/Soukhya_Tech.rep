@@ -19,11 +19,23 @@ namespace SoukhyaTech.FaceAttendance.Models
         [JsonPropertyName("descriptor")]
         public virtual string Descriptor { get; set; } = string.Empty;
 
+        [JsonPropertyName("descriptor_hash")]
+        public virtual string DescriptorHash { get; set; } = string.Empty;
+
         [JsonPropertyName("image")]
         public virtual string? Image { get; set; }
 
         [JsonPropertyName("created_at")]
         public virtual string CreatedAt { get; set; } = DateTime.UtcNow.ToString("o");
+
+        [JsonPropertyName("updated_at")]
+        public virtual string UpdatedAt { get; set; } = DateTime.UtcNow.ToString("o");
+
+        [JsonPropertyName("updated_by")]
+        public virtual string? UpdatedBy { get; set; }
+
+        [JsonPropertyName("version")]
+        public virtual int Version { get; set; } = 1;
 
         [JsonPropertyName("status")]
         public virtual string Status { get; set; } = "Active";
@@ -37,6 +49,7 @@ namespace SoukhyaTech.FaceAttendance.Models
         [JsonPropertyName("hibernate_reason")]
         public virtual string? HibernateReason { get; set; }
 
+        // Enterprise HR fields
         [JsonPropertyName("company")]
         public virtual string? Company { get; set; }
 

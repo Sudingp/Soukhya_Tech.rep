@@ -13,29 +13,29 @@ namespace SoukhyaTech.FaceAttendance.Repositories
             _session = session;
         }
 
-        public async Task<List<Attendance>> GetAllAsync()
+        public async Task<List<Attendance>> GetAllAsync(int page, int size)
         {
-            var list = await _session.Query<Attendance>().ToListAsync();
-            return list.OrderByDescending(a => a.Timestamp).ToList();
+            return await _session.Query<Attendance>()
+                .OrderByDescending(a => a.Timestamp)
+                .Skip((page - 1) * size)
+                .Take(size)
+                .ToListAsync();
         }
 
-        public async Task<List<Attendance>> GetByDateAsync(string dateStr)
+        public async Task<List<Attendance>> GetByDateRangeAsync(string start, string end)
         {
-            var sql = "SELECT * FROM attendance WHERE date(timestamp) = date(:dateVal) ORDER BY timestamp DESC";
-            var results = await _session.CreateSQLQuery(sql)
-                .AddEntity(typeof(Attendance))
-                .SetParameter("dateVal", dateStr)
-                .ListAsync<Attendance>();
-
-            return results.ToList();
+            return await _session.Query<Attendance>()
+                .Where(a => a.Timestamp >= start && a.Timestamp < end)
+                .OrderByDescending(a => a.Timestamp)
+                .ToListAsync();
         }
 
         public async Task<List<Attendance>> GetByEmpIdAsync(string empId)
         {
-            var list = await _session.Query<Attendance>()
+            return await _session.Query<Attendance>()
                 .Where(a => a.EmpId == empId)
+                .OrderByDescending(a => a.Timestamp)
                 .ToListAsync();
-            return list.OrderByDescending(a => a.Timestamp).ToList();
         }
 
         public async Task SaveAsync(Attendance attendance)
@@ -50,24 +50,15 @@ namespace SoukhyaTech.FaceAttendance.Repositories
             using var tx = _session.BeginTransaction();
             var item = await _session.GetAsync<Attendance>(attId);
             if (item != null)
-            {
                 await _session.DeleteAsync(item);
-            }
             await tx.CommitAsync();
         }
 
-        public async Task<bool> HasLoggedTodayAsync(string empId)
+        public async Task<bool> HasLoggedTodayAsync(string empId, string start, string end)
         {
-            var sql = @"
-                SELECT att_id FROM attendance 
-                WHERE emp_id = :empId AND date(timestamp) = date('now','localtime') 
-                LIMIT 1";
-
-            var result = await _session.CreateSQLQuery(sql)
-                .SetParameter("empId", empId)
-                .UniqueResultAsync();
-
-            return result != null;
+            return await _session.Query<Attendance>()
+                .Where(a => a.EmpId == empId && a.Timestamp >= start && a.Timestamp < end)
+                .AnyAsync();
         }
 
         public async Task<long> CountAsync()
@@ -75,27 +66,23 @@ namespace SoukhyaTech.FaceAttendance.Repositories
             return await _session.Query<Attendance>().LongCountAsync();
         }
 
-        public async Task<(long PresentToday, long LateToday)> GetTodayStatsAsync()
+        public async Task<(long PresentToday, long LateToday)> GetTodayStatsAsync(string start, string end)
         {
             var sql = @"
-                SELECT 
-                  COUNT(DISTINCT emp_id) AS PresentToday,
-                  SUM(CASE WHEN status='Late' THEN 1 ELSE 0 END) AS LateToday
+                SELECT COUNT(DISTINCT emp_id) AS PresentToday,
+                       COALESCE(SUM(CASE WHEN status='Late' THEN 1 ELSE 0 END), 0) AS LateToday
                 FROM attendance
-                WHERE date(timestamp) = date('now','localtime')";
+                WHERE timestamp >= :start AND timestamp < :end";
 
             var queryResult = await _session.CreateSQLQuery(sql)
+                .SetParameter("start", start)
+                .SetParameter("end", end)
                 .SetResultTransformer(NHibernate.Transform.Transformers.AliasToEntityMap)
                 .UniqueResultAsync<System.Collections.IDictionary>();
 
             if (queryResult == null) return (0, 0);
-
-            long present = queryResult["PresentToday"] != null && queryResult["PresentToday"] != DBNull.Value
-                ? Convert.ToInt64(queryResult["PresentToday"]) : 0;
-
-            long late = queryResult["LateToday"] != null && queryResult["LateToday"] != DBNull.Value
-                ? Convert.ToInt64(queryResult["LateToday"]) : 0;
-
+            long present = queryResult["PresentToday"] != null ? Convert.ToInt64(queryResult["PresentToday"]) : 0;
+            long late = queryResult["LateToday"] != null ? Convert.ToInt64(queryResult["LateToday"]) : 0;
             return (present, late);
         }
     }

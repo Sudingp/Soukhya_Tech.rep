@@ -1,9 +1,23 @@
 package com.soukhyatech.faceattendance.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+
+import java.time.Instant;
 
 @Entity
-@Table(name = "attendance")
+@Table(name = "attendance", indexes = {
+    @Index(name = "idx_att_emp_ts", columnList = "empId, timestamp"),
+    @Index(name = "idx_att_ts", columnList = "timestamp")
+})
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Attendance {
 
     @Id
@@ -11,85 +25,37 @@ public class Attendance {
     @Column(name = "att_id")
     private Integer attId;
 
-    @Column(name = "emp_id", nullable = false)
+    @Column(name = "emp_id", nullable = false, length = 20)
+    @NotBlank
     private String empId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
+    @NotBlank
     private String name;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 50)
+    @NotBlank
     private String dept;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
+    @NotBlank
     private String role;
 
     @Column(nullable = false)
-    private String timestamp; // ISO 8601 string
+    @NotBlank
+    private String timestamp;
 
-    @Column(nullable = false)
-    private String status; // 'Present' or 'Late'
+    @Column(nullable = false, length = 10)
+    @NotNull
+    @Builder.Default
+    private String status = "Present";
 
-    // Constructors
-    public Attendance() {}
+    @Column(name = "logged_by", length = 50)
+    private String loggedBy;
 
-    public Attendance(Integer attId, String empId, String name, String dept, String role, String timestamp, String status) {
-        this.attId = attId;
-        this.empId = empId;
-        this.name = name;
-        this.dept = dept;
-        this.role = role;
-        this.timestamp = timestamp;
-        this.status = status;
-    }
+    @Column(name = "ip_address", length = 45)
+    private String ipAddress;
 
-    // Getters and Setters
-    public Integer getAttId() { return attId; }
-    public void setAttId(Integer attId) { this.attId = attId; }
-
-    public String getEmpId() { return empId; }
-    public void setEmpId(String empId) { this.empId = empId; }
-
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-
-    public String getDept() { return dept; }
-    public void setDept(String dept) { this.dept = dept; }
-
-    public String getRole() { return role; }
-    public void setRole(String role) { this.role = role; }
-
-    public String getTimestamp() { return timestamp; }
-    public void setTimestamp(String timestamp) { this.timestamp = timestamp; }
-
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
-
-    // Builder pattern implementation
-    public static AttendanceBuilder builder() {
-        return new AttendanceBuilder();
-    }
-
-    public static class AttendanceBuilder {
-        private Integer attId;
-        private String empId;
-        private String name;
-        private String dept;
-        private String role;
-        private String timestamp;
-        private String status;
-
-        AttendanceBuilder() {}
-
-        public AttendanceBuilder attId(Integer attId) { this.attId = attId; return this; }
-        public AttendanceBuilder empId(String empId) { this.empId = empId; return this; }
-        public AttendanceBuilder name(String name) { this.name = name; return this; }
-        public AttendanceBuilder dept(String dept) { this.dept = dept; return this; }
-        public AttendanceBuilder role(String role) { this.role = role; return this; }
-        public AttendanceBuilder timestamp(String timestamp) { this.timestamp = timestamp; return this; }
-        public AttendanceBuilder status(String status) { this.status = status; return this; }
-
-        public Attendance build() {
-            return new Attendance(attId, empId, name, dept, role, timestamp, status);
-        }
-    }
+    @Column(name = "user_agent", length = 255)
+    private String userAgent;
 }

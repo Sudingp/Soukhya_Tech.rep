@@ -4,7 +4,7 @@ namespace SoukhyaTech.FaceAttendance.Repositories
 {
     public interface IEmployeeRepository
     {
-        Task<List<Employee>> GetAllAsync();
+        Task<List<Employee>> GetAllAsync(int page, int size);
         Task<Employee?> GetByIdAsync(string id);
         Task SaveOrUpdateAsync(Employee employee);
         Task DeleteAsync(Employee employee);
