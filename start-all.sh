@@ -1,4 +1,8 @@
 #!/bin/bash
+
+# Use user-installed .NET 8 SDK
+export DOTNET_ROOT="$HOME/.dotnet"
+export PATH="$DOTNET_ROOT:$PATH"
 # =============================================================================
 # SOUKHYA TECH ‚Äî UNIFIED START SCRIPT
 # Auto-detects | Auto-installs | Auto-launches all 3 backends
@@ -26,6 +30,9 @@ PIDS_FILE=".soukhya-pids"
 NODE_STARTED=false
 JAVA_STARTED=false
 DOTNET_STARTED=false
+
+# Safe integration mode: do not kill the primary app blindly.
+# If a service is already listening on its expected port, skip starting it.
 
 # ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 # Helper Functions
@@ -69,6 +76,46 @@ wait_for_port() {
         fi
     done
     log_ok "$name is live on port $port (${waited}s)"
+}
+
+service_healthy() {
+    local port=$1
+    local name=$2
+    local username="admin"
+    local password="admin123"
+
+    if [ -f "$SCRIPT_DIR/.env" ]; then
+        # shellcheck disable=SC1091
+        set -a
+        . "$SCRIPT_DIR/.env"
+        set +a
+        if [ -n "${ADMIN_USERNAME:-}" ]; then
+            username="$ADMIN_USERNAME"
+        fi
+        if [ -n "${ADMIN_PASSWORD:-}" ]; then
+            password="$ADMIN_PASSWORD"
+        fi
+    fi
+
+    local payload
+    payload=$(printf '{"username":"%s","password":"%s"}' "$username" "$password")
+    local code
+    code=$(curl -sS -o /tmp/${name//[^A-Za-z0-9]/_}.health.$$ -w '%{http_code}' \
+        -X POST "http://localhost:${port}/api/auth/login" \
+        -H 'Content-Type: application/json' \
+        -d "$payload" || true)
+    if [ "$code" = "200" ]; then
+        return 0
+    fi
+
+    if [ "$password" != "admin123" ] && [ "$username" = "admin" ]; then
+        code=$(curl -sS -o /tmp/${name//[^A-Za-z0-9]/_}.health.legacy.$$ -w '%{http_code}' \
+            -X POST "http://localhost:${port}/api/auth/login" \
+            -H 'Content-Type: application/json' \
+            -d '{"username":"admin","password":"admin123"}' || true)
+        [ "$code" = "200" ] && return 0
+    fi
+    return 1
 }
 
 cleanup() {
@@ -147,11 +194,25 @@ fi
 # Kill Existing
 # ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 
-log_info "Cleaning up existing processes..."
-kill_port $NODE_PORT   "Node.js"
-kill_port $JAVA_PORT   "Java"
-kill_port $DOTNET_PORT ".NET"
+log_info "Checking for existing processes before startup..."
+# Keep the main app alive only when it is actually healthy.
+if service_healthy "$NODE_PORT" "node"; then
+    log_warn "Node.js already responding correctly on port $NODE_PORT; skipping forced restart."
+    NODE_STARTED=true
+else
+    log_warn "Node.js health check failed on port $NODE_PORT; checking for stale process."
+    kill_port $NODE_PORT "Node.js"
+fi
+
+# Allow explicit cleanup only for secondary services.
+if [ "${FORCE_CLEANUP:-false}" = "true" ]; then
+    kill_port $JAVA_PORT   "Java"
+    kill_port $DOTNET_PORT ".NET"
+fi
 rm -f "$PIDS_FILE"
+if [ "$NODE_STARTED" = true ]; then
+    echo "$NODE_PID node" >> "$SCRIPT_DIR/$PIDS_FILE"
+fi
 
 # ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 # NODE.JS
@@ -166,13 +227,11 @@ if [ -n "$NODE_DIR" ]; then
     else
         cd "$NODE_DIR"
 
-        # Auto-install if node_modules missing
         if [ ! -d "node_modules" ]; then
             log_info "node_modules missing. Running npm install..."
             npm install --silent
         fi
 
-        # Check for critical files
         if [ ! -f "database/db.js" ]; then
             log_warn "database/db.js not found. Node backend may fail."
         fi
@@ -180,14 +239,22 @@ if [ -n "$NODE_DIR" ]; then
             log_warn "server.js not found. Node backend may fail."
         fi
 
-        log_info "Starting Node.js on port $NODE_PORT..."
-        node server.js &
-        NODE_PID=$!
-        echo "$NODE_PID node" >> "$SCRIPT_DIR/$PIDS_FILE"
-        cd "$SCRIPT_DIR"
-
-        if wait_for_port $NODE_PORT "Node.js" 15; then
+        if service_healthy "$NODE_PORT" "node"; then
+            log_warn "Node.js already responding correctly on port $NODE_PORT; skipping startup."
             NODE_STARTED=true
+        else
+            log_warn "Node.js health check failed; restarting service on port $NODE_PORT..."
+            kill_port $NODE_PORT "Node.js"
+            log_info "Starting Node.js on port $NODE_PORT..."
+            node server.js > "$SCRIPT_DIR/.soukhya-node.log" 2>&1 &
+            NODE_PID=$!
+            echo "$NODE_PID node" >> "$SCRIPT_DIR/$PIDS_FILE"
+            cd "$SCRIPT_DIR"
+            if wait_for_port $NODE_PORT "Node.js" 15 && service_healthy "$NODE_PORT" "node"; then
+                NODE_STARTED=true
+            else
+                log_error "Node.js did not become healthy on port $NODE_PORT."
+            fi
         fi
     fi
 fi
@@ -205,20 +272,28 @@ if [ -n "$JAVA_DIR" ]; then
     else
         cd "$JAVA_DIR"
 
-        # Auto-build if target missing
-        if [ ! -d "target" ] || [ ! -f "target/classes/com/soukhyatech/faceattendance/FaceAttendanceApplication.class" ]; then
-            log_info "Target not built. Running mvn clean install..."
-            mvn clean install -q -DskipTests
-        fi
-
-        log_info "Starting Java on port $JAVA_PORT..."
-        mvn spring-boot:run -q -Dspring-boot.run.jvmArguments="-Dserver.port=$JAVA_PORT" &
-        JAVA_PID=$!
-        echo "$JAVA_PID java" >> "$SCRIPT_DIR/$PIDS_FILE"
-        cd "$SCRIPT_DIR"
-
-        if wait_for_port $JAVA_PORT "Java" 60; then
+        if service_healthy "$JAVA_PORT" "java"; then
+            log_warn "Java already responding correctly on port $JAVA_PORT; skipping startup."
             JAVA_STARTED=true
+        else
+            log_warn "Java health check failed; restarting service on port $JAVA_PORT..."
+            kill_port $JAVA_PORT "Java"
+            if [ ! -d "target" ] || [ ! -f "target/classes/com/soukhyatech/faceattendance/FaceAttendanceApplication.class" ]; then
+                log_info "Target not built. Running mvn clean install..."
+                mvn clean install -q -DskipTests
+            fi
+
+            log_info "Starting Java on port $JAVA_PORT..."
+            mvn spring-boot:run -q -Dspring-boot.run.jvmArguments="-Dserver.port=$JAVA_PORT" > "$SCRIPT_DIR/.soukhya-java.log" 2>&1 &
+            JAVA_PID=$!
+            echo "$JAVA_PID java" >> "$SCRIPT_DIR/$PIDS_FILE"
+            cd "$SCRIPT_DIR"
+
+            if wait_for_port $JAVA_PORT "Java" 60 && service_healthy "$JAVA_PORT" "java"; then
+                JAVA_STARTED=true
+            else
+                log_error "Java did not become healthy on port $JAVA_PORT."
+            fi
         fi
     fi
 fi
@@ -231,39 +306,44 @@ if [ -n "$DOTNET_DIR" ]; then
     echo ""
     log_info "‚ïê‚ïê‚ïê .NET 8 Backend ‚ïê‚ïê‚ïê"
 
-    if ! command -v dotnet &> /dev/null; then
+    if ! command -v "$HOME/.dotnet/dotnet" &> /dev/null; then
         log_warn ".NET SDK not installed. Skipping .NET backend."
     else
+        export DOTNET_ROOT="$HOME/.dotnet"
+        export PATH="$DOTNET_ROOT:$PATH"
         cd "$DOTNET_DIR"
         DOTNET_READY=true
 
-        log_info "Restoring .NET dependencies..."
-        if ! dotnet restore --verbosity minimal; then
-            log_warn "dotnet restore failed. Skipping .NET backend."
-            DOTNET_READY=false
-        fi
-
-        if [ "$DOTNET_READY" = true ]; then
-            log_info "Building .NET project..."
-            if ! dotnet build --configuration Release --no-restore --verbosity minimal; then
-                log_warn "dotnet build failed. Skipping .NET backend."
+        if service_healthy "$DOTNET_PORT" "dotnet"; then
+            log_warn ".NET already responding correctly on port $DOTNET_PORT; skipping startup."
+            DOTNET_STARTED=true
+        else
+            log_warn ".NET health check failed; restarting service on port $DOTNET_PORT..."
+            kill_port $DOTNET_PORT ".NET"
+            log_info "Restoring .NET dependencies..."
+            if ! "$HOME/.dotnet/dotnet" restore --verbosity minimal; then
+                log_warn "dotnet restore failed. Skipping .NET backend."
                 DOTNET_READY=false
             fi
-        fi
 
-        if [ "$DOTNET_READY" = true ]; then
-            log_info "Starting .NET on port $DOTNET_PORT..."
-            if ! dotnet run --urls "http://localhost:$DOTNET_PORT" --verbosity quiet & then
-                log_warn "dotnet run failed. Skipping .NET backend."
-                DOTNET_READY=false
-            else
+            if [ "$DOTNET_READY" = true ]; then
+                log_info "Building .NET project..."
+                if ! "$HOME/.dotnet/dotnet" build --configuration Release --no-restore --verbosity minimal; then
+                    log_warn "dotnet build failed. Skipping .NET backend."
+                    DOTNET_READY=false
+                fi
+            fi
+
+            if [ "$DOTNET_READY" = true ]; then
+                log_info "Starting .NET on port $DOTNET_PORT..."
+                "$HOME/.dotnet/dotnet" run --urls "http://localhost:$DOTNET_PORT" --verbosity quiet > "$SCRIPT_DIR/.soukhya-dotnet.log" 2>&1 &
                 DOTNET_PID=$!
                 echo "$DOTNET_PID dotnet" >> "$SCRIPT_DIR/$PIDS_FILE"
                 cd "$SCRIPT_DIR"
-                if wait_for_port $DOTNET_PORT ".NET" 30; then
+                if wait_for_port $DOTNET_PORT ".NET" 30 && service_healthy "$DOTNET_PORT" "dotnet"; then
                     DOTNET_STARTED=true
                 else
-                    log_warn ".NET backend did not start in time. Skipping .NET backend."
+                    log_warn ".NET backend did not become healthy in time. See $SCRIPT_DIR/.soukhya-dotnet.log for details."
                     DOTNET_READY=false
                 fi
             fi
