@@ -19,3 +19,5 @@ Antigravity-x64
 Antigravity.tar.gz
 start-all.sh
 test.sh
+start-all.bat
+stop-all.bat
