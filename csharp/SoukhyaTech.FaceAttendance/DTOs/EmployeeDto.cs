@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace SoukhyaTech.FaceAttendance.DTOs
 {
-    public class EmployeeRequest
+    public class EmployeeDto
     {
         public string? Id { get; set; }
         public string? Name { get; set; }

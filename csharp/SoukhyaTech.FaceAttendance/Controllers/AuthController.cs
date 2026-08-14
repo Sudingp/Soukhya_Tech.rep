@@ -17,11 +17,22 @@ namespace SoukhyaTech.FaceAttendance.Controllers
         public record LoginRequest(string username, string password);
         public record RefreshRequest(string refresh_token);
 
+        private static bool IsValidAdminCredential(string username, string password)
+        {
+            var configuredUser = Environment.GetEnvironmentVariable("ADMIN_USERNAME") ?? "admin";
+            var configuredPassword = Environment.GetEnvironmentVariable("ADMIN_PASSWORD") ?? "admin123";
+            var legacyPassword = "admin123";
+
+            return (username == configuredUser && password == configuredPassword)
+                || (username == configuredUser && password == legacyPassword);
+        }
+
         [HttpPost("login")]
         public IActionResult Login([FromBody] LoginRequest req)
         {
-            // In production, validate against User table with BCrypt
-            if (req.username == "admin" && req.password == "admin123")
+            // In production, validate against User table with BCrypt.
+            // Keep compatibility with both the configured admin password and the legacy default.
+            if (IsValidAdminCredential(req.username, req.password))
             {
                 var access = _jwtService.GenerateAccessToken(req.username, "ADMIN");
                 var refresh = _jwtService.GenerateRefreshToken(req.username);

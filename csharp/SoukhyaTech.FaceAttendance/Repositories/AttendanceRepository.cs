@@ -25,7 +25,7 @@ namespace SoukhyaTech.FaceAttendance.Repositories
         public async Task<List<Attendance>> GetByDateRangeAsync(string start, string end)
         {
             return await _session.Query<Attendance>()
-                .Where(a => a.Timestamp >= start && a.Timestamp < end)
+                .Where(a => string.Compare(a.Timestamp, start, StringComparison.Ordinal) >= 0 && string.Compare(a.Timestamp, end, StringComparison.Ordinal) < 0)
                 .OrderByDescending(a => a.Timestamp)
                 .ToListAsync();
         }
@@ -57,7 +57,7 @@ namespace SoukhyaTech.FaceAttendance.Repositories
         public async Task<bool> HasLoggedTodayAsync(string empId, string start, string end)
         {
             return await _session.Query<Attendance>()
-                .Where(a => a.EmpId == empId && a.Timestamp >= start && a.Timestamp < end)
+                .Where(a => a.EmpId == empId && string.Compare(a.Timestamp, start, StringComparison.Ordinal) >= 0 && string.Compare(a.Timestamp, end, StringComparison.Ordinal) < 0)
                 .AnyAsync();
         }
 
