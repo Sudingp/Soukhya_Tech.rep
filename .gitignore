@@ -17,3 +17,5 @@ obj/
 .env
 Antigravity-x64
 Antigravity.tar.gz
+start-all.sh
+test.sh
