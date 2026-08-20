@@ -141,11 +141,4 @@ run_service_tests "$NODE_PORT" "Node.js backend"
 # Java backend API tests
 run_service_tests "$JAVA_PORT" "Java backend"
 
-# .NET backend tests (optional)
-if curl -sS --head "http://localhost:$DOTNET_PORT/" >/dev/null 2>&1; then
-  run_service_tests "$DOTNET_PORT" ".NET backend"
-else
-  log_warn ".NET backend not reachable on port $DOTNET_PORT; skipping .NET tests"
-fi
-
 log_ok "All configured backend verification tests passed."

@@ -1,11 +1,8 @@
 #!/bin/bash
 
-# Use user-installed .NET 8 SDK
-export DOTNET_ROOT="$HOME/.dotnet"
-export PATH="$DOTNET_ROOT:$PATH"
 # =============================================================================
-# SOUKHYA TECH ‚Äî UNIFIED START SCRIPT
-# Auto-detects | Auto-installs | Auto-launches all 3 backends
+# SOUKHYA TECH — UNIFIED START SCRIPT
+# Auto-detects | Auto-installs | Auto-launches Node.js and Java backends
 # =============================================================================
 set -e
 
@@ -23,13 +20,11 @@ NC='\033[0m' # No Color
 # Ports
 NODE_PORT=3000
 JAVA_PORT=3001
-DOTNET_PORT=3002
 
 # PIDs file
 PIDS_FILE=".soukhya-pids"
 NODE_STARTED=false
 JAVA_STARTED=false
-DOTNET_STARTED=false
 
 # Safe integration mode: do not kill the primary app blindly.
 # If a service is already listening on its expected port, skip starting it.
@@ -145,7 +140,6 @@ print_header
 
 NODE_DIR=""
 JAVA_DIR=""
-DOTNET_DIR=""
 
 # Try common directory names
 for d in "node-backend" "soukhya-tech" "backend-node" "node"; do
@@ -156,14 +150,9 @@ for d in "java-backend" "backend-java" "java" "faceattendance"; do
     [ -f "$d/pom.xml" ] && JAVA_DIR="$d" && break
 done
 
-for d in "dotnet-backend" "backend-dotnet" "dotnet" "SoukhyaTech.FaceAttendance"; do
-    [ -f "$d/SoukhyaTech.FaceAttendance.csproj" ] && DOTNET_DIR="$d" && break
-done
-
 # If not found, try current directory
 [ -z "$NODE_DIR" ] && [ -f "server.js" ] && NODE_DIR="."
 [ -z "$JAVA_DIR" ] && [ -f "pom.xml" ] && JAVA_DIR="."
-[ -z "$DOTNET_DIR" ] && [ -f "SoukhyaTech.FaceAttendance.csproj" ] && DOTNET_DIR="."
 
 # Fallback to recursive project discovery for nested layouts
 if [ -z "$NODE_DIR" ]; then
@@ -174,19 +163,14 @@ if [ -z "$JAVA_DIR" ]; then
     found=$(find . -maxdepth 3 -name 'pom.xml' | head -n 1 || true)
     [ -n "$found" ] && JAVA_DIR="$(dirname "$found")"
 fi
-if [ -z "$DOTNET_DIR" ]; then
-    found=$(find . -maxdepth 4 -name '*.csproj' | head -n 1 || true)
-    [ -n "$found" ] && DOTNET_DIR="$(dirname "$found")"
-fi
 
 log_info "Detected layout:"
-[ -n "$NODE_DIR" ]   && echo "  Node.js  ‚Üí $NODE_DIR/"
-[ -n "$JAVA_DIR" ]   && echo "  Java     ‚Üí $JAVA_DIR/"
-[ -n "$DOTNET_DIR" ] && echo "  .NET     ‚Üí $DOTNET_DIR/"
+[ -n "$NODE_DIR" ]   && echo "  Node.js  → $NODE_DIR/"
+[ -n "$JAVA_DIR" ]   && echo "  Java     → $JAVA_DIR/"
 
-if [ -z "$NODE_DIR" ] && [ -z "$JAVA_DIR" ] && [ -z "$DOTNET_DIR" ]; then
+if [ -z "$NODE_DIR" ] && [ -z "$JAVA_DIR" ]; then
     log_error "No backend projects found in current directory."
-    log_info "Expected: node-backend/server.js, java-backend/pom.xml, or dotnet-backend/*.csproj"
+    log_info "Expected: node-backend/server.js or java-backend/pom.xml"
     exit 1
 fi
 
@@ -207,7 +191,6 @@ fi
 # Allow explicit cleanup only for secondary services.
 if [ "${FORCE_CLEANUP:-false}" = "true" ]; then
     kill_port $JAVA_PORT   "Java"
-    kill_port $DOTNET_PORT ".NET"
 fi
 rm -f "$PIDS_FILE"
 if [ "$NODE_STARTED" = true ]; then
@@ -298,79 +281,19 @@ if [ -n "$JAVA_DIR" ]; then
     fi
 fi
 
-# ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
-# .NET
-# ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
-
-if [ -n "$DOTNET_DIR" ]; then
-    echo ""
-    log_info "‚ïê‚ïê‚ïê .NET 8 Backend ‚ïê‚ïê‚ïê"
-
-    if ! command -v "$HOME/.dotnet/dotnet" &> /dev/null; then
-        log_warn ".NET SDK not installed. Skipping .NET backend."
-    else
-        export DOTNET_ROOT="$HOME/.dotnet"
-        export PATH="$DOTNET_ROOT:$PATH"
-        cd "$DOTNET_DIR"
-        DOTNET_READY=true
-
-        if service_healthy "$DOTNET_PORT" "dotnet"; then
-            log_warn ".NET already responding correctly on port $DOTNET_PORT; skipping startup."
-            DOTNET_STARTED=true
-        else
-            log_warn ".NET health check failed; restarting service on port $DOTNET_PORT..."
-            kill_port $DOTNET_PORT ".NET"
-            log_info "Restoring .NET dependencies..."
-            if ! "$HOME/.dotnet/dotnet" restore --verbosity minimal; then
-                log_warn "dotnet restore failed. Skipping .NET backend."
-                DOTNET_READY=false
-            fi
-
-            if [ "$DOTNET_READY" = true ]; then
-                log_info "Building .NET project..."
-                if ! "$HOME/.dotnet/dotnet" build --configuration Release --no-restore --verbosity minimal; then
-                    log_warn "dotnet build failed. Skipping .NET backend."
-                    DOTNET_READY=false
-                fi
-            fi
-
-            if [ "$DOTNET_READY" = true ]; then
-                log_info "Starting .NET on port $DOTNET_PORT..."
-                "$HOME/.dotnet/dotnet" run --urls "http://localhost:$DOTNET_PORT" --verbosity quiet > "$SCRIPT_DIR/.soukhya-dotnet.log" 2>&1 &
-                DOTNET_PID=$!
-                echo "$DOTNET_PID dotnet" >> "$SCRIPT_DIR/$PIDS_FILE"
-                cd "$SCRIPT_DIR"
-                if wait_for_port $DOTNET_PORT ".NET" 30 && service_healthy "$DOTNET_PORT" "dotnet"; then
-                    DOTNET_STARTED=true
-                else
-                    log_warn ".NET backend did not become healthy in time. See $SCRIPT_DIR/.soukhya-dotnet.log for details."
-                    DOTNET_READY=false
-                fi
-            fi
-        fi
-
-        if [ "$DOTNET_READY" != true ]; then
-            log_warn "Skipping .NET backend due to startup issues."
-            cd "$SCRIPT_DIR"
-        fi
-    fi
-fi
-
-# ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
+# =============================================================================
 # Summary
-# ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
+# =============================================================================
 
 echo ""
-echo -e "${GREEN}‚ïî‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïó${NC}"
-echo -e "${GREEN}‚ïë   BACKEND LAUNCH COMPLETE                        ‚ïë${NC}"
-echo -e "${GREEN}‚ïö‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïù${NC}"
+echo -e "${GREEN}============================================${NC}"
+echo -e "${GREEN}   BACKEND LAUNCH COMPLETE                  ${NC}"
+echo -e "${GREEN}============================================${NC}"
 echo ""
 [ "$NODE_STARTED" = true ]   && echo -e "  ${CYAN}Node.js${NC}  http://localhost:$NODE_PORT   (admin / admin123)"
 [ "$JAVA_STARTED" = true ]   && echo -e "  ${CYAN}Java${NC}     http://localhost:$JAVA_PORT   (admin / admin123)"
-[ "$DOTNET_STARTED" = true ] && echo -e "  ${CYAN}.NET${NC}      http://localhost:$DOTNET_PORT (admin / admin123)"
 [ "$NODE_STARTED" = false ] && log_warn "Node.js backend did not start."
 [ "$JAVA_STARTED" = false ] && log_warn "Java backend did not start."
-[ "$DOTNET_STARTED" = false ] && [ -n "$DOTNET_DIR" ] && log_warn ".NET backend did not start."
 echo ""
 echo -e "  ${YELLOW}Press Ctrl+C to stop all running backends${NC}"
 echo ""
