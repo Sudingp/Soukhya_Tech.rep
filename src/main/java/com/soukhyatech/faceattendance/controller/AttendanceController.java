@@ -1,156 +1,65 @@
 package com.soukhyatech.faceattendance.controller;
 
 import com.soukhyatech.faceattendance.model.Attendance;
-import com.soukhyatech.faceattendance.model.Employee;
-import com.soukhyatech.faceattendance.repository.AttendanceRepository;
-import com.soukhyatech.faceattendance.repository.EmployeeRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
+import com.soukhyatech.faceattendance.service.AttendanceService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/attendance")
-@CrossOrigin
+@RequiredArgsConstructor
 public class AttendanceController {
 
-    @Autowired
-    private AttendanceRepository attendanceRepository;
+    private final AttendanceService attendanceService;
 
-    @Autowired
-    private EmployeeRepository employeeRepository;
-
-    // Utility response helpers
-    private ResponseEntity<Map<String, Object>> ok(Map<String, Object> data) {
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", true);
-        response.putAll(data);
-        return ResponseEntity.ok(response);
-    }
-
-    private ResponseEntity<Map<String, Object>> ok(Map<String, Object> data, HttpStatus status) {
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", true);
-        response.putAll(data);
-        return ResponseEntity.status(status).body(response);
-    }
-
-    private ResponseEntity<Map<String, Object>> err(String msg, HttpStatus status) {
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", false);
-        response.put("error", msg);
-        return ResponseEntity.status(status).body(response);
-    }
-
-    // GET /api/attendance — List all records (supports ?date=YYYY-MM-DD or ?emp_id=...)
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getAttendance(
-            @RequestParam(value = "date", required = false) String date,
-            @RequestParam(value = "emp_id", required = false) String empId) {
-        try {
-            List<Attendance> records;
-            if (date != null && !date.trim().isEmpty()) {
-                records = attendanceRepository.getAttByDate(date);
-            } else if (empId != null && !empId.trim().isEmpty()) {
-                records = attendanceRepository.findByEmpIdOrderByTimestampDesc(empId);
-            } else {
-                records = attendanceRepository.findAllByOrderByTimestampDesc();
-            }
+    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    public ResponseEntity<Map<String, Object>> getAll(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String date,
+            @RequestParam(required = false) String emp_id) {
 
-            Map<String, Object> data = new HashMap<>();
-            data.put("records", records);
-            return ok(data);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return err("Failed to fetch attendance logs", HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+        var records = date != null ? attendanceService.getByDate(date, page, size)
+            : emp_id != null ? attendanceService.getByEmpId(emp_id, page, size)
+            : attendanceService.getAll(page, size);
+
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("success", true);
+        res.put("records", records);
+        res.put("pagination", Map.of("page", page, "size", size));
+        return ResponseEntity.ok(res);
     }
 
-    // POST /api/attendance — Log attendance
     @PostMapping
-    public ResponseEntity<Map<String, Object>> logAttendance(@RequestBody AttendanceRequest req) {
-        try {
-            if (req.emp_id == null || req.name == null || req.dept == null || req.role == null || req.timestamp == null || req.status == null) {
-                return err("Missing required fields", HttpStatus.BAD_REQUEST);
-            }
-
-            if (!Arrays.asList("Present", "Late").contains(req.status)) {
-                return err("status must be \"Present\" or \"Late\"", HttpStatus.BAD_REQUEST);
-            }
-
-            // ── CRITICAL: Check Hibernate Status Guard ──
-            Optional<Employee> empOpt = employeeRepository.findById(req.emp_id);
-            if (empOpt.isEmpty()) {
-                return err("Employee not registered in the system", HttpStatus.NOT_FOUND);
-            }
-
-            Employee emp = empOpt.get();
-            if ("Hibernate".equals(emp.getStatus())) {
-                return err("Employee currently in Hibernate Mode. Attendance disabled.", HttpStatus.FORBIDDEN); // 403
-            }
-
-            // Duplicate check — one record per employee per calendar day
-            List<Attendance> dupList = attendanceRepository.checkDuplicateToday(req.emp_id);
-            if (!dupList.isEmpty()) {
-                Attendance dup = dupList.get(0);
-                Map<String, Object> dupResponse = new HashMap<>();
-                dupResponse.put("message", "Attendance already logged today");
-                dupResponse.put("duplicate", true);
-                dupResponse.put("att_id", dup.getAttId());
-                return ok(dupResponse);
-            }
-
-            // Save new log
-            Attendance att = Attendance.builder()
-                    .empId(req.emp_id)
-                    .name(req.name)
-                    .dept(req.dept)
-                    .role(req.role)
-                    .timestamp(req.timestamp)
-                    .status(req.status)
-                    .build();
-
-            attendanceRepository.save(att);
-
-            Map<String, Object> data = new HashMap<>();
-            data.put("message", req.status + " logged for " + req.name);
-            data.put("att_id", att.getAttId());
-            data.put("duplicate", false);
-            return ok(data, HttpStatus.CREATED);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return err("Failed to log attendance", HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+    @PreAuthorize("hasAnyRole('ADMIN','HR','DEVICE')")
+    public ResponseEntity<Map<String, Object>> create(
+            @Valid @RequestBody Attendance att, Authentication auth, HttpServletRequest req) {
+        Attendance saved = attendanceService.logAttendance(att, auth.getName(), req);
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("success", true);
+        res.put("message", saved.getStatus() + " logged for " + saved.getName());
+        res.put("att_id", saved.getAttId());
+        res.put("duplicate", false);
+        return ResponseEntity.status(201).body(res);
     }
 
-    // DELETE /api/attendance/:att_id — Remove specific log
     @DeleteMapping("/{att_id}")
-    public ResponseEntity<Map<String, Object>> deleteRecord(@PathVariable("att_id") Integer attId) {
-        try {
-            if (!attendanceRepository.existsById(attId)) {
-                return err("Record not found", HttpStatus.NOT_FOUND);
-            }
-            attendanceRepository.deleteById(attId);
-            
-            Map<String, Object> data = new HashMap<>();
-            data.put("message", "Record deleted");
-            return ok(data);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return err("Failed to delete attendance record", HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    // Request DTO definition
-    public static class AttendanceRequest {
-        public String emp_id;
-        public String name;
-        public String dept;
-        public String role;
-        public String timestamp;
-        public String status;
+    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    public ResponseEntity<Map<String, Object>> delete(
+            @PathVariable Integer att_id, Authentication auth, HttpServletRequest req) {
+        attendanceService.delete(att_id, auth.getName(), req);
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("success", true);
+        res.put("message", "Record deleted");
+        return ResponseEntity.ok(res);
     }
 }

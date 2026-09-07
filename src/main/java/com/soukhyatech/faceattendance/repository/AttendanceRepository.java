@@ -7,24 +7,27 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
 
 @Repository
 public interface AttendanceRepository extends JpaRepository<Attendance, Integer> {
 
     List<Attendance> findAllByOrderByTimestampDesc();
 
-    List<Attendance> findByEmpIdOrderByTimestampDesc(String empId);
+    @Query("SELECT a FROM Attendance a WHERE a.empId = :empId ORDER BY a.timestamp DESC")
+    List<Attendance> findByEmpId(@Param("empId") String empId);
 
-    // Native query to filter attendance by calendar date (matching YYYY-MM-DD)
-    @Query(value = "SELECT * FROM attendance WHERE date(timestamp) = date(:dateStr) ORDER BY timestamp DESC", nativeQuery = true)
-    List<Attendance> getAttByDate(@Param("dateStr") String dateStr);
+    @Query("SELECT a FROM Attendance a WHERE a.timestamp >= :start AND a.timestamp < :end ORDER BY a.timestamp DESC")
+    List<Attendance> findByDateRange(@Param("start") String start, @Param("end") String end);
 
-    // Native query to check if employee has logged attendance today (local time)
-    @Query(value = "SELECT * FROM attendance WHERE emp_id = :empId AND date(timestamp) = date('now','localtime') LIMIT 1", nativeQuery = true)
-    List<Attendance> checkDuplicateToday(@Param("empId") String empId);
+    @Query("SELECT a FROM Attendance a WHERE a.timestamp >= :start AND a.timestamp < :end AND a.empId = :empId ORDER BY a.timestamp DESC LIMIT 1")
+    Optional<Attendance> findTodayByEmpId(@Param("empId") String empId, @Param("start") String start, @Param("end") String end);
 
-    // Native query to get today's stats (distinct present count and late count)
-    @Query(value = "SELECT COUNT(DISTINCT emp_id) as present_today, COALESCE(SUM(CASE WHEN status='Late' THEN 1 ELSE 0 END), 0) as late_today FROM attendance WHERE date(timestamp) = date('now','localtime')", nativeQuery = true)
-    Map<String, Object> getStatsToday();
+    @Query("SELECT COUNT(DISTINCT a.empId) as presentToday, COALESCE(SUM(CASE WHEN a.status = 'Late' THEN 1 ELSE 0 END), 0) as lateToday FROM Attendance a WHERE a.timestamp >= :start AND a.timestamp < :end")
+    TodayStats getTodayStats(@Param("start") String start, @Param("end") String end);
+
+    interface TodayStats {
+        Long getPresentToday();
+        Long getLateToday();
+    }
 }

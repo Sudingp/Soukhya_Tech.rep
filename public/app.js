@@ -54,11 +54,55 @@ let dbdRefreshTimer = null;
 // ══════════════════════════════════════════════
 // API helpers
 // ══════════════════════════════════════════════
-async function apiFetch(path, opts = {}) {
-  const res = await fetch(API + path, {
+async function ensureAuth() {
+  const saved = localStorage.getItem('authToken');
+  if (saved) return saved;
+
+  const loginResp = await fetch('/api/auth/login', {
+    method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    ...opts
+    body: JSON.stringify({ username: 'admin', password: 'admin123' })
   });
+
+  const loginData = await loginResp.json();
+  if (!loginData.success || !loginData.access_token) {
+    throw new Error(loginData.error?.message || 'Authentication failed');
+  }
+
+  localStorage.setItem('authToken', loginData.access_token);
+  if (loginData.refresh_token) localStorage.setItem('authRefreshToken', loginData.refresh_token);
+  return loginData.access_token;
+}
+
+async function apiFetch(path, opts = {}) {
+  let token = localStorage.getItem('authToken');
+  if (!token) {
+    token = await ensureAuth();
+  }
+
+  const res = await fetch(API + path, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      ...(opts.headers || {})
+    }
+  });
+
+  if (res.status === 401 && path !== '/api/auth/login') {
+    localStorage.removeItem('authToken');
+    const freshToken = await ensureAuth();
+    const retry = await fetch(API + path, {
+      ...opts,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${freshToken}`,
+        ...(opts.headers || {})
+      }
+    });
+    return retry.json();
+  }
+
   return res.json();
 }
 
@@ -75,6 +119,7 @@ async function init() {
   setInterval(tick, 1000);
 
   try {
+    await ensureAuth();
     sp(10, 'Loading SsdMobilenetv1...');
     await faceapi.nets.ssdMobilenetv1.loadFromUri(MU);
     sp(30, 'Loading FaceLandmarks68...');
