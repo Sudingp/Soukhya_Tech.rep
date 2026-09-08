@@ -483,7 +483,10 @@ function validate(schema, body) {
 // Response Helpers
 // ══════════════════════════════════════════════
 function ok(res, data, status = 200) {
-  res.status(status).json({ success: true, ...data, request_id: res.req.requestId });
+  if (Array.isArray(data)) {
+    return res.status(status).json({ success: true, data, users: data, request_id: res.req?.requestId });
+  }
+  res.status(status).json({ success: true, ...data, data, request_id: res.req?.requestId });
 }
 
 function err(res, code, message, status = 400) {
@@ -616,13 +619,33 @@ app.post('/api/auth/login', authLimiter, (req, res) => {
   const v = validate(schemas.login, req.body);
   if (!v.ok) return err(res, 'VALIDATION_ERROR', v.msg, 400);
 
-  const user = stmts.getUserByUsername.get(v.value.username);
+  const cleanUser = v.value.username.trim();
+  const uHash = crypto.createHash('sha256').update(cleanUser.toLowerCase()).digest('hex');
+  let user = stmts.getUserByUsernameHash.get(uHash);
+  if (!user) {
+    // fallback to legacy plain username if present
+    user = stmts.getUserByUsername.get(cleanUser);
+  }
   if (!user || !bcrypt.compareSync(v.value.password, user.password_hash)) {
     return err(res, 'INVALID_CREDENTIALS', 'Invalid username or password', 401);
   }
 
-  const tokens = generateTokens({ id: user.id, username: user.username, role: user.role });
-  ok(res, { username: user.username, role: user.role, access_token: tokens.access, refresh_token: tokens.refresh });
+  const usernameDisplay = user.username_display || user.username;
+  const tokens = generateTokens({ id: user.id, username: usernameDisplay, role: user.role });
+  ok(res, { username: usernameDisplay, role: user.role, access_token: tokens.access, refresh_token: tokens.refresh });
+});
+
+// GET /api/auth/me
+app.get('/api/auth/me', authenticate, (req, res) => {
+  const user = stmts.getUserById.get(req.user.id);
+  if (!user) return err(res, 'USER_NOT_FOUND', 'User profile not found', 404);
+  ok(res, {
+    id: user.id,
+    username: user.username_display || user.username,
+    role: user.role,
+    active: user.active,
+    created_at: user.created_at
+  });
 });
 
 // POST /api/auth/refresh
@@ -631,9 +654,10 @@ app.post('/api/auth/refresh', authLimiter, (req, res) => {
   if (!refresh_token) return err(res, 'MISSING_TOKEN', 'Refresh token required', 400);
   try {
     const payload = jwt.verify(refresh_token, JWT_REFRESH_SECRET);
-    const user = stmts.getUserByUsername.get(payload.sub);
+    const user = (payload.id ? stmts.getUserById.get(payload.id) : null) || stmts.getUserByUsername.get(payload.sub);
     if (!user) throw new Error('User not found');
-    const tokens = generateTokens({ id: user.id, username: user.username, role: user.role });
+    const usernameDisplay = user.username_display || user.username;
+    const tokens = generateTokens({ id: user.id, username: usernameDisplay, role: user.role });
     ok(res, { access_token: tokens.access, refresh_token: tokens.refresh });
   } catch {
     return err(res, 'INVALID_TOKEN', 'Invalid or expired refresh token', 401);
@@ -651,6 +675,92 @@ app.post('/api/auth/logout', authenticate, (req, res) => {
     }
   } catch {}
   ok(res, { message: 'Logged out successfully' });
+});
+
+// ══════════════════════════════════════════════
+// USER MANAGEMENT ROUTES (ADMIN ONLY)
+// ══════════════════════════════════════════════
+
+// GET /api/admin/users
+app.get('/api/admin/users', authenticate, requireRoles('ADMIN'), (req, res) => {
+  const users = stmts.getAllUsers.all();
+  ok(res, users.map(u => ({
+    id: u.id,
+    username: u.username_display || u.username,
+    role: u.role,
+    active: u.active,
+    created_at: u.created_at,
+    updated_at: u.updated_at
+  })));
+});
+
+// POST /api/admin/users
+app.post('/api/admin/users', authenticate, requireRoles('ADMIN'), (req, res) => {
+  const schema = Joi.object({
+    username: Joi.string().min(3).max(50).required(),
+    password: Joi.string().min(6).max(100).required(),
+    role: Joi.string().valid('ADMIN', 'HR', 'EMPLOYEE', 'USER', 'DEVICE').default('USER'),
+  });
+  const v = validate(schema, req.body);
+  if (!v.ok) return err(res, 'VALIDATION_ERROR', v.msg, 400);
+
+  const cleanUser = v.value.username.trim();
+  const uHash = crypto.createHash('sha256').update(cleanUser.toLowerCase()).digest('hex');
+  const existing = stmts.getUserByUsernameHash.get(uHash) || stmts.getUserByUsername.get(cleanUser);
+  if (existing) {
+    return err(res, 'CONFLICT', 'Username already exists', 409);
+  }
+
+  const saltRounds = 12;
+  const password_hash = bcrypt.hashSync(v.value.password, saltRounds);
+  try {
+    const result = stmts.insertUser.run({
+      username: cleanUser,
+      username_hash: uHash,
+      username_display: cleanUser,
+      password_hash,
+      role: v.value.role
+    });
+    auditLog({ table: 'users', recordId: String(result.lastInsertRowid), action: 'INSERT', newVals: { username: cleanUser, role: v.value.role }, req });
+    ok(res, { id: result.lastInsertRowid, username: cleanUser, role: v.value.role }, 201);
+  } catch (e) {
+    err(res, 'DB_ERROR', e.message, 500);
+  }
+});
+
+// POST /api/admin/users/:id/reset-password
+app.post('/api/admin/users/:id/reset-password', authenticate, requireRoles('ADMIN'), (req, res) => {
+  const schema = Joi.object({
+    new_password: Joi.string().min(6).max(100).required(),
+  });
+  const v = validate(schema, req.body);
+  if (!v.ok) return err(res, 'VALIDATION_ERROR', v.msg, 400);
+
+  const userId = parseInt(req.params.id, 10);
+  const targetUser = stmts.getUserById.get(userId);
+  if (!targetUser) return err(res, 'NOT_FOUND', 'User not found', 404);
+
+  const password_hash = bcrypt.hashSync(v.value.new_password, 12);
+  stmts.updateUserPassword.run(password_hash, userId);
+  auditLog({ table: 'users', recordId: String(userId), action: 'UPDATE', newVals: { target_user: targetUser.username_display || targetUser.username, field: 'password' }, req });
+  ok(res, { message: `Password reset successfully for user ${targetUser.username_display || targetUser.username}` });
+});
+
+// DELETE /api/admin/users/:id
+app.delete('/api/admin/users/:id', authenticate, requireRoles('ADMIN'), (req, res) => {
+  const userId = parseInt(req.params.id, 10);
+  if (userId === req.user.id) {
+    return err(res, 'FORBIDDEN', 'Cannot delete your own account', 400);
+  }
+  const targetUser = stmts.getUserById.get(userId);
+  if (!targetUser) return err(res, 'NOT_FOUND', 'User not found', 404);
+  if (targetUser.role === 'ADMIN') {
+    return err(res, 'FORBIDDEN', 'Cannot delete an administrator account', 403);
+  }
+
+  stmts.deleteUser.run(userId);
+  auditLog({ table: 'users', recordId: String(userId), action: 'DELETE', oldVals: { username: targetUser.username_display || targetUser.username }, req });
+  ok(res, { message: 'User deleted successfully' });
 });
 
 // ══════════════════════════════════════════════
@@ -1073,16 +1183,24 @@ app.use((err, req, res, next) => {
 // ══════════════════════════════════════════════
 function ensureAdminUser() {
   if (!ADMIN_PASSWORD) {
-    console.error('FATAL: ADMIN_PASSWORD is not configured.');
-    process.exit(1);
+    console.warn('[AUTH] ADMIN_PASSWORD is not configured.');
+    return;
   }
 
-  const existing = stmts.getUserByUsername.get(ADMIN_USERNAME);
+  const cleanUser = ADMIN_USERNAME.trim();
+  const uHash = crypto.createHash('sha256').update(cleanUser.toLowerCase()).digest('hex');
+  const existing = stmts.getUserByUsernameHash.get(uHash) || stmts.getUserByUsername.get(cleanUser);
   const hash = bcrypt.hashSync(ADMIN_PASSWORD, 12);
 
   if (!existing) {
-    stmts.insertUser.run({ username: ADMIN_USERNAME, password_hash: hash, role: 'ADMIN' });
-    console.log(`  [AUTH] Default admin user created: ${ADMIN_USERNAME}`);
+    stmts.insertUser.run({
+      username: cleanUser,
+      username_hash: uHash,
+      username_display: cleanUser,
+      password_hash: hash,
+      role: 'ADMIN'
+    });
+    console.log(`  [AUTH] Default admin user created: ${cleanUser}`);
     return;
   }
 

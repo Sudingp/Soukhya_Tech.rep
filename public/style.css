@@ -184,6 +184,80 @@ body {
   color: var(--mu);
 }
 
+/* ── Mode Badges & Header Controls ── */
+.mode-badge {
+  font-family: var(--mo);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  transition: all 0.2s;
+}
+
+.mode-badge.admin {
+  background: rgba(0, 212, 170, 0.12);
+  color: var(--ac);
+  border: 1px solid rgba(0, 212, 170, 0.35);
+}
+
+.mode-badge.user {
+  background: rgba(79, 142, 247, 0.12);
+  color: var(--ac2);
+  border: 1px solid rgba(79, 142, 247, 0.35);
+}
+
+.btn-hdr-switch {
+  background: var(--s2);
+  color: var(--tx);
+  border: 1px solid var(--br);
+  border-radius: 4px;
+  padding: 4px 9px;
+  font-size: 11px;
+  font-family: var(--sa);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s;
+}
+
+.btn-hdr-switch:hover {
+  border-color: var(--ac);
+  color: var(--ac);
+  background: var(--s3);
+}
+
+.btn-hdr-logout {
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 4px;
+  padding: 4px 9px;
+  font-size: 11px;
+  font-family: var(--sa);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s;
+}
+
+.btn-hdr-logout:hover {
+  background: rgba(239, 68, 68, 0.25);
+  color: #fff;
+  border-color: var(--err);
+}
+
+/* ── Role-Based Access Control ── */
+body.user-mode .admin-only {
+  display: none !important;
+}
+
 /* ── Notifications ── */
 #ntf { flex-shrink: 0; padding: 0 18px; }
 

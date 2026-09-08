@@ -195,6 +195,73 @@ def run_service_tests(port, name):
         else:
             log_fail(f"{name} /api/sync/version returned HTTP {sync_status}")
 
+        # ── Test /api/auth/me ──
+        log_info("Testing GET /api/auth/me with Admin Token")
+        me_status, me_body = make_request(f"http://127.0.0.1:{port}/api/auth/me", headers={"Authorization": f"Bearer {access_token}"})
+        if me_status == 200 and "ADMIN" in me_body:
+            log_ok(f"{name} /api/auth/me returned HTTP 200 with ADMIN role")
+        else:
+            log_fail(f"{name} /api/auth/me returned HTTP {me_status}: {me_body}")
+
+        # ── Test User Login with Hashed Credentials ──
+        log_info("Testing User Login (user / user123)")
+        u_status, u_body = make_request(f"http://127.0.0.1:{port}/api/auth/login", method="POST", data={"username": "user", "password": "user123"})
+        if u_status == 200 and "USER" in u_body:
+            log_ok(f"{name} User login succeeded with USER role")
+            user_token = json.loads(u_body).get("data", {}).get("access_token") or json.loads(u_body).get("access_token")
+
+            # ── Test RBAC: User trying to access /api/admin/users should get 403 ──
+            log_info("Testing RBAC: Non-admin accessing /api/admin/users (expect 403)")
+            rbac_status, _ = make_request(f"http://127.0.0.1:{port}/api/admin/users", headers={"Authorization": f"Bearer {user_token}"})
+            if rbac_status == 403:
+                log_ok(f"{name} RBAC successfully blocked non-admin user (HTTP 403)")
+            else:
+                log_fail(f"{name} RBAC check failed: expected 403, got {rbac_status}")
+        else:
+            log_fail(f"{name} User login failed: HTTP {u_status}: {u_body}")
+
+        # ── Test Admin User Management ──
+        log_info("Testing Admin User Management (/api/admin/users)")
+        adm_u_status, adm_u_body = make_request(f"http://127.0.0.1:{port}/api/admin/users", headers={"Authorization": f"Bearer {access_token}"})
+        if adm_u_status == 200:
+            log_ok(f"{name} GET /api/admin/users returned HTTP 200")
+        else:
+            log_fail(f"{name} GET /api/admin/users returned HTTP {adm_u_status}: {adm_u_body}")
+
+        # Create temporary user
+        test_username = f"test_user_{int(time.time())}"
+        log_info(f"Testing Admin Create User: {test_username}")
+        c_status, c_body = make_request(f"http://127.0.0.1:{port}/api/admin/users", method="POST",
+                                        headers={"Authorization": f"Bearer {access_token}"},
+                                        data={"username": test_username, "password": "temp_password_123", "role": "USER"})
+        if c_status == 201:
+            log_ok(f"{name} Admin successfully created user {test_username} (HTTP 201)")
+            try:
+                new_user_id = json.loads(c_body).get("data", {}).get("id") or json.loads(c_body).get("id")
+                if new_user_id:
+                    # Reset password
+                    log_info(f"Testing Admin Reset Password for user ID {new_user_id}")
+                    pw_status, _ = make_request(f"http://127.0.0.1:{port}/api/admin/users/{new_user_id}/reset-password", method="POST",
+                                                headers={"Authorization": f"Bearer {access_token}"},
+                                                data={"new_password": "new_secret_pass_456"})
+                    if pw_status == 200:
+                        log_ok(f"{name} Admin reset password returned HTTP 200")
+                    else:
+                        log_fail(f"{name} Admin reset password returned HTTP {pw_status}")
+
+                    # Delete temporary user
+                    log_info(f"Testing Admin Delete User for user ID {new_user_id}")
+                    del_status, _ = make_request(f"http://127.0.0.1:{port}/api/admin/users/{new_user_id}", method="DELETE",
+                                                 headers={"Authorization": f"Bearer {access_token}"})
+                    if del_status == 200:
+                        log_ok(f"{name} Admin delete user returned HTTP 200")
+                    else:
+                        log_fail(f"{name} Admin delete user returned HTTP {del_status}")
+            except Exception as e:
+                log_fail(f"Error parsing created user response: {e}")
+        else:
+            log_fail(f"{name} Create user returned HTTP {c_status}: {c_body}")
+
     if "Java" in name:
         log_info(f"Testing Actuator health on {name}")
         act_status, _ = make_request(f"http://127.0.0.1:{port}/actuator/health")

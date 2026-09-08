@@ -27,12 +27,17 @@
   <div id="ma">
 
     <!-- Header / Nav -->
+    <!-- Header / Nav -->
     <div id="hdr">
       <div class="brand">SOUKHYA TECH <em>HR ENTERPRISE v2.0</em></div>
-      <button class="tbtn"    data-tab="reg"  onclick="showTab('reg',this)">⬡ Register Employee</button>
-      <button class="tbtn"    data-tab="att"  onclick="showTab('att',this)">◎ Mark Attendance</button>
-      <button class="tbtn"    data-tab="hr"   onclick="showTab('hr',this)">▣ HR Dashboard</button>
+      <button class="tbtn admin-only" data-tab="reg" onclick="showTab('reg',this)">⬡ Register Employee</button>
+      <button class="tbtn" data-tab="att" onclick="showTab('att',this)">◎ Mark Attendance</button>
+      <button class="tbtn admin-only" data-tab="hr" onclick="showTab('hr',this)">▣ HR Dashboard</button>
       <div class="hr">
+        <span id="mode-badge" class="mode-badge admin">🛡️ ADMIN MODE</span>
+        <span id="user-display-tag" style="font-size:11px; color:#c5cde0; font-family:var(--mo)">👤 admin</span>
+        <button class="btn-hdr-switch" id="btn-switch-mode" onclick="promptSwitchMode()" title="Switch between Admin and User mode">⇄ Switch Mode</button>
+        <button class="btn-hdr-logout" onclick="doLogOff()" title="Log out of system">⏻ Log Off</button>
         <div class="hst">
           <div class="mdot" id="mdot"></div>
           <span id="mst">Loading...</span>
@@ -44,16 +49,16 @@
     <!-- Secondary Navigation / Menu Bar -->
     <div id="menu-bar">
       <button class="mbtn on" onclick="showTab('dbd', this)">Dashboard</button>
-      <button class="mbtn" onclick="openMenuDrawer('masters')">Masters</button>
-      <button class="mbtn" onclick="openMenuDrawer('devices')">Device Management</button>
-      <button class="mbtn" onclick="openMenuDrawer('utilities')">Utilities</button>
-      <button class="mbtn" onclick="goToReportsMenu()">Reports</button>
-      <button class="mbtn" onclick="openMenuDrawer('payroll')">Pay Roll</button>
-      <button class="mbtn" onclick="openMenuDrawer('canteen')">Canteen</button>
-      <button class="mbtn" onclick="openMenuDrawer('users')">System User</button>
-      <button class="mbtn" onclick="openMenuDrawer('audit')">Audit Logs</button>
-      <button class="mbtn" onclick="openMenuDrawer('db-settings')">Database Settings</button>
-      <button class="mbtn" onclick="openMenuDrawer('password')">Change Password</button>
+      <button class="mbtn admin-only" onclick="openMenuDrawer('masters')">Masters</button>
+      <button class="mbtn admin-only" onclick="openMenuDrawer('devices')">Device Management</button>
+      <button class="mbtn admin-only" onclick="openMenuDrawer('utilities')">Utilities</button>
+      <button class="mbtn admin-only" onclick="goToReportsMenu()">Reports</button>
+      <button class="mbtn admin-only" onclick="openMenuDrawer('payroll')">Pay Roll</button>
+      <button class="mbtn admin-only" onclick="openMenuDrawer('canteen')">Canteen</button>
+      <button class="mbtn admin-only" onclick="openUserMgmtModal()">System User</button>
+      <button class="mbtn admin-only" onclick="openMenuDrawer('audit')">Audit Logs</button>
+      <button class="mbtn admin-only" onclick="openMenuDrawer('db-settings')">Database Settings</button>
+      <button class="mbtn admin-only" onclick="openMenuDrawer('password')">Change Password</button>
       <button class="mbtn" onclick="openMenuDrawer('about')">About</button>
       <button class="mbtn log-off" onclick="doLogOff()">Log Off</button>
     </div>
@@ -1189,6 +1194,160 @@
         <div class="modal-actions-right">
           <button class="btn btnp" onclick="saveCompanyModal()">Save</button>
           <button class="btn" onclick="closeCompanyModal()">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── AUTHENTICATION LOGIN MODAL ── -->
+  <div id="login-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:440px; box-shadow:0 24px 64px rgba(0,0,0,0.85); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:16px 20px; background:linear-gradient(135deg, #161b27, #1e2438)">
+        <div>
+          <div style="font-family:var(--mo); font-size:15px; font-weight:700; color:var(--ac); letter-spacing:1px">SOUKHYA TECH</div>
+          <div style="font-size:11px; color:var(--mu); margin-top:2px">HR ENTERPRISE · AUTHENTICATION PORTAL</div>
+        </div>
+        <div id="login-badge-mode" class="mode-badge admin" style="font-size:10px">SECURE LOGIN</div>
+      </div>
+      
+      <div class="modal-body" style="padding:22px">
+        <form id="login-form" onsubmit="handleLoginFormSubmit(event)">
+          <!-- Quick Role Selector Preset Buttons -->
+          <div style="display:flex; gap:8px; margin-bottom:18px">
+            <button type="button" class="btn bsm" id="preset-btn-admin" style="flex:1; border-color:var(--ac); color:var(--ac)" onclick="fillPresetCredentials('admin')">
+              🛡️ Admin Preset
+            </button>
+            <button type="button" class="btn bsm" id="preset-btn-user" style="flex:1; border-color:var(--ac2); color:var(--ac2)" onclick="fillPresetCredentials('user')">
+              👤 User Preset
+            </button>
+          </div>
+
+          <div class="fg" style="margin-bottom:14px">
+            <label class="fl" style="font-weight:600; font-size:12px; color:var(--tx)">Username</label>
+            <input class="fi" id="login-username" placeholder="e.g. admin or user" autocomplete="username" required style="padding:9px; font-size:13px" />
+          </div>
+
+          <div class="fg" style="margin-bottom:16px">
+            <label class="fl" style="font-weight:600; font-size:12px; color:var(--tx)">Password</label>
+            <input class="fi" type="password" id="login-password" placeholder="Enter password" autocomplete="current-password" required style="padding:9px; font-size:13px" />
+          </div>
+
+          <div id="login-error-msg" style="display:none; color:var(--err); font-size:12px; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.25); border-radius:4px; padding:8px 10px; margin-bottom:14px"></div>
+
+          <button type="submit" id="btn-login-submit" class="btn btnp" style="width:100%; padding:10px; font-size:13px; font-weight:600; letter-spacing:0.5px">
+            Sign In
+          </button>
+
+          <!-- STRICTLY NO FORGOT PASSWORD NOTICE -->
+          <div style="margin-top:18px; padding:12px; background:rgba(240,165,0,0.08); border:1px solid rgba(240,165,0,0.25); border-radius:6px; font-size:11px; color:#dde2f0; line-height:1.5">
+            <div style="color:var(--warn); font-weight:600; margin-bottom:4px; display:flex; align-items:center; gap:5px">
+              <span>⚠️</span> Enterprise Password Policy
+            </div>
+            <div>Forgot your password? Self-service password recovery is disabled. Please contact your <strong>System Administrator</strong> to reset your credentials.</div>
+          </div>
+
+          <div style="margin-top:12px; font-size:10px; color:var(--mu); text-align:center; font-family:var(--mo)">
+            Credentials verified via SQLite Hashes (SHA-256 / Bcrypt)
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SWITCH MODE / ACCOUNT MODAL ── -->
+  <div id="switch-mode-modal" class="modal-overlay" style="display:none; z-index:9998;">
+    <div class="modal-box animate-zoom" style="max-width:420px">
+      <div class="modal-hdr">
+        <span class="modal-title">Switch Mode / Account</span>
+        <button class="modal-close-x" onclick="closeSwitchModeModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:18px">
+        <div style="font-size:12px; color:var(--tx); margin-bottom:12px">
+          Current Active Mode: <strong id="switch-current-mode-label" style="color:var(--ac)">ADMIN MODE</strong>
+        </div>
+        <div style="display:flex; gap:8px; margin-bottom:14px">
+          <button type="button" class="btn bsm" style="flex:1" onclick="presetSwitchForm('admin')">🛡️ Switch to Admin</button>
+          <button type="button" class="btn bsm" style="flex:1" onclick="presetSwitchForm('user')">👤 Switch to User</button>
+        </div>
+        <div class="fg" style="margin-bottom:12px">
+          <label class="fl">Username</label>
+          <input class="fi" id="switch-username" placeholder="Username" />
+        </div>
+        <div class="fg" style="margin-bottom:14px">
+          <label class="fl">Password</label>
+          <input class="fi" type="password" id="switch-password" placeholder="Password" />
+        </div>
+        <div id="switch-error-msg" style="display:none; color:var(--err); font-size:12px; margin-bottom:10px"></div>
+        <div style="display:flex; justify-content:flex-end; gap:8px">
+          <button class="btn" onclick="closeSwitchModeModal()">Cancel</button>
+          <button class="btn btnp" onclick="doSwitchMode()">Authenticate & Switch</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── USER MANAGEMENT MODAL (ADMIN CONSOLE) ── -->
+  <div id="user-mgmt-modal" class="modal-overlay" style="display:none; z-index:9997;">
+    <div class="modal-box animate-zoom" style="max-width:720px">
+      <div class="modal-hdr">
+        <span class="modal-title">System User Management (Admin Console)</span>
+        <button class="modal-close-x" onclick="closeUserMgmtModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:18px">
+        <!-- Create Account Form -->
+        <div style="background:var(--s2); border:1px solid var(--br); border-radius:6px; padding:14px; margin-bottom:18px">
+          <div style="font-weight:600; color:var(--ac); font-size:12px; margin-bottom:10px">Create New System Account</div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr 110px auto; gap:10px; align-items:end">
+            <div class="fg">
+              <label class="fl">Username *</label>
+              <input class="fi" id="new-user-name" placeholder="e.g. jdoe" />
+            </div>
+            <div class="fg">
+              <label class="fl">Password *</label>
+              <input class="fi" type="password" id="new-user-pass" placeholder="Min 6 characters" />
+            </div>
+            <div class="fg">
+              <label class="fl">Role</label>
+              <select class="fs" id="new-user-role">
+                <option value="USER">USER</option>
+                <option value="ADMIN">ADMIN</option>
+                <option value="HR">HR</option>
+                <option value="EMPLOYEE">EMPLOYEE</option>
+                <option value="DEVICE">DEVICE</option>
+              </select>
+            </div>
+            <button class="btn btnp bsm" style="height:32px" onclick="createSystemUser()">Create Account</button>
+          </div>
+          <div style="font-size:10px; color:var(--mu); margin-top:8px">
+            * Security: Passwords stored as Bcrypt hashes (cost 12), usernames indexed as SHA-256 hashes.
+          </div>
+        </div>
+
+        <!-- Users Table -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+          <div style="font-weight:600; font-size:12px; color:var(--tx)">Registered Accounts in System</div>
+          <button class="btn bsm" onclick="loadSystemUsers()">↻ Refresh Users</button>
+        </div>
+        <div style="max-height:260px; overflow-y:auto; border:1px solid var(--br); border-radius:6px">
+          <table style="width:100%; border-collapse:collapse; font-size:12px; background:var(--s1)">
+            <thead>
+              <tr style="background:var(--s2); border-bottom:1px solid var(--br); color:var(--mu); text-align:left">
+                <th style="padding:8px 12px">ID</th>
+                <th style="padding:8px 12px">Username</th>
+                <th style="padding:8px 12px">Role</th>
+                <th style="padding:8px 12px">Created</th>
+                <th style="padding:8px 12px; text-align:right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="user-mgmt-table-body">
+              <!-- Populated dynamically via loadSystemUsers() -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-ftr">
+        <div class="modal-actions-right">
+          <button class="btn" onclick="closeUserMgmtModal()">Close</button>
         </div>
       </div>
     </div>

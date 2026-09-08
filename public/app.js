@@ -54,24 +54,383 @@ let dbdRefreshTimer = null;
 // ══════════════════════════════════════════════
 // API helpers
 // ══════════════════════════════════════════════
+let currentUser = null;
+let authPendingResolve = null;
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 async function ensureAuth() {
   const saved = localStorage.getItem('authToken');
-  if (saved) return saved;
-
-  const loginResp = await fetch('/api/auth/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username: 'admin', password: 'admin123' })
-  });
-
-  const loginData = await loginResp.json();
-  if (!loginData.success || !loginData.access_token) {
-    throw new Error(loginData.error?.message || 'Authentication failed');
+  if (saved) {
+    try {
+      const meResp = await fetch('/api/auth/me', {
+        headers: { Authorization: `Bearer ${saved}` }
+      });
+      if (meResp.ok) {
+        const meData = await meResp.json();
+        if (meData.success && meData.data) {
+          currentUser = meData.data;
+          applyRoleUI(currentUser.role);
+          return saved;
+        }
+      }
+    } catch (e) {
+      console.warn('[AUTH] Token verification error:', e);
+    }
+    localStorage.removeItem('authToken');
   }
 
-  localStorage.setItem('authToken', loginData.access_token);
-  if (loginData.refresh_token) localStorage.setItem('authRefreshToken', loginData.refresh_token);
-  return loginData.access_token;
+  // Not logged in: hide loading screen so login modal is displayed clearly
+  const ld = document.getElementById('ld');
+  if (ld) ld.style.display = 'none';
+
+  showLoginModal();
+
+  return new Promise((resolve) => {
+    authPendingResolve = resolve;
+  });
+}
+
+function showLoginModal() {
+  const modal = document.getElementById('login-modal');
+  if (modal) {
+    modal.style.display = 'flex';
+    setTimeout(() => {
+      const uInput = document.getElementById('login-username');
+      if (uInput) uInput.focus();
+    }, 50);
+  }
+}
+
+async function handleLoginFormSubmit(e) {
+  e.preventDefault();
+  const uInput = document.getElementById('login-username');
+  const pInput = document.getElementById('login-password');
+  const errBox = document.getElementById('login-error-msg');
+  const btn = document.getElementById('btn-login-submit');
+
+  const username = uInput.value.trim();
+  const password = pInput.value;
+  if (!username || !password) return;
+
+  btn.disabled = true;
+  btn.textContent = 'Verifying Credentials...';
+  errBox.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error?.message || 'Invalid username or password');
+    }
+
+    localStorage.setItem('authToken', data.data.access_token);
+    if (data.data.refresh_token) localStorage.setItem('authRefreshToken', data.data.refresh_token);
+    currentUser = { username: data.data.username, role: data.data.role };
+
+    document.getElementById('login-modal').style.display = 'none';
+    applyRoleUI(currentUser.role);
+    notify(`Signed in as ${currentUser.username} (${currentUser.role} Mode)`, 'ok');
+
+    if (authPendingResolve) {
+      const resFn = authPendingResolve;
+      authPendingResolve = null;
+      if (!loaded) {
+        const ld = document.getElementById('ld');
+        if (ld) ld.style.display = 'flex';
+      }
+      resFn(data.data.access_token);
+    } else {
+      const ma = document.getElementById('ma');
+      if (ma) ma.style.display = 'flex';
+    }
+  } catch (err) {
+    errBox.textContent = err.message;
+    errBox.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Sign In';
+  }
+}
+
+function fillPresetCredentials(type) {
+  const uInput = document.getElementById('login-username');
+  const pInput = document.getElementById('login-password');
+  const badge = document.getElementById('login-badge-mode');
+  if (type === 'admin') {
+    uInput.value = 'admin';
+    pInput.value = 'admin123';
+    badge.className = 'mode-badge admin';
+    badge.textContent = '🛡️ ADMIN MODE';
+  } else {
+    uInput.value = 'user';
+    pInput.value = 'user123';
+    badge.className = 'mode-badge user';
+    badge.textContent = '👤 USER MODE';
+  }
+  document.getElementById('login-error-msg').style.display = 'none';
+}
+
+function applyRoleUI(role) {
+  const modeBadge = document.getElementById('mode-badge');
+  const userDisplay = document.getElementById('user-display-tag');
+  const switchCurrentLabel = document.getElementById('switch-current-mode-label');
+
+  if (['ADMIN', 'HR'].includes(role)) {
+    document.body.classList.remove('user-mode');
+    if (modeBadge) {
+      modeBadge.className = 'mode-badge admin';
+      modeBadge.textContent = '🛡️ ADMIN MODE';
+    }
+    if (userDisplay) {
+      userDisplay.textContent = `👤 ${currentUser?.username || 'admin'}`;
+    }
+    if (switchCurrentLabel) {
+      switchCurrentLabel.textContent = 'ADMIN MODE';
+      switchCurrentLabel.style.color = 'var(--ac)';
+    }
+  } else {
+    document.body.classList.add('user-mode');
+    if (modeBadge) {
+      modeBadge.className = 'mode-badge user';
+      modeBadge.textContent = '👤 USER MODE';
+    }
+    if (userDisplay) {
+      userDisplay.textContent = `👤 ${currentUser?.username || 'user'}`;
+    }
+    if (switchCurrentLabel) {
+      switchCurrentLabel.textContent = 'USER MODE';
+      switchCurrentLabel.style.color = 'var(--ac2)';
+    }
+    const regTab = document.getElementById('tab-reg');
+    const compTab = document.getElementById('tab-company');
+    const empListTab = document.getElementById('tab-employee-list');
+    if (regTab?.classList.contains('on') || compTab?.classList.contains('on') || empListTab?.classList.contains('on')) {
+      const attBtn = document.querySelector('button[data-tab="att"]');
+      showTab('att', attBtn);
+    }
+  }
+}
+
+function promptSwitchMode() {
+  const modal = document.getElementById('switch-mode-modal');
+  if (modal) {
+    modal.style.display = 'flex';
+    document.getElementById('switch-username').value = '';
+    document.getElementById('switch-password').value = '';
+    document.getElementById('switch-error-msg').style.display = 'none';
+  }
+}
+
+function closeSwitchModeModal() {
+  const modal = document.getElementById('switch-mode-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function presetSwitchForm(type) {
+  if (type === 'admin') {
+    document.getElementById('switch-username').value = 'admin';
+    document.getElementById('switch-password').value = 'admin123';
+  } else {
+    document.getElementById('switch-username').value = 'user';
+    document.getElementById('switch-password').value = 'user123';
+  }
+}
+
+async function doSwitchMode() {
+  const username = document.getElementById('switch-username').value.trim();
+  const password = document.getElementById('switch-password').value;
+  const errBox = document.getElementById('switch-error-msg');
+
+  if (!username || !password) {
+    errBox.textContent = 'Please enter both username and password';
+    errBox.style.display = 'block';
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error?.message || 'Invalid username or password');
+    }
+
+    localStorage.setItem('authToken', data.data.access_token);
+    if (data.data.refresh_token) localStorage.setItem('authRefreshToken', data.data.refresh_token);
+    currentUser = { username: data.data.username, role: data.data.role };
+
+    closeSwitchModeModal();
+    applyRoleUI(currentUser.role);
+    notify(`Switched account to ${currentUser.username} (${currentUser.role} Mode)`, 'ok');
+
+    if (currentUser.role === 'USER') {
+      const attBtn = document.querySelector('button[data-tab="att"]');
+      showTab('att', attBtn);
+    } else {
+      const dbdBtn = document.querySelector('button[onclick*="tab-dbd"], button[data-tab="dbd"], .mbtn.on');
+      showTab('dbd', dbdBtn);
+    }
+  } catch (err) {
+    errBox.textContent = err.message;
+    errBox.style.display = 'block';
+  }
+}
+
+async function doLogOff() {
+  notify('Logging off session...', 'wn');
+  try {
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    }
+  } catch (e) {
+    console.warn('[AUTH] Logout request error:', e);
+  }
+
+  localStorage.removeItem('authToken');
+  localStorage.removeItem('authRefreshToken');
+  currentUser = null;
+
+  if (aStream) stopAttCam();
+  if (rStream) stopRegCam();
+
+  document.getElementById('ma').style.display = 'none';
+  showLoginModal();
+}
+
+function openUserMgmtModal() {
+  if (currentUser && !['ADMIN', 'HR'].includes(currentUser.role)) {
+    notify('Access denied: Administrator privileges required', 'er');
+    return;
+  }
+  const modal = document.getElementById('user-mgmt-modal');
+  if (modal) {
+    modal.style.display = 'flex';
+    loadSystemUsers();
+  }
+}
+
+function closeUserMgmtModal() {
+  const modal = document.getElementById('user-mgmt-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function loadSystemUsers() {
+  const tbody = document.getElementById('user-mgmt-table-body');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="5" style="padding:12px; text-align:center; color:var(--mu)">Loading system accounts...</td></tr>';
+
+  try {
+    const res = await apiGet('/api/admin/users', false);
+    const users = (res && res.data) ? res.data : (Array.isArray(res) ? res : []);
+    if (!users.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="padding:12px; text-align:center; color:var(--mu)">No users registered</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = users.map(u => {
+      const isSelf = currentUser && currentUser.username === u.username;
+      const isAdmin = u.role === 'ADMIN';
+      const roleColor = isAdmin ? 'var(--ac)' : (u.role === 'HR' ? 'var(--warn)' : 'var(--ac2)');
+      return `
+        <tr style="border-bottom:1px solid var(--br)">
+          <td style="padding:8px 12px; font-family:var(--mo); color:var(--mu)">#${u.id}</td>
+          <td style="padding:8px 12px; font-weight:600; color:var(--tx)">${escapeHtml(u.username)} ${isSelf ? '<span style="font-size:10px; color:var(--ac)">(You)</span>' : ''}</td>
+          <td style="padding:8px 12px"><span style="color:${roleColor}; font-weight:600; font-size:11px">${u.role}</span></td>
+          <td style="padding:8px 12px; font-size:11px; color:var(--mu)">${u.created_at ? u.created_at.slice(0, 16) : '-'}</td>
+          <td style="padding:8px 12px; text-align:right">
+            <button class="btn bsm" style="margin-right:6px; font-size:11px; padding:2px 8px" onclick="resetUserPasswordPrompt(${u.id}, '${escapeHtml(u.username)}')">Reset Password</button>
+            ${(!isSelf && !isAdmin) ? `<button class="btn bsm" style="color:var(--err); border-color:var(--err); font-size:11px; padding:2px 8px" onclick="deleteUserPrompt(${u.id}, '${escapeHtml(u.username)}')">Delete</button>` : ''}
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="5" style="padding:12px; text-align:center; color:var(--err)">Error: ${err.message}</td></tr>`;
+  }
+}
+
+async function createSystemUser() {
+  const uInput = document.getElementById('new-user-name');
+  const pInput = document.getElementById('new-user-pass');
+  const rInput = document.getElementById('new-user-role');
+
+  const username = uInput.value.trim();
+  const password = pInput.value;
+  const role = rInput.value;
+
+  if (!username || !password) {
+    notify('Please enter both username and password', 'er');
+    return;
+  }
+  if (password.length < 6) {
+    notify('Password must be at least 6 characters', 'wn');
+    return;
+  }
+
+  try {
+    const res = await apiPost('/api/admin/users', { username, password, role });
+    if (res && (res.success || res.id || res.data?.id)) {
+      notify(`User ${username} created successfully with role ${role}`, 'ok');
+      uInput.value = '';
+      pInput.value = '';
+      loadSystemUsers();
+    } else {
+      throw new Error(res?.error?.message || 'Failed to create user');
+    }
+  } catch (err) {
+    notify(`Create user failed: ${err.message}`, 'er');
+  }
+}
+
+async function resetUserPasswordPrompt(userId, username) {
+  const newPass = prompt(`Enter new password for user '${username}' (min 6 characters):`);
+  if (!newPass) return;
+  if (newPass.length < 6) {
+    notify('Password must be at least 6 characters', 'wn');
+    return;
+  }
+
+  try {
+    const res = await apiPost(`/api/admin/users/${userId}/reset-password`, { new_password: newPass });
+    const msg = res?.data?.message || res?.message || `Password reset successfully for ${username}`;
+    notify(msg, 'ok');
+  } catch (err) {
+    notify(`Password reset failed: ${err.message}`, 'er');
+  }
+}
+
+async function deleteUserPrompt(userId, username) {
+  if (!confirm(`Are you sure you want to delete user '${username}'? This cannot be undone.`)) {
+    return;
+  }
+
+  try {
+    await apiDelete(`/api/admin/users/${userId}`);
+    notify(`User '${username}' deleted successfully`, 'ok');
+    loadSystemUsers();
+  } catch (err) {
+    notify(`Failed to delete user: ${err.message}`, 'er');
+  }
 }
 
 // ══════════════════════════════════════════════
@@ -322,6 +681,12 @@ async function init() {
     ma.style.flexDirection = 'column';
     ma.style.flex          = '1';
     ma.style.overflow      = 'hidden';
+
+    // Route to Mark Attendance tab if in user mode
+    if (currentUser && currentUser.role === 'USER') {
+      const attBtn = document.querySelector('button[data-tab="att"]');
+      showTab('att', attBtn);
+    }
 
     // Populate registration form date dropdowns on boot
     populateDateDropdowns('r-join-date-grp', null);
@@ -2141,40 +2506,9 @@ function openMenuDrawer(section) {
       break;
 
     case 'users':
-      title = 'System Users';
-      html = `
-        <div style="font-family:var(--sa); font-size:12px; color:var(--tx)">
-          <div style="font-weight:600; color:var(--ac); margin-bottom:10px">Active System Accounts</div>
-          <table style="width:100%; border-collapse:collapse; font-size:11px; margin-bottom:12px">
-            <thead>
-              <tr style="border-bottom:1px solid var(--br); color:var(--mu)">
-                <th style="text-align:left; padding:6px 0">Username</th>
-                <th style="text-align:center; padding:6px 0">Role</th>
-                <th style="text-align:right; padding:6px 0">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr style="border-bottom:1px dashed var(--br)">
-                <td style="padding:6px 0">admin</td>
-                <td style="text-align:center; padding:6px 0">Super Administrator</td>
-                <td style="text-align:right; color:var(--ok); padding:6px 0">ACTIVE</td>
-              </tr>
-              <tr style="border-bottom:1px dashed var(--br)">
-                <td style="padding:6px 0">hr_manager</td>
-                <td style="text-align:center; padding:6px 0">HR Personnel</td>
-                <td style="text-align:right; color:var(--ok); padding:6px 0">ACTIVE</td>
-              </tr>
-              <tr>
-                <td style="padding:6px 0">operator_01</td>
-                <td style="text-align:center; padding:6px 0">Device Operator</td>
-                <td style="text-align:right; color:var(--warn); padding:6px 0">SUSPENDED</td>
-              </tr>
-            </tbody>
-          </table>
-          <button class="btn btnp bsm" onclick="notify('Create System User popup opened.', 'ok')">Add System User</button>
-        </div>
-      `;
-      break;
+      closeInfoDrawer();
+      openUserMgmtModal();
+      return;
 
     case 'audit':
       title = 'System Audit Trail';
@@ -2271,36 +2605,6 @@ function goToReportsMenu() {
   if (subRepBtn) showSubTab('sub-tab-hr-reports', subRepBtn);
 }
 
-function doLogOff() {
-  notify('Logging off from admin session...', 'wn');
-  // Hide main app, show loader
-  document.getElementById('ma').style.display = 'none';
-  const ld = document.getElementById('ld');
-  ld.style.display = 'flex';
-  
-  // Reset loader progress and trigger reload sequence
-  let progress = 0;
-  const fill = document.getElementById('pf');
-  const msg = document.getElementById('pm');
-  fill.style.width = '0%';
-  msg.textContent = 'Session terminated. Re-initializing AI models...';
-  
-  const interval = setInterval(() => {
-    progress += 20;
-    fill.style.width = progress + '%';
-    if (progress === 40) msg.textContent = 'Loading FaceAPI facial descriptors...';
-    if (progress === 80) msg.textContent = 'Connecting database server...';
-    if (progress >= 100) {
-      clearInterval(interval);
-      ld.style.display = 'none';
-      document.getElementById('ma').style.display = 'flex';
-      notify('Logged in as administrator.', 'ok');
-      // Navigate back to register tab by default
-      const regBtn = document.querySelector('button[data-tab="reg"]');
-      if (regBtn) showTab('reg', regBtn);
-    }
-  }, 300);
-}
 
 // Interactive Link Details Drawer triggers
 function showLeaveSummary(id) {
@@ -3409,6 +3713,20 @@ window.nextEmpListPage = nextEmpListPage;
 window.updateEmpListFilterDropdowns = updateEmpListFilterDropdowns;
 window.showEmployeePhoto = showEmployeePhoto;
 window.deleteEmployeeList = deleteEmployeeList;
+
+// Auth & User Management helpers
+window.handleLoginFormSubmit = handleLoginFormSubmit;
+window.fillPresetCredentials = fillPresetCredentials;
+window.promptSwitchMode = promptSwitchMode;
+window.closeSwitchModeModal = closeSwitchModeModal;
+window.presetSwitchForm = presetSwitchForm;
+window.doSwitchMode = doSwitchMode;
+window.openUserMgmtModal = openUserMgmtModal;
+window.closeUserMgmtModal = closeUserMgmtModal;
+window.loadSystemUsers = loadSystemUsers;
+window.createSystemUser = createSystemUser;
+window.resetUserPasswordPrompt = resetUserPasswordPrompt;
+window.deleteUserPrompt = deleteUserPrompt;
 
 // ══════════════════════════════════════════════
 // Boot

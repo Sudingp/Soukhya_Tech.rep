@@ -276,19 +276,88 @@ if (currentVersion < 6) {
   setSchemaVersion(6);
 }
 
+// ── Migration 7: Hashed Usernames & Role Expansion ──
+if (currentVersion < 7) {
+  const crypto = require('crypto');
+  const bcrypt = require('bcryptjs');
+
+  // Recreate users table to expand role CHECK constraint to include 'USER'
+  db.transaction(() => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS users_v7 (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE,
+        username_hash TEXT,
+        username_display TEXT,
+        password_hash TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'USER' CHECK(role IN ('ADMIN','HR','EMPLOYEE','USER','DEVICE')),
+        active BOOLEAN NOT NULL DEFAULT 1 CHECK(active IN (0,1)),
+        created_at TIMESTAMP NOT NULL DEFAULT (datetime('now')),
+        updated_at TIMESTAMP NOT NULL DEFAULT (datetime('now'))
+      );
+    `);
+
+    const existingUsers = db.prepare("SELECT * FROM users").all();
+    const insertStmt = db.prepare(`
+      INSERT INTO users_v7 (id, username, username_hash, username_display, password_hash, role, active, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const u of existingUsers) {
+      const uHash = crypto.createHash('sha256').update(u.username.toLowerCase().trim()).digest('hex');
+      const role = u.role === 'EMPLOYEE' ? 'USER' : u.role;
+      insertStmt.run(u.id, u.username, uHash, u.username, u.password_hash, role, u.active, u.created_at, u.updated_at);
+    }
+
+    db.exec("DROP TABLE users;");
+    db.exec("ALTER TABLE users_v7 RENAME TO users;");
+    db.exec("CREATE INDEX IF NOT EXISTS idx_users_username_hash ON users(username_hash);");
+  })();
+
+  // Seed default admin and user if not present
+  const adminHash = crypto.createHash('sha256').update('admin').digest('hex');
+  const userHash = crypto.createHash('sha256').update('user').digest('hex');
+
+  const adminExists = db.prepare("SELECT id FROM users WHERE username_hash = ?").get(adminHash);
+  if (!adminExists) {
+    const pwHash = bcrypt.hashSync('admin123', 12);
+    db.prepare(`
+      INSERT INTO users (username, username_hash, username_display, password_hash, role, active)
+      VALUES ('admin', ?, 'admin', ?, 'ADMIN', 1)
+    `).run(adminHash, pwHash);
+  }
+
+  const userExists = db.prepare("SELECT id FROM users WHERE username_hash = ?").get(userHash);
+  if (!userExists) {
+    const pwHash = bcrypt.hashSync('user123', 12);
+    db.prepare(`
+      INSERT INTO users (username, username_hash, username_display, password_hash, role, active)
+      VALUES ('user', ?, 'user', ?, 'USER', 1)
+    `).run(userHash, pwHash);
+  }
+
+  setSchemaVersion(7);
+}
+
+
 console.log(`[DB] SQLite ready at ${DB_PATH} | Schema v${getSchemaVersion()}`);
 
 // ──────────────────────────────────────────────
 // Prepared Statements
 // ──────────────────────────────────────────────
 const stmts = {
-  // ── Users (Auth) ──
+  // ── Users (Auth & Governance) ──
   getUserByUsername: db.prepare('SELECT * FROM users WHERE username = ? AND active = 1'),
+  getUserByUsernameHash: db.prepare('SELECT * FROM users WHERE username_hash = ? AND active = 1'),
+  getUserById: db.prepare('SELECT id, username, username_display, role, active, created_at, updated_at FROM users WHERE id = ?'),
+  getAllUsers: db.prepare('SELECT id, username, username_display, role, active, created_at, updated_at FROM users ORDER BY id ASC'),
   insertUser: db.prepare(`
-    INSERT INTO users (username, password_hash, role)
-    VALUES (@username, @password_hash, @role)
+    INSERT INTO users (username, username_hash, username_display, password_hash, role)
+    VALUES (@username, @username_hash, @username_display, @password_hash, @role)
   `),
-  updateUserPassword: db.prepare('UPDATE users SET password_hash = ? WHERE id = ?'),
+  updateUserPassword: db.prepare("UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE id = ?"),
+  deleteUser: db.prepare("DELETE FROM users WHERE id = ? AND role != 'ADMIN'"),
+
 
   // ── Employees ──
   getAllEmployees: db.prepare('SELECT * FROM employees ORDER BY created_at DESC'),
