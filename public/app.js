@@ -222,6 +222,7 @@ function applyRoleUI(role) {
       showTab('att', attBtn);
     }
   }
+  checkAutoShowChangelog();
 }
 
 function promptSwitchMode() {
@@ -332,6 +333,75 @@ function openUserMgmtModal() {
 function closeUserMgmtModal() {
   const modal = document.getElementById('user-mgmt-modal');
   if (modal) modal.style.display = 'none';
+}
+
+// ══════════════════════════════════════════════
+// CHANGELOG MODAL CONTROLLER (v2.0)
+// ══════════════════════════════════════════════
+function openChangelogModal(forceTab) {
+  const modal = document.getElementById('changelog-modal');
+  if (!modal) return;
+
+  const isAdmin = ['ADMIN', 'HR'].includes(currentUser?.role) || !document.body.classList.contains('user-mode');
+  const targetTab = forceTab || (isAdmin ? 'admin' : 'user');
+  switchChangelogTab(targetTab);
+
+  const roleIndicator = document.getElementById('cl-role-indicator');
+  if (roleIndicator) {
+    const roleName = currentUser?.role || (isAdmin ? 'ADMIN' : 'USER');
+    roleIndicator.textContent = `ROLE: ${roleName}`;
+  }
+
+  const dontShowChk = document.getElementById('cl-dont-show-chk');
+  if (dontShowChk) {
+    dontShowChk.checked = localStorage.getItem('changelog_dismiss_v2') === 'true';
+  }
+
+  modal.style.display = 'flex';
+}
+
+function closeChangelogModal(e) {
+  if (e && e.target && e.target.id !== 'changelog-modal' && !e.target.classList.contains('modal-close-x') && !e.target.classList.contains('btnp')) return;
+  const modal = document.getElementById('changelog-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function switchChangelogTab(tab) {
+  const userBtn = document.getElementById('cl-tab-user-btn');
+  const adminBtn = document.getElementById('cl-tab-admin-btn');
+  const userView = document.getElementById('cl-view-user');
+  const adminView = document.getElementById('cl-view-admin');
+  const roleIndicator = document.getElementById('cl-role-indicator');
+
+  if (tab === 'admin') {
+    adminBtn?.classList.add('active');
+    userBtn?.classList.remove('active');
+    if (adminView) adminView.style.display = 'block';
+    if (userView) userView.style.display = 'none';
+    if (roleIndicator) roleIndicator.textContent = 'VIEW: ADMIN TECHNICAL';
+  } else {
+    userBtn?.classList.add('active');
+    adminBtn?.classList.remove('active');
+    if (userView) userView.style.display = 'block';
+    if (adminView) adminView.style.display = 'none';
+    if (roleIndicator) roleIndicator.textContent = 'VIEW: USER HIGHLIGHTS';
+  }
+}
+
+function toggleChangelogPref(checked) {
+  localStorage.setItem('changelog_dismiss_v2', checked ? 'true' : 'false');
+}
+
+let changelogAutoShown = false;
+function checkAutoShowChangelog() {
+  if (changelogAutoShown) return;
+  const dismissed = localStorage.getItem('changelog_dismiss_v2');
+  if (dismissed !== 'true') {
+    changelogAutoShown = true;
+    setTimeout(() => {
+      openChangelogModal();
+    }, 600);
+  }
 }
 
 async function loadSystemUsers() {
@@ -3727,6 +3797,10 @@ window.loadSystemUsers = loadSystemUsers;
 window.createSystemUser = createSystemUser;
 window.resetUserPasswordPrompt = resetUserPasswordPrompt;
 window.deleteUserPrompt = deleteUserPrompt;
+window.openChangelogModal = openChangelogModal;
+window.closeChangelogModal = closeChangelogModal;
+window.switchChangelogTab = switchChangelogTab;
+window.toggleChangelogPref = toggleChangelogPref;
 
 // ══════════════════════════════════════════════
 // Boot
