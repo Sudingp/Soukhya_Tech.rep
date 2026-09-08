@@ -6,7 +6,7 @@
   <title>SOUKHYA TECH — HR Enterprise</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=2.0.1" />
+  <link rel="stylesheet" href="style.css?v=2.0.2" />
   <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js" defer></script>
   <!-- Load Chart.js CDN for interactive analytics -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -1249,7 +1249,7 @@
           </div>
 
           <div style="margin-top:12px; font-size:10px; color:var(--mu); text-align:center; font-family:var(--mo)">
-            Credentials verified via SQLite Hashes (SHA-256 / Bcrypt)
+            Credentials verified via MySQL Hashes (SHA-256 / Bcrypt)
           </div>
         </form>
       </div>
@@ -1440,7 +1440,7 @@
             <span class="cl-chip"><strong>Database:</strong> MySQL 8.4 LTS (InnoDB + utf8mb4)</span>
             <span class="cl-chip"><strong>Auth:</strong> SHA-256 Hashes + Bcrypt (Cost 12)</span>
             <span class="cl-chip"><strong>Cache:</strong> Doubly-Linked-List LRU + SSE Sync</span>
-            <span class="cl-chip"><strong>Fallback:</strong> Zero-Downtime SQLite</span>
+            <span class="cl-chip"><strong>Persistence:</strong> Pure MySQL 8.4 LTS</span>
           </div>
 
           <div class="cl-grid">
@@ -1454,7 +1454,7 @@
                 <li>Strict ACID transactions with <code>InnoDB</code> and <code>utf8mb4_0900_ai_ci</code> collation.</li>
                 <li>Biometrics: Native <code>JSON</code> 128-float arrays with SHA-256 integrity hashes.</li>
                 <li>Composite indexes: <code>idx_att_emp_ts</code>, <code>idx_att_ts_status</code>, <code>idx_emp_dept_status</code>.</li>
-                <li>Resilient dual-dialect router with automatic zero-downtime fallback to SQLite.</li>
+                <li>Dedicated high-performance connection pool with auto-reconnect and healthchecks.</li>
               </ul>
             </div>
 
@@ -1528,7 +1528,7 @@
   </div>
 </div>
 
-<script src="dsa_cache.js?v=2.0.1"></script>
-<script src="app.js?v=2.0.1"></script>
+<script src="dsa_cache.js?v=2.0.2"></script>
+<script src="app.js?v=2.0.2"></script>
 </body>
 </html>

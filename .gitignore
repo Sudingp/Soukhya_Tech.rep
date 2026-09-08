@@ -3,9 +3,8 @@ target/
 .gemini/
 *.log
 .soukhya-pids
-database/*.db-shm
-database/*.db-wal
-database/*.db-journal
+*.db
+*.db-*
 .idea/
 .vscode/
 build/

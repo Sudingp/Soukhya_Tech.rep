@@ -2356,10 +2356,10 @@ function openMenuDrawer(section) {
         <div style="font-family:var(--sa); font-size:12px; color:var(--tx); line-height:1.6">
           <div style="background:var(--s2); border:1px solid var(--br); border-radius:6px; padding:12px; margin-bottom:12px">
             <div style="font-weight:600; color:var(--ac); margin-bottom:6px">Database Engine Status</div>
-            <div>Engine: SQLite 3 (better-sqlite3)</div>
-            <div>File: <code style="color:var(--ac2); font-family:var(--mo)">attendance.db</code></div>
-            <div>Size: 245 KB</div>
-            <div>Mode: WAL (Write-Ahead Log)</div>
+            <div>Engine: MySQL 8.4 LTS (InnoDB)</div>
+            <div>Database: <code style="color:var(--ac2); font-family:var(--mo)">soukhya_attendance</code></div>
+            <div>Collation: utf8mb4_0900_ai_ci</div>
+            <div>Mode: High-Throughput Connection Pool (ACID Compliant)</div>
           </div>
           <div style="margin-bottom:12px">
             <div style="font-weight:600; margin-bottom:6px">Available Backups</div>
@@ -2601,19 +2601,19 @@ function openMenuDrawer(section) {
       title = 'Database Settings';
       html = `
         <div style="font-family:var(--sa); font-size:12px; color:var(--tx); line-height:1.6">
-          <div style="font-weight:600; color:var(--ac); margin-bottom:10px">SQLite Engine Configurations</div>
+          <div style="font-weight:600; color:var(--ac); margin-bottom:10px">MySQL 8.4 LTS Engine Configurations</div>
           <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:12px">
             <div class="fg" style="margin:0">
-              <label class="fl">Max DB connection timeout (ms)</label>
-              <input class="fi" value="5000" id="cfg-timeout" style="padding:6px 10px; font-size:11px" />
+              <label class="fl">Max Connection Pool Size</label>
+              <input class="fi" value="20" id="cfg-pool-size" style="padding:6px 10px; font-size:11px" />
             </div>
             <div class="fg" style="margin:0">
-              <label class="fl">Page Cache Size (pages)</label>
-              <input class="fi" value="2000" id="cfg-cache" style="padding:6px 10px; font-size:11px" />
+              <label class="fl">Keep-Alive Initial Delay (ms)</label>
+              <input class="fi" value="10000" id="cfg-keepalive" style="padding:6px 10px; font-size:11px" />
             </div>
             <div class="fg" style="margin:0; display:flex; gap:8px; align-items:center">
-              <input type="checkbox" checked id="cfg-wal" />
-              <label style="font-size:11px; margin:0">Enable Write-Ahead Logging (WAL) Mode</label>
+              <input type="checkbox" checked disabled id="cfg-innodb" />
+              <label style="font-size:11px; margin:0">InnoDB ACID Transactions & UTF8MB4 Collation</label>
             </div>
           </div>
           <button class="btn btnp bsm" onclick="notify('Database configuration updated.', 'ok')">Save Settings</button>

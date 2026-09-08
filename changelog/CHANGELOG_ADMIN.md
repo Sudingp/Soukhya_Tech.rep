@@ -19,12 +19,10 @@ This changelog contains comprehensive, full-stack (Backend + Database + Infrastr
 - **High-Throughput Connection Pool (`database/mysql_adapter.js`)**:
   - Built with `mysql2/promise` supporting connection pooling (`connectionLimit: 20`), keepalives, and automatic UNIX domain socket (`./data/mysql/mysql.sock`) or TCP host/port (`127.0.0.1:3306`) auto-discovery.
   - Automatic idempotent schema bootstrapping on initialization (`initSchema()`).
-- **Resilient Dual-Dialect Router (`database/db.js`)**:
-  - Configurable via `DB_DIALECT=mysql` or `sqlite`.
-  - Probes MySQL health on server startup. If MySQL is unavailable, it gracefully routes queries to the local hardened SQLite backend (`attendance.db`) with zero downtime and zero unhandled exceptions.
-  - Asynchronous unified query interface (`stmts.xxx.get/all/run()`) allowing single-line async queries regardless of dialect.
-- **One-Click SQLite-to-MySQL Migration Pipeline (`database/migrate_sqlite_to_mysql.js`)**:
-  - Automated ETL script transferring users, employees, attendance, audit trails, and blacklisted tokens with timestamp normalization (`YYYY-MM-DD HH:MM:SS`) and 100% data parity verification.
+- **Pure MySQL 8.4 LTS Persistence & Total SQLite Elimination**:
+  - Completely removed all SQLite files (`attendance.db`, `migrate_sqlite_to_mysql.js`), `better-sqlite3` dependencies, and SQLite fallback logic.
+  - Exclusively powered by enterprise MySQL 8.4 LTS with high-performance connection pooling (`connectionLimit: 20`), keepalives, and automatic UNIX domain socket (`./data/mysql/mysql.sock`) or TCP host/port (`127.0.0.1:3306`) discovery.
+  - Automatic idempotent schema bootstrapping on initialization (`initSchema()`).
 - **Single-Command Launch (`npm start`)**:
   - Enhanced `npm start` to execute `scripts/setup_mysql.sh` before booting `node server.js`, automatically starting the local MySQL daemon and verifying permissions.
 

@@ -16,7 +16,7 @@ const { LRUCache } = require('./lib/dsa_cache');
 
 require('dotenv').config();
 
-const { db, stmts, sqliteStmts, getActiveDialect, checkMySQL } = require('./database/db');
+const { stmts, getActiveDialect, checkMySQL } = require('./database/db');
 
 // ══════════════════════════════════════════════
 // ENV CONFIG with safe dev fallbacks
@@ -601,15 +601,8 @@ async function seedDatabase(reqUser = 'system') {
     }));
   }
 
-  if (getActiveDialect() === 'mysql') {
-    for (const emp of listToInsert) {
-      await stmts.insertEmployee.run(emp);
-    }
-  } else {
-    const runTransaction = db.transaction((empList) => {
-      for (const emp of empList) sqliteStmts.insertEmployee.run(emp);
-    });
-    runTransaction(listToInsert);
+  for (const emp of listToInsert) {
+    await stmts.insertEmployee.run(emp);
   }
 
   console.log(`  [SEEDER] Successfully seeded 100 employees.`);

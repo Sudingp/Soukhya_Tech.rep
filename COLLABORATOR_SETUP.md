@@ -16,7 +16,7 @@ The last merge into the production branch (`HR-Enterprise-Prod`) was:
   4. Tracked the seeded SQLite database (`database/attendance.db`) directly in Git with 100 test employees.
 
 > [!NOTE]
-> The current active development branch is **`HR-Enterprise-Dev-V2`**, which is branched directly on top of `54869d6` and adds **Enterprise MySQL 8.4 LTS support, zero-downtime SQLite fallback, hash-based auth, role-aware changelog modal, and edge-to-edge UI layout**.
+> The current active development branch is **`HR-Enterprise-Dev-V2`**, which is branched directly on top of `54869d6` and features **Pure Enterprise MySQL 8.4 LTS persistence (InnoDB + utf8mb4), complete elimination of SQLite, hash-based auth, role-aware changelog modal, and edge-to-edge UI layout**.
 
 ---
 
@@ -26,7 +26,7 @@ The last merge into the production branch (`HR-Enterprise-Prod`) was:
 - **Node.js** v18.0.0 or higher
 - **npm** v9.0.0 or higher
 - **Git** installed and configured
-- *(Optional)* **MySQL 8.4 / 8.0** or **MariaDB** (or Docker). If not installed, the application automatically falls back to the embedded SQLite database seamlessly.
+- **MySQL 8.4 / 8.0** or **MariaDB** (or Docker). The project uses MySQL as its exclusive production database engine.
 - *(Optional)* **Java 17+** & **Maven** (only required if working on the Spring Boot backend in `src/`).
 
 ---
@@ -55,7 +55,7 @@ cp .env.example .env
 > ```ini
 > PII_ENCRYPTION_KEY=0673da2e3102f4ad23371a5c507736ee68f9bda316ec0e99ff9b883cc07b5693
 > ```
-> This key is required by AES-256-GCM to decrypt the employee phone numbers, emails, and card numbers stored in `database/attendance.db`. `.env.example` already contains this key.
+> This key is required by AES-256-GCM to decrypt employee phone numbers, emails, and card numbers. `.env.example` already contains this key.
 
 #### Step 3: Install Node Dependencies
 ```bash
@@ -88,7 +88,7 @@ All **11 integration tests** should pass 100%.
 | File / Resource | In Git? | Need to Send Separately? | Action Required |
 | :--- | :---: | :---: | :--- |
 | **`.env`** | ❌ No (Git-ignored) | ⚠️ **Optional** | They can run `cp .env.example .env`, OR you can send them your `.env` directly. |
-| **`database/attendance.db`** | ✅ Yes | ❌ **No** | It is already in the repository with schema v7 and 100 employees. |
+| **MySQL Database** | ❌ Runtime | ❌ **No** | Auto-created with schema & 100 seeded records when running `npm start`. |
 | **Face Recognition AI Models** | ❌ No | ❌ **No** | Loaded dynamically in browser via CDN (`cdn.jsdelivr.net`). |
 | **`data/mysql/`** | ❌ No (Git-ignored) | ❌ **DO NOT SEND** | Runtime MySQL socket/PID/database directory. Created automatically. |
 | **`node_modules/`** | ❌ No (Git-ignored) | ❌ **DO NOT SEND** | Generated locally via `npm install`. |
@@ -107,16 +107,15 @@ soukhya-tech/
 ├── package.json                 # [TRACKED] Node dependencies and start scripts
 ├── server.js                    # [TRACKED] Express.js core API server
 ├── test_integration.js          # [TRACKED] 11-step integration test suite
+├── db_optimize.py               # [TRACKED] MySQL 8.4 LTS optimizer & latency benchmark
 ├── changelog/                   # [TRACKED] Role-aware markdown release notes
 │   ├── README.md
 │   ├── CHANGELOG_ADMIN.md
 │   └── CHANGELOG_USER.md
 ├── database/
-│   ├── attendance.db            # [TRACKED] Seeded SQLite database (Schema v7)
-│   ├── db.js                    # [TRACKED] Unified dual-dialect query router
+│   ├── db.js                    # [TRACKED] Pure MySQL 8.4 LTS query layer
 │   ├── mysql_adapter.js         # [TRACKED] MySQL connection pool & async DAO
-│   ├── schema_mysql.sql         # [TRACKED] MySQL 8.4 LTS DDL schema
-│   └── migrate_sqlite_to_mysql.js # [TRACKED] SQLite -> MySQL migration pipeline
+│   └── schema_mysql.sql         # [TRACKED] MySQL 8.4 LTS DDL schema (InnoDB + utf8mb4)
 ├── public/                      # [TRACKED] Frontend Single-Page Application
 │   ├── index.html               # Main dashboard UI with changelog modal
 │   ├── style.css                # Enterprise styling & theme
@@ -131,8 +130,7 @@ soukhya-tech/
 ├── node_modules/                # [IGNORED] Node runtime packages
 ├── target/                      # [IGNORED] Java build artifacts
 ├── data/                        # [IGNORED] MySQL runtime data directory & socket
-├── database/*.db-wal            # [IGNORED] SQLite write-ahead log cache
-├── database/*.db-shm            # [IGNORED] SQLite shared-memory cache
+├── *.db                         # [IGNORED] Database binary files
 ├── *.log                        # [IGNORED] Server log output files
 └── .soukhya-pids                # [IGNORED] Process ID tracking files
 ```
@@ -161,9 +159,8 @@ data/
 *.sock
 *.pid
 .soukhya-pids
-database/*.db-shm
-database/*.db-wal
-database/*.db-journal
+*.db
+*.db-*
 
 # Logs & IDE Configs
 *.log

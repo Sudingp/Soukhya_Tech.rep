@@ -5,9 +5,9 @@
 [![Java](https://img.shields.io/badge/Java-17%2B-orange.svg)](https://www.oracle.com/java/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.3-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/)
-[![Database](https://img.shields.io/badge/Database-MySQL%208.4%20LTS%20%7C%20SQLite%20Fallback-blue.svg)](https://www.mysql.com/)
+[![Database](https://img.shields.io/badge/Database-MySQL%208.4%20LTS-blue.svg)](https://www.mysql.com/)
 
-An enterprise-grade, hardened face recognition attendance system featuring **MySQL 8.4 LTS** persistence (with automatic SQLite fallback), dual polyglot backends (**Node.js Express** and **Java Spring Boot 3**), client-side neural face recognition via `face-api.js`, zero-plaintext credential storage (SHA-256 username hash + Bcrypt password hash), real-time role mode switching, AES-256-GCM PII encryption, JWT authentication with token rotation, rate limiting, and unified cross-platform management runners.
+An enterprise-grade, hardened face recognition attendance system featuring pure **MySQL 8.4 LTS** persistence, dual polyglot backends (**Node.js Express** and **Java Spring Boot 3**), client-side neural face recognition via `face-api.js`, zero-plaintext credential storage (SHA-256 username hash + Bcrypt password hash), real-time role mode switching, AES-256-GCM PII encryption, JWT authentication with token rotation, rate limiting, and unified cross-platform management runners.
 
 ---
 
@@ -66,8 +66,9 @@ soukhya-tech/
 ├── package.json                 ← Node.js dependencies & npm runner scripts
 ├── .env                         ← Runtime configuration & cryptographic secrets
 ├── database/
-│   ├── db.js                    ← SQLite schema migration (v1→v6) & prepared statements
-│   └── attendance.db            ← Shared SQLite database
+│   ├── db.js                    ← Pure MySQL 8.4 LTS query layer & statement delegation
+│   ├── mysql_adapter.js         ← MySQL connection pool & async DAO
+│   └── schema_mysql.sql         ← MySQL 8.4 LTS DDL schema (InnoDB + utf8mb4)
 ├── src/                         ← Java Spring Boot 3 backend source
 │   └── main/java/com/soukhyatech/faceattendance/
 │       ├── controller/          ← Auth, Employee, Attendance, Stats REST controllers
@@ -237,24 +238,13 @@ All protected endpoints require an `Authorization: Bearer <access_token>` header
 
 ---
 
-## 🗄️ Database Schema (v6)
-
-The SQLite database (`database/attendance.db`) employs hardened relations and automated indexing:
-
-```sql
--- Application users and administrative accounts
-CREATE TABLE users (
-  id TEXT PRIMARY KEY,
-  username TEXT UNIQUE NOT NULL,
-  password_hash TEXT NOT NULL,
 ## 🗄️ Enterprise Database (MySQL 8.4 LTS)
 
-The persistence tier utilizes **MySQL 8.4 LTS / 8.0 LTS** (`InnoDB`, `utf8mb4_0900_ai_ci`) with automatic zero-downtime fallback to hardened SQLite (`attendance.db`):
+The persistence tier utilizes pure **MySQL 8.4 LTS / 8.0 LTS** (`InnoDB`, `utf8mb4_0900_ai_ci`) with dedicated connection pooling:
 
 - **Optimized DDL Schema**: [`database/schema_mysql.sql`](database/schema_mysql.sql)
 - **High-Throughput Pool Adapter**: [`database/mysql_adapter.js`](database/mysql_adapter.js)
-- **Unified Dual-Dialect Router**: [`database/db.js`](database/db.js)
-- **Migration Pipeline**: [`database/migrate_sqlite_to_mysql.js`](database/migrate_sqlite_to_mysql.js)
+- **Database Query Layer**: [`database/db.js`](database/db.js)
 
 ### Key Database Tables:
 1. `users`: Indexed SHA-256 `username_hash`, display usernames, Bcrypt `password_hash`, and expanded role check (`ADMIN`, `HR`, `EMPLOYEE`, `USER`, `DEVICE`).
@@ -285,7 +275,7 @@ Configuration variables can be customized in `.env`:
 | `PORT` / `NODE_PORT` | `3000` | Port for Node.js Express server |
 | `JAVA_PORT` | `3001` | Port for Java Spring Boot server |
 | `NODE_ENV` | `production` | Environment mode (`development` / `production`) |
-| `DB_DIALECT` | `mysql` | Active database dialect (`mysql` or `sqlite`) |
+| `DB_DIALECT` | `mysql` | Active database dialect (`mysql`) |
 | `MYSQL_HOST` | `127.0.0.1` | MySQL server host address |
 | `MYSQL_PORT` | `3306` | MySQL server port |
 | `MYSQL_USER` | `soukhya_user` | MySQL username |

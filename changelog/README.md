@@ -20,18 +20,18 @@ HR-Enterprise-Prod (v1.0.0) ────────► Initial C# / Java / SQLi
 HR-Enterprise-Dev-V1 (v1.1.0) ──────► Java Spring Boot 3 migration & initial ESSL UI
                                             │
                                             ▼
-HR-Enterprise-Dev-V2 (v2.0.0) ──────► MySQL 8.4 LTS, Hash-Based Auth, Admin Governance,
-                                      DSA LRU Caching, Full-Screen UI, Dual Dialect
+HR-Enterprise-Dev-V2 (v2.0.0) ──────► Pure MySQL 8.4 LTS, Hash-Based Auth, Admin Governance,
+                                      DSA LRU Caching, Full-Screen UI, Complete SQLite Elimination
 ```
 
 ### Version Summaries:
 
 - **v2.0.0 (`HR-Enterprise-Dev-V2`) — [Current Active Branch]**:
-  - **Database**: Migrated to MySQL 8.4 LTS with InnoDB, native JSON biometrics, composite indexes, connection pooling, and automated SQLite fallback.
+  - **Database**: Pure enterprise MySQL 8.4 LTS with InnoDB, native JSON biometrics, composite indexes, connection pooling, and complete removal of SQLite.
   - **Authentication**: Zero plaintext credentials (SHA-256 username hash + Bcrypt password hash), session revocation, and JWT token blacklist.
   - **Governance**: Real-time mode switching (Admin Mode vs. User Mode) and admin-governed password resets (no self-service forgot password).
   - **Performance**: DSA Doubly-Linked-List LRU Cache, Prefix Trie, Server-Sent Events (SSE) live sync.
-  - **Frontend UI**: Full-viewport responsiveness, interactive login modal, mode switcher, and live attendance counter.
+  - **Frontend UI**: Full-viewport responsiveness, interactive login modal, mode switcher, and role-aware changelog modal.
   - **DevOps**: Single-command startup (`npm start`) with auto-starting MySQL daemon.
 
 - **v1.1.0 (`HR-Enterprise-Dev-V1`)**:
