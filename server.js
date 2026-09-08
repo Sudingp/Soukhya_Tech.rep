@@ -16,7 +16,7 @@ const { LRUCache } = require('./lib/dsa_cache');
 
 require('dotenv').config();
 
-const { db, stmts } = require('./database/db');
+const { db, stmts, sqliteStmts, getActiveDialect, checkMySQL } = require('./database/db');
 
 // ══════════════════════════════════════════════
 // ENV CONFIG with safe dev fallbacks
@@ -347,14 +347,14 @@ setInterval(() => {
 // ══════════════════════════════════════════════
 // Auth Middleware
 // ══════════════════════════════════════════════
-function authenticate(req, res, next) {
+async function authenticate(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth?.startsWith('Bearer ')) {
     return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Bearer token required' } });
   }
   const token = auth.slice(7);
   try {
-    const blacklisted = stmts.isTokenBlacklisted.get(hashToken(token));
+    const blacklisted = await stmts.isTokenBlacklisted.get(hashToken(token));
     if (blacklisted) throw new Error('Token revoked');
     req.user = jwt.verify(token, JWT_ACCESS_SECRET);
     next();
@@ -496,9 +496,9 @@ function err(res, code, message, status = 400) {
 // ══════════════════════════════════════════════
 // Seeding (protected, audited, idempotent)
 // ══════════════════════════════════════════════
-function seedDatabase(reqUser = 'system') {
-  const countObj = stmts.totalEmployeesCount.get();
-  if (countObj.total > 0) {
+async function seedDatabase(reqUser = 'system') {
+  const countObj = await stmts.totalEmployeesCount.get();
+  if (countObj && countObj.total > 0) {
     console.log('  [SEEDER] Database already has employee records. Skipping seeder.');
     return { seeded: false, count: countObj.total };
   }
@@ -601,10 +601,16 @@ function seedDatabase(reqUser = 'system') {
     }));
   }
 
-  const runTransaction = db.transaction((empList) => {
-    for (const emp of empList) stmts.insertEmployee.run(emp);
-  });
-  runTransaction(listToInsert);
+  if (getActiveDialect() === 'mysql') {
+    for (const emp of listToInsert) {
+      await stmts.insertEmployee.run(emp);
+    }
+  } else {
+    const runTransaction = db.transaction((empList) => {
+      for (const emp of empList) sqliteStmts.insertEmployee.run(emp);
+    });
+    runTransaction(listToInsert);
+  }
 
   console.log(`  [SEEDER] Successfully seeded 100 employees.`);
   return { seeded: true, count: 100 };
@@ -615,16 +621,16 @@ function seedDatabase(reqUser = 'system') {
 // ══════════════════════════════════════════════
 
 // POST /api/auth/login
-app.post('/api/auth/login', authLimiter, (req, res) => {
+app.post('/api/auth/login', authLimiter, async (req, res) => {
   const v = validate(schemas.login, req.body);
   if (!v.ok) return err(res, 'VALIDATION_ERROR', v.msg, 400);
 
   const cleanUser = v.value.username.trim();
   const uHash = crypto.createHash('sha256').update(cleanUser.toLowerCase()).digest('hex');
-  let user = stmts.getUserByUsernameHash.get(uHash);
+  let user = await stmts.getUserByUsernameHash.get(uHash);
   if (!user) {
     // fallback to legacy plain username if present
-    user = stmts.getUserByUsername.get(cleanUser);
+    user = await stmts.getUserByUsername.get(cleanUser);
   }
   if (!user || !bcrypt.compareSync(v.value.password, user.password_hash)) {
     return err(res, 'INVALID_CREDENTIALS', 'Invalid username or password', 401);
@@ -636,8 +642,8 @@ app.post('/api/auth/login', authLimiter, (req, res) => {
 });
 
 // GET /api/auth/me
-app.get('/api/auth/me', authenticate, (req, res) => {
-  const user = stmts.getUserById.get(req.user.id);
+app.get('/api/auth/me', authenticate, async (req, res) => {
+  const user = await stmts.getUserById.get(req.user.id);
   if (!user) return err(res, 'USER_NOT_FOUND', 'User profile not found', 404);
   ok(res, {
     id: user.id,
@@ -649,12 +655,12 @@ app.get('/api/auth/me', authenticate, (req, res) => {
 });
 
 // POST /api/auth/refresh
-app.post('/api/auth/refresh', authLimiter, (req, res) => {
+app.post('/api/auth/refresh', authLimiter, async (req, res) => {
   const { refresh_token } = req.body;
   if (!refresh_token) return err(res, 'MISSING_TOKEN', 'Refresh token required', 400);
   try {
     const payload = jwt.verify(refresh_token, JWT_REFRESH_SECRET);
-    const user = (payload.id ? stmts.getUserById.get(payload.id) : null) || stmts.getUserByUsername.get(payload.sub);
+    const user = (payload.id ? await stmts.getUserById.get(payload.id) : null) || await stmts.getUserByUsername.get(payload.sub);
     if (!user) throw new Error('User not found');
     const usernameDisplay = user.username_display || user.username;
     const tokens = generateTokens({ id: user.id, username: usernameDisplay, role: user.role });
@@ -665,13 +671,13 @@ app.post('/api/auth/refresh', authLimiter, (req, res) => {
 });
 
 // POST /api/auth/logout
-app.post('/api/auth/logout', authenticate, (req, res) => {
+app.post('/api/auth/logout', authenticate, async (req, res) => {
   const auth = req.headers.authorization;
   const token = auth.slice(7);
   try {
     const decoded = jwt.decode(token);
     if (decoded?.exp) {
-      stmts.blacklistToken.run(hashToken(token), decoded.exp);
+      await stmts.blacklistToken.run(hashToken(token), decoded.exp);
     }
   } catch {}
   ok(res, { message: 'Logged out successfully' });
@@ -682,8 +688,8 @@ app.post('/api/auth/logout', authenticate, (req, res) => {
 // ══════════════════════════════════════════════
 
 // GET /api/admin/users
-app.get('/api/admin/users', authenticate, requireRoles('ADMIN'), (req, res) => {
-  const users = stmts.getAllUsers.all();
+app.get('/api/admin/users', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  const users = await stmts.getAllUsers.all();
   ok(res, users.map(u => ({
     id: u.id,
     username: u.username_display || u.username,
@@ -695,7 +701,7 @@ app.get('/api/admin/users', authenticate, requireRoles('ADMIN'), (req, res) => {
 });
 
 // POST /api/admin/users
-app.post('/api/admin/users', authenticate, requireRoles('ADMIN'), (req, res) => {
+app.post('/api/admin/users', authenticate, requireRoles('ADMIN'), async (req, res) => {
   const schema = Joi.object({
     username: Joi.string().min(3).max(50).required(),
     password: Joi.string().min(6).max(100).required(),
@@ -706,7 +712,7 @@ app.post('/api/admin/users', authenticate, requireRoles('ADMIN'), (req, res) => 
 
   const cleanUser = v.value.username.trim();
   const uHash = crypto.createHash('sha256').update(cleanUser.toLowerCase()).digest('hex');
-  const existing = stmts.getUserByUsernameHash.get(uHash) || stmts.getUserByUsername.get(cleanUser);
+  const existing = await stmts.getUserByUsernameHash.get(uHash) || await stmts.getUserByUsername.get(cleanUser);
   if (existing) {
     return err(res, 'CONFLICT', 'Username already exists', 409);
   }
@@ -714,7 +720,7 @@ app.post('/api/admin/users', authenticate, requireRoles('ADMIN'), (req, res) => 
   const saltRounds = 12;
   const password_hash = bcrypt.hashSync(v.value.password, saltRounds);
   try {
-    const result = stmts.insertUser.run({
+    const result = await stmts.insertUser.run({
       username: cleanUser,
       username_hash: uHash,
       username_display: cleanUser,
@@ -729,7 +735,7 @@ app.post('/api/admin/users', authenticate, requireRoles('ADMIN'), (req, res) => 
 });
 
 // POST /api/admin/users/:id/reset-password
-app.post('/api/admin/users/:id/reset-password', authenticate, requireRoles('ADMIN'), (req, res) => {
+app.post('/api/admin/users/:id/reset-password', authenticate, requireRoles('ADMIN'), async (req, res) => {
   const schema = Joi.object({
     new_password: Joi.string().min(6).max(100).required(),
   });
@@ -737,28 +743,28 @@ app.post('/api/admin/users/:id/reset-password', authenticate, requireRoles('ADMI
   if (!v.ok) return err(res, 'VALIDATION_ERROR', v.msg, 400);
 
   const userId = parseInt(req.params.id, 10);
-  const targetUser = stmts.getUserById.get(userId);
+  const targetUser = await stmts.getUserById.get(userId);
   if (!targetUser) return err(res, 'NOT_FOUND', 'User not found', 404);
 
   const password_hash = bcrypt.hashSync(v.value.new_password, 12);
-  stmts.updateUserPassword.run(password_hash, userId);
+  await stmts.updateUserPassword.run(password_hash, userId);
   auditLog({ table: 'users', recordId: String(userId), action: 'UPDATE', newVals: { target_user: targetUser.username_display || targetUser.username, field: 'password' }, req });
   ok(res, { message: `Password reset successfully for user ${targetUser.username_display || targetUser.username}` });
 });
 
 // DELETE /api/admin/users/:id
-app.delete('/api/admin/users/:id', authenticate, requireRoles('ADMIN'), (req, res) => {
+app.delete('/api/admin/users/:id', authenticate, requireRoles('ADMIN'), async (req, res) => {
   const userId = parseInt(req.params.id, 10);
   if (userId === req.user.id) {
     return err(res, 'FORBIDDEN', 'Cannot delete your own account', 400);
   }
-  const targetUser = stmts.getUserById.get(userId);
+  const targetUser = await stmts.getUserById.get(userId);
   if (!targetUser) return err(res, 'NOT_FOUND', 'User not found', 404);
   if (targetUser.role === 'ADMIN') {
     return err(res, 'FORBIDDEN', 'Cannot delete an administrator account', 403);
   }
 
-  stmts.deleteUser.run(userId);
+  await stmts.deleteUser.run(userId);
   auditLog({ table: 'users', recordId: String(userId), action: 'DELETE', oldVals: { username: targetUser.username_display || targetUser.username }, req });
   ok(res, { message: 'User deleted successfully' });
 });
@@ -768,7 +774,7 @@ app.delete('/api/admin/users/:id', authenticate, requireRoles('ADMIN'), (req, re
 // ══════════════════════════════════════════════
 
 // GET /api/employees — paginated, cached, role-aware masking
-app.get('/api/employees', authenticate, (req, res) => {
+app.get('/api/employees', authenticate, async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const size = Math.min(100, Math.max(1, parseInt(req.query.size, 10) || 20));
@@ -779,9 +785,9 @@ app.get('/api/employees', authenticate, (req, res) => {
     let rows = cache.get(cacheKey);
     if (!rows) {
       if (statusFilter) {
-        rows = stmts.getEmployeeByStatus.all(statusFilter);
+        rows = await stmts.getEmployeeByStatus.all(statusFilter);
       } else {
-        rows = stmts.getAllEmployees.all();
+        rows = await stmts.getAllEmployees.all();
       }
       cache.set(cacheKey, rows, CACHE_TTL_EMP * 1000, ['employees']);
     }
@@ -789,9 +795,10 @@ app.get('/api/employees', authenticate, (req, res) => {
     const total = rows.length;
     const paginated = rows.slice((page - 1) * size, page * size).map(e => {
       const decrypted = decryptEmployeePii(e, !isAdminOrHr);
+      const desc = typeof decrypted.descriptor === 'string' ? JSON.parse(decrypted.descriptor) : decrypted.descriptor;
       return {
         ...decrypted,
-        descriptor: JSON.parse(decrypted.descriptor),
+        descriptor: desc,
         // Never expose descriptor_hash to client
         descriptor_hash: undefined,
       };
@@ -807,19 +814,20 @@ app.get('/api/employees', authenticate, (req, res) => {
 });
 
 // GET /api/employees/:id
-app.get('/api/employees/:id', authenticate, (req, res) => {
+app.get('/api/employees/:id', authenticate, async (req, res) => {
   try {
     const isAdminOrHr = ['ADMIN', 'HR'].includes(req.user.role);
     const cacheKey = CACHE_KEYS.EMP_BY_ID(req.params.id);
     let row = cache.get(cacheKey);
     if (!row) {
-      row = stmts.getEmployee.get(req.params.id);
+      row = await stmts.getEmployee.get(req.params.id);
       if (row) cache.set(cacheKey, row, CACHE_TTL_EMP * 1000, ['employees']);
     }
     if (!row) return err(res, 'NOT_FOUND', 'Employee not found', 404);
 
     const decrypted = decryptEmployeePii(row, !isAdminOrHr);
-    const responseData = { employee: { ...decrypted, descriptor: JSON.parse(decrypted.descriptor), descriptor_hash: undefined } };
+    const desc = typeof decrypted.descriptor === 'string' ? JSON.parse(decrypted.descriptor) : decrypted.descriptor;
+    const responseData = { employee: { ...decrypted, descriptor: desc, descriptor_hash: undefined } };
     if (handleETag(req, res, responseData, 'employees')) return;
     ok(res, responseData);
 
@@ -830,13 +838,13 @@ app.get('/api/employees/:id', authenticate, (req, res) => {
 });
 
 // POST /api/employees — ADMIN or HR only
-app.post('/api/employees', authenticate, requireRoles('ADMIN', 'HR'), (req, res) => {
+app.post('/api/employees', authenticate, requireRoles('ADMIN', 'HR'), async (req, res) => {
   try {
     const v = validate(schemas.registerEmployee, req.body);
     if (!v.ok) return err(res, 'VALIDATION_ERROR', v.msg, 400);
 
     const { id, descriptor, ...rest } = v.value;
-    if (stmts.getEmployee.get(id)) return err(res, 'CONFLICT', `Employee ID "${id}" already exists`, 409);
+    if (await stmts.getEmployee.get(id)) return err(res, 'CONFLICT', `Employee ID "${id}" already exists`, 409);
 
     const descriptorJson = JSON.stringify(descriptor);
     const descriptorHash = crypto.createHash('sha256').update(descriptorJson).digest('hex');
@@ -847,7 +855,7 @@ app.post('/api/employees', authenticate, requireRoles('ADMIN', 'HR'), (req, res)
       updated_by: req.user.username,
     });
 
-    stmts.insertEmployee.run(emp);
+    await stmts.insertEmployee.run(emp);
 
     auditLog({ table: 'employees', recordId: id, action: 'INSERT', newVals: { name: rest.name, department: rest.department, role: rest.role }, req });
     cacheInvalidateEmployee(id);
@@ -860,9 +868,9 @@ app.post('/api/employees', authenticate, requireRoles('ADMIN', 'HR'), (req, res)
 });
 
 // PUT /api/employees/:id — ADMIN or HR only, with optimistic locking
-app.put('/api/employees/:id', authenticate, requireRoles('ADMIN', 'HR'), (req, res) => {
+app.put('/api/employees/:id', authenticate, requireRoles('ADMIN', 'HR'), async (req, res) => {
   try {
-    const existing = stmts.getEmployee.get(req.params.id);
+    const existing = await stmts.getEmployee.get(req.params.id);
     if (!existing) return err(res, 'NOT_FOUND', 'Employee not found', 404);
 
     const v = validate(schemas.updateEmployee, req.body);
@@ -925,7 +933,7 @@ app.put('/api/employees/:id', authenticate, requireRoles('ADMIN', 'HR'), (req, r
       version: existing.version,
     });
 
-    const result = stmts.updateEmployee.run(emp);
+    const result = await stmts.updateEmployee.run(emp);
     if (result.changes === 0) {
       // Version mismatch — optimistic locking conflict
       return err(res, 'CONFLICT', 'Employee was modified by another request. Please refresh and retry.', 409);
@@ -942,12 +950,12 @@ app.put('/api/employees/:id', authenticate, requireRoles('ADMIN', 'HR'), (req, r
 });
 
 // DELETE /api/employees/:id — ADMIN only
-app.delete('/api/employees/:id', authenticate, requireRoles('ADMIN'), (req, res) => {
+app.delete('/api/employees/:id', authenticate, requireRoles('ADMIN'), async (req, res) => {
   try {
-    const existing = stmts.getEmployee.get(req.params.id);
+    const existing = await stmts.getEmployee.get(req.params.id);
     if (!existing) return err(res, 'NOT_FOUND', 'Employee not found', 404);
 
-    stmts.deleteEmployee.run(req.params.id);
+    await stmts.deleteEmployee.run(req.params.id);
 
     auditLog({ table: 'employees', recordId: req.params.id, action: 'DELETE', oldVals: { name: existing.name }, req });
     cacheInvalidateEmployee(req.params.id);
@@ -964,7 +972,7 @@ app.delete('/api/employees/:id', authenticate, requireRoles('ADMIN'), (req, res)
 // ══════════════════════════════════════════════
 
 // GET /api/attendance — paginated, role-aware
-app.get('/api/attendance', authenticate, (req, res) => {
+app.get('/api/attendance', authenticate, async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const size = Math.min(100, Math.max(1, parseInt(req.query.size, 10) || 20));
@@ -975,11 +983,11 @@ app.get('/api/attendance', authenticate, (req, res) => {
     if (dateStr) {
       const start = `${dateStr}T00:00:00.000Z`;
       const end = `${dateStr}T23:59:59.999Z`;
-      records = stmts.getAttByDateRange.all(start, end, size, (page - 1) * size);
+      records = await stmts.getAttByDateRange.all(start, end, size, (page - 1) * size);
     } else if (empId) {
-      records = stmts.getAttByEmp.all(empId, size, (page - 1) * size);
+      records = await stmts.getAttByEmp.all(empId, size, (page - 1) * size);
     } else {
-      records = stmts.getAllAttendance.all(size, (page - 1) * size);
+      records = await stmts.getAllAttendance.all(size, (page - 1) * size);
     }
 
     ok(res, { records, pagination: { page, size } });
@@ -990,26 +998,26 @@ app.get('/api/attendance', authenticate, (req, res) => {
 });
 
 // POST /api/attendance — DEVICE role or ADMIN/HR; rate limited
-app.post('/api/attendance', authenticate, requireRoles('ADMIN', 'HR', 'DEVICE'), attendanceLimiter, (req, res) => {
+app.post('/api/attendance', authenticate, requireRoles('ADMIN', 'HR', 'DEVICE'), attendanceLimiter, async (req, res) => {
   try {
     const v = validate(schemas.logAttendance, req.body);
     if (!v.ok) return err(res, 'VALIDATION_ERROR', v.msg, 400);
 
     const { emp_id, name, dept, role, timestamp, status } = v.value;
 
-    const emp = stmts.getEmployee.get(emp_id);
+    const emp = await stmts.getEmployee.get(emp_id);
     if (!emp) return err(res, 'NOT_FOUND', 'Employee not registered in the system', 404);
 
     if (emp.status === 'Hibernate') {
       return err(res, 'FORBIDDEN', 'Employee currently in Hibernate Mode. Attendance disabled.', 403);
     }
 
-    const dup = stmts.checkDuplicate.get(emp_id);
+    const dup = await stmts.checkDuplicate.get(emp_id);
     if (dup) {
       return ok(res, { message: 'Attendance already logged today', duplicate: true, att_id: dup.att_id });
     }
 
-    const info = stmts.insertAtt.run({
+    const info = await stmts.insertAtt.run({
       emp_id, name, dept, role, timestamp, status,
       logged_by: req.user.username,
       ip_address: req.ip,
@@ -1027,9 +1035,9 @@ app.post('/api/attendance', authenticate, requireRoles('ADMIN', 'HR', 'DEVICE'),
 });
 
 // DELETE /api/attendance/:att_id — ADMIN or HR only
-app.delete('/api/attendance/:att_id', authenticate, requireRoles('ADMIN', 'HR'), (req, res) => {
+app.delete('/api/attendance/:att_id', authenticate, requireRoles('ADMIN', 'HR'), async (req, res) => {
   try {
-    stmts.deleteAtt.run(req.params.att_id);
+    await stmts.deleteAtt.run(req.params.att_id);
     auditLog({ table: 'attendance', recordId: req.params.att_id, action: 'DELETE', req });
     cacheInvalidateAttendance();
     ok(res, { message: 'Record deleted' });
@@ -1042,14 +1050,14 @@ app.delete('/api/attendance/:att_id', authenticate, requireRoles('ADMIN', 'HR'),
 // ══════════════════════════════════════════════
 // STATS ROUTE
 // ══════════════════════════════════════════════
-app.get('/api/stats', authenticate, requireRoles('ADMIN', 'HR'), (req, res) => {
+app.get('/api/stats', authenticate, requireRoles('ADMIN', 'HR'), async (req, res) => {
   try {
     let data = cache.get(CACHE_KEYS.STATS);
     if (!data) {
-      const today = stmts.statsToday.get();
-      const total = stmts.totalEmployees.get();
-      const records = stmts.totalRecords.get();
-      const sc = stmts.statusCounts.get() || { active: 0, hibernate: 0, on_leave: 0, resigned: 0 };
+      const today = await stmts.statsToday.get();
+      const total = await stmts.totalEmployees.get();
+      const records = await stmts.totalRecords.get();
+      const sc = (await stmts.statusCounts.get()) || { active: 0, hibernate: 0, on_leave: 0, resigned: 0 };
       const totalCount = total.total || 0;
 
       data = {
@@ -1065,8 +1073,8 @@ app.get('/api/stats', authenticate, requireRoles('ADMIN', 'HR'), (req, res) => {
         },
         active_percent: totalCount > 0 ? Math.round((sc.active / totalCount) * 100) : 0,
         hibernate_percent: totalCount > 0 ? Math.round((sc.hibernate / totalCount) * 100) : 0,
-        dept_hibernate_counts: stmts.deptHibernateCounts.all(),
-        monthly_hibernate_trend: stmts.monthlyHibernateTrend.all(),
+        dept_hibernate_counts: await stmts.deptHibernateCounts.all(),
+        monthly_hibernate_trend: await stmts.monthlyHibernateTrend.all(),
       };
       cache.set(CACHE_KEYS.STATS, data, CACHE_TTL_STATS * 1000, ['stats']);
     }
@@ -1118,18 +1126,16 @@ app.get('/api/sync/version', (req, res) => {
 // ══════════════════════════════════════════════
 // RESET & SEED — ADMIN only, HMAC-signed, audited, rate-limited
 // ══════════════════════════════════════════════
-app.post('/api/reset-seed', authenticate, requireRoles('ADMIN'), resetSeedLimiter, verifyRequestSignature, (req, res) => {
+app.post('/api/reset-seed', authenticate, requireRoles('ADMIN'), resetSeedLimiter, verifyRequestSignature, async (req, res) => {
   try {
     console.log('  [SEEDER] Manual request to Reset and Seed database...');
 
-    db.prepare('DELETE FROM attendance').run();
-    db.prepare('DELETE FROM employees').run();
+    await stmts.resetAttendanceAndEmployees.run();
     notifyDbChange('all', { action: 'reset_seed' });
 
+    const result = await seedDatabase(req.user.username);
 
-    const result = seedDatabase(req.user.username);
-
-    auditLog({ table: 'employees', recordId: 'ALL', action: 'RESET_SEED', req });
+    await auditLog({ table: 'employees', recordId: 'ALL', action: 'RESET_SEED', req });
 
     ok(res, { message: 'Database has been reset and seeded with 100 realistic records!', ...result });
   } catch (e) {
@@ -1141,23 +1147,32 @@ app.post('/api/reset-seed', authenticate, requireRoles('ADMIN'), resetSeedLimite
 // ══════════════════════════════════════════════
 // AUDIT LOGS — ADMIN only
 // ══════════════════════════════════════════════
-app.get('/api/audit-logs', authenticate, requireRoles('ADMIN'), (req, res) => {
+app.get('/api/audit-logs', authenticate, requireRoles('ADMIN'), async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const size = Math.min(100, Math.max(1, parseInt(req.query.size, 10) || 20));
     const offset = (page - 1) * size;
 
-    const rows = db.prepare(
-      'SELECT * FROM audit_log ORDER BY performed_at DESC LIMIT ? OFFSET ?'
-    ).all(size, offset);
-
-    const total = db.prepare('SELECT COUNT(*) as c FROM audit_log').get().c;
+    const rows = await stmts.getAuditLogs.all(size, offset);
+    const total = await stmts.countAuditLogs.get();
 
     ok(res, { logs: rows, pagination: { page, size, total, pages: Math.ceil(total / size) } });
   } catch (e) {
     console.error('[GET /api/audit-logs]', e);
     err(res, 'INTERNAL_ERROR', 'Failed to fetch audit logs', 500);
   }
+});
+
+// ══════════════════════════════════════════════
+// HEALTH CHECK
+// ══════════════════════════════════════════════
+app.get('/api/health', (req, res) => {
+  ok(res, {
+    status: 'UP',
+    dialect: getActiveDialect(),
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
 });
 
 // ══════════════════════════════════════════════
@@ -1181,7 +1196,7 @@ app.use((err, req, res, next) => {
 // ══════════════════════════════════════════════
 // Boot
 // ══════════════════════════════════════════════
-function ensureAdminUser() {
+async function ensureAdminUser() {
   if (!ADMIN_PASSWORD) {
     console.warn('[AUTH] ADMIN_PASSWORD is not configured.');
     return;
@@ -1189,11 +1204,14 @@ function ensureAdminUser() {
 
   const cleanUser = ADMIN_USERNAME.trim();
   const uHash = crypto.createHash('sha256').update(cleanUser.toLowerCase()).digest('hex');
-  const existing = stmts.getUserByUsernameHash.get(uHash) || stmts.getUserByUsername.get(cleanUser);
+  let existing = await stmts.getUserByUsernameHash.get(uHash);
+  if (!existing) {
+    existing = await stmts.getUserByUsername.get(cleanUser);
+  }
   const hash = bcrypt.hashSync(ADMIN_PASSWORD, 12);
 
   if (!existing) {
-    stmts.insertUser.run({
+    await stmts.insertUser.run({
       username: cleanUser,
       username_hash: uHash,
       username_display: cleanUser,
@@ -1205,22 +1223,37 @@ function ensureAdminUser() {
   }
 
   if (!bcrypt.compareSync(ADMIN_PASSWORD, existing.password_hash)) {
-    stmts.updateUserPassword.run(hash, existing.id);
+    await stmts.updateUserPassword.run(hash, existing.id);
     console.log(`  [AUTH] Existing admin password updated to configured ADMIN_PASSWORD.`);
   }
 }
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`\n  ╔══════════════════════════════════════╗`);
-  console.log(`  ║   SOUKHYA TECH  Server Running       ║`);
-  console.log(`  ║   http://localhost:${PORT}              ║`);
-  console.log(`  ╚══════════════════════════════════════╝\n`);
+let serverInstance = null;
+if (require.main === module) {
+  serverInstance = app.listen(PORT, '0.0.0.0', async () => {
+    console.log(`\n  ╔══════════════════════════════════════╗`);
+    console.log(`  ║   SOUKHYA TECH  Server Running       ║`);
+    console.log(`  ║   http://localhost:${PORT}              ║`);
+    console.log(`  ╚══════════════════════════════════════╝\n`);
 
-  ensureAdminUser();
+    try {
+      await checkMySQL();
+    } catch (err) {
+      console.warn('[DB] MySQL check error:', err.message);
+    }
 
-  try {
-    seedDatabase('system');
-  } catch (err) {
-    console.error('Failed to run automatic seeder:', err);
-  }
-});
+    try {
+      await ensureAdminUser();
+    } catch (err) {
+      console.error('Failed to ensure admin user:', err);
+    }
+
+    try {
+      await seedDatabase('system');
+    } catch (err) {
+      console.error('Failed to run automatic seeder:', err);
+    }
+  });
+}
+
+module.exports = { app, ensureAdminUser, seedDatabase, serverInstance };

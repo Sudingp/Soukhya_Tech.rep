@@ -20,3 +20,6 @@ Antigravity.tar.gz
 __pycache__/
 *.py[cod]
 .pytest_cache/
+data/
+*.sock
+*.pid

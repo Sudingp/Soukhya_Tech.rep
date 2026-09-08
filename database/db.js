@@ -343,9 +343,9 @@ if (currentVersion < 7) {
 console.log(`[DB] SQLite ready at ${DB_PATH} | Schema v${getSchemaVersion()}`);
 
 // ──────────────────────────────────────────────
-// Prepared Statements
+// SQLite Prepared Statements (Embedded / Fallback)
 // ──────────────────────────────────────────────
-const stmts = {
+const sqliteStmts = {
   // ── Users (Auth & Governance) ──
   getUserByUsername: db.prepare('SELECT * FROM users WHERE username = ? AND active = 1'),
   getUserByUsernameHash: db.prepare('SELECT * FROM users WHERE username_hash = ? AND active = 1'),
@@ -501,8 +501,220 @@ const stmts = {
   isTokenBlacklisted: db.prepare('SELECT 1 FROM token_blacklist WHERE token_hash = ?'),
   purgeExpiredTokens: db.prepare('DELETE FROM token_blacklist WHERE expires_at < ?'),
 
-  // ── Seeder Guard ──
-  totalEmployeesCount: db.prepare('SELECT COUNT(*) as total FROM employees')
+  // ── Seeder & Reset Helpers ──
+  totalEmployeesCount: db.prepare('SELECT COUNT(*) as total FROM employees'),
+  truncateAttendance: db.prepare('DELETE FROM attendance'),
+  truncateEmployees: db.prepare('DELETE FROM employees'),
+  getAuditLogs: db.prepare('SELECT * FROM audit_log ORDER BY performed_at DESC LIMIT ? OFFSET ?'),
+  countAuditLogs: db.prepare('SELECT COUNT(*) as c FROM audit_log')
 };
 
-module.exports = { db, stmts };
+// ──────────────────────────────────────────────
+// Enterprise MySQL 8.4 LTS Layer & Unified Router
+// ──────────────────────────────────────────────
+const MySQLAdapter = require('./mysql_adapter');
+const mysqlAdapter = new MySQLAdapter();
+
+let activeDialect = 'sqlite';
+let mysqlReady = false;
+
+async function checkMySQL() {
+  if (process.env.DB_DIALECT === 'sqlite') {
+    activeDialect = 'sqlite';
+    console.log('[DB] Dialect set to SQLite.');
+    return false;
+  }
+  const status = await mysqlAdapter.testConnection();
+  if (status.ok) {
+    activeDialect = 'mysql';
+    mysqlReady = true;
+    console.log(`[DB] Active Database: MySQL 8.4 LTS (${status.version})`);
+    try {
+      await mysqlAdapter.initSchema();
+    } catch (err) {
+      console.warn('[DB] MySQL initSchema warning:', err.message);
+    }
+    return true;
+  } else {
+    activeDialect = 'sqlite';
+    console.log(`[DB] MySQL notice: ${status.error} -> Using SQLite backend.`);
+    return false;
+  }
+}
+
+// Check at module load
+checkMySQL().catch(e => console.warn('[DB] Auto-detect error:', e.message));
+
+function getActiveDialect() {
+  return activeDialect;
+}
+
+function setDialect(dialect) {
+  activeDialect = dialect;
+}
+
+function normalizeSQLiteEmp(row) {
+  if (!row) return null;
+  const clone = { ...row };
+  if (typeof clone.descriptor === 'string') {
+    try { clone.descriptor = JSON.parse(clone.descriptor); } catch {}
+  }
+  clone.device_expiry_rule_applicable = clone.device_expiry_rule_applicable ? 1 : 0;
+  return clone;
+}
+
+// Unified statements: returns either directly (SQLite) or Promise (MySQL)
+// Caller using `await stmts.xxx.get()` works seamlessly in both!
+const stmts = {
+  // ── Users ──
+  getUserByUsername: {
+    get: (username) => (activeDialect === 'mysql' ? mysqlAdapter.getUserByUsername(username) : sqliteStmts.getUserByUsername.get(username))
+  },
+  getUserByUsernameHash: {
+    get: (uHash) => (activeDialect === 'mysql' ? mysqlAdapter.getUserByUsernameHash(uHash) : sqliteStmts.getUserByUsernameHash.get(uHash))
+  },
+  getUserById: {
+    get: (id) => (activeDialect === 'mysql' ? mysqlAdapter.getUserById(id) : sqliteStmts.getUserById.get(id))
+  },
+  getAllUsers: {
+    all: () => (activeDialect === 'mysql' ? mysqlAdapter.getAllUsers() : sqliteStmts.getAllUsers.all())
+  },
+  insertUser: {
+    run: (params) => (activeDialect === 'mysql' ? mysqlAdapter.insertUser(params) : sqliteStmts.insertUser.run(params))
+  },
+  updateUserPassword: {
+    run: (pw, id) => (activeDialect === 'mysql' ? mysqlAdapter.updateUserPassword(pw, id) : sqliteStmts.updateUserPassword.run(pw, id))
+  },
+  deleteUser: {
+    run: (id) => (activeDialect === 'mysql' ? mysqlAdapter.deleteUser(id) : sqliteStmts.deleteUser.run(id))
+  },
+
+  // ── Employees ──
+  getAllEmployees: {
+    all: () => (activeDialect === 'mysql' ? mysqlAdapter.getAllEmployees() : sqliteStmts.getAllEmployees.all().map(normalizeSQLiteEmp))
+  },
+  getEmployee: {
+    get: (id) => (activeDialect === 'mysql' ? mysqlAdapter.getEmployee(id) : normalizeSQLiteEmp(sqliteStmts.getEmployee.get(id)))
+  },
+  getEmployeeByStatus: {
+    all: (status) => (activeDialect === 'mysql' ? mysqlAdapter.getEmployeeByStatus(status) : sqliteStmts.getEmployeeByStatus.all(status).map(normalizeSQLiteEmp))
+  },
+  insertEmployee: {
+    run: (emp) => {
+      if (activeDialect === 'mysql') return mysqlAdapter.insertEmployee(emp);
+      const clone = { ...emp };
+      if (Array.isArray(clone.descriptor)) clone.descriptor = JSON.stringify(clone.descriptor);
+      return sqliteStmts.insertEmployee.run(clone);
+    }
+  },
+  updateEmployee: {
+    run: (emp) => {
+      if (activeDialect === 'mysql') return mysqlAdapter.updateEmployee(emp);
+      const clone = { ...emp };
+      if (Array.isArray(clone.descriptor)) clone.descriptor = JSON.stringify(clone.descriptor);
+      if (clone.version !== undefined) {
+        return sqliteStmts.updateEmployee.run(clone);
+      }
+      return sqliteStmts.updateEmployeeNoVersionCheck.run(clone);
+    }
+  },
+  deleteEmployee: {
+    run: (id) => (activeDialect === 'mysql' ? mysqlAdapter.deleteEmployee(id) : sqliteStmts.deleteEmployee.run(id))
+  },
+  employeeCount: {
+    get: () => (activeDialect === 'mysql' ? mysqlAdapter.employeeCount() : sqliteStmts.totalEmployees.get())
+  },
+  totalEmployeesCount: {
+    get: () => (activeDialect === 'mysql' ? mysqlAdapter.totalEmployeesCount() : sqliteStmts.totalEmployeesCount.get())
+  },
+
+  // ── Attendance ──
+  getAllAttendance: {
+    all: (size, offset) => (activeDialect === 'mysql' ? mysqlAdapter.getAllAttendance(size, offset) : sqliteStmts.getAllAttendance.all(size, offset))
+  },
+  getAttByDateRange: {
+    all: (start, end, size, offset) => (activeDialect === 'mysql' ? mysqlAdapter.getAttByDateRange(start, end, size, offset) : sqliteStmts.getAttByDateRange.all(start, end, size, offset))
+  },
+  getAttByEmp: {
+    all: (empId, size, offset) => (activeDialect === 'mysql' ? mysqlAdapter.getAttByEmp(empId, size, offset) : sqliteStmts.getAttByEmp.all(empId, size, offset))
+  },
+  getAttendance: {
+    all: (limit) => (activeDialect === 'mysql' ? mysqlAdapter.getAttendance(limit) : sqliteStmts.getAllAttendance.all(limit || 100, 0))
+  },
+  insertAtt: {
+    run: (att) => (activeDialect === 'mysql' ? mysqlAdapter.insertAtt(att) : sqliteStmts.insertAtt.run(att))
+  },
+  checkDuplicate: {
+    get: (emp_id) => (activeDialect === 'mysql' ? mysqlAdapter.checkDuplicate(emp_id) : sqliteStmts.checkDuplicate.get(emp_id))
+  },
+  deleteAtt: {
+    run: (att_id) => (activeDialect === 'mysql' ? mysqlAdapter.deleteAtt(att_id) : sqliteStmts.deleteAtt.run(att_id))
+  },
+
+  // ── Stats ──
+  statsToday: {
+    get: () => (activeDialect === 'mysql' ? mysqlAdapter.statsToday() : sqliteStmts.statsToday.get())
+  },
+  totalEmployees: {
+    get: () => (activeDialect === 'mysql' ? mysqlAdapter.totalEmployees() : sqliteStmts.totalEmployees.get())
+  },
+  totalRecords: {
+    get: () => (activeDialect === 'mysql' ? mysqlAdapter.totalRecords() : sqliteStmts.totalRecords.get())
+  },
+  statusCounts: {
+    get: () => (activeDialect === 'mysql' ? mysqlAdapter.statusCounts() : sqliteStmts.statusCounts.get())
+  },
+  deptHibernateCounts: {
+    all: () => (activeDialect === 'mysql' ? mysqlAdapter.deptHibernateCounts() : sqliteStmts.deptHibernateCounts.all())
+  },
+  monthlyHibernateTrend: {
+    all: () => (activeDialect === 'mysql' ? mysqlAdapter.monthlyHibernateTrend() : sqliteStmts.monthlyHibernateTrend.all())
+  },
+
+  // ── Audit ──
+  insertAudit: {
+    run: (audit) => (activeDialect === 'mysql' ? mysqlAdapter.insertAudit(audit) : sqliteStmts.insertAudit.run(audit))
+  },
+  getAuditLogs: {
+    all: (size, offset) => (activeDialect === 'mysql' ? mysqlAdapter.getAuditLogs(size, offset) : sqliteStmts.getAuditLogs.all(size, offset))
+  },
+  countAuditLogs: {
+    get: async () => {
+      if (activeDialect === 'mysql') return await mysqlAdapter.countAuditLogs();
+      return sqliteStmts.countAuditLogs.get().c;
+    }
+  },
+
+  // ── Reset & Truncate ──
+  resetAttendanceAndEmployees: {
+    run: async () => {
+      if (activeDialect === 'mysql') {
+        return await mysqlAdapter.clearAll();
+      } else {
+        sqliteStmts.truncateAttendance.run();
+        sqliteStmts.truncateEmployees.run();
+      }
+    }
+  },
+
+  // ── Token Blacklist ──
+  blacklistToken: {
+    run: (token, exp) => (activeDialect === 'mysql' ? mysqlAdapter.blacklistToken(token, exp) : sqliteStmts.blacklistToken.run(token, exp))
+  },
+  isTokenBlacklisted: {
+    get: (token) => (activeDialect === 'mysql' ? mysqlAdapter.isTokenBlacklisted(token) : sqliteStmts.isTokenBlacklisted.get(token))
+  },
+  purgeExpiredTokens: {
+    run: (now) => (activeDialect === 'mysql' ? mysqlAdapter.purgeExpiredTokens(now) : sqliteStmts.purgeExpiredTokens.run(now))
+  }
+};
+
+module.exports = {
+  db,
+  stmts,
+  sqliteStmts,
+  mysqlAdapter,
+  getActiveDialect,
+  setDialect,
+  checkMySQL
+};
