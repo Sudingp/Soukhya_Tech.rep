@@ -5,6 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "start:mysql": "bash scripts/setup_mysql.sh && node server.js",
     "start:all": "python3 start_all.py || python start_all.py",
     "stop:all": "python3 stop_all.py || python stop_all.py",
     "dev": "nodemon server.js",
