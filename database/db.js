@@ -21,7 +21,10 @@ db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 db.pragma('synchronous = NORMAL');
 db.pragma('temp_store = MEMORY');
+db.pragma('cache_size = -64000'); // 64MB in-memory page cache
 db.pragma('mmap_size = 268435456'); // 256MB mmap for read perf
+db.pragma('busy_timeout = 5000'); // 5s timeout to prevent SQLITE_BUSY locks
+
 
 // ──────────────────────────────────────────────
 // Migration System (replaces blind ALTER TABLE)

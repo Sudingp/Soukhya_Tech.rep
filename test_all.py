@@ -187,6 +187,14 @@ def run_service_tests(port, name):
     assert_api_get(port, "/api/attendance", access_token, name)
     assert_api_get(port, "/api/stats", access_token, name)
 
+    if "Node" in name:
+        log_info(f"Testing Real-Time Sync & DSA Cache stats on {name}")
+        sync_status, sync_body = make_request(f"http://127.0.0.1:{port}/api/sync/version")
+        if sync_status == 200 and "revision" in sync_body:
+            log_ok(f"{name} Real-Time Sync & DSA Cache active (HTTP 200)")
+        else:
+            log_fail(f"{name} /api/sync/version returned HTTP {sync_status}")
+
     if "Java" in name:
         log_info(f"Testing Actuator health on {name}")
         act_status, _ = make_request(f"http://127.0.0.1:{port}/actuator/health")
@@ -196,6 +204,7 @@ def run_service_tests(port, name):
             log_fail(f"{name} Actuator health returned HTTP {act_status} (expected 200)")
 
     return True
+
 
 def main():
     target = (sys.argv[1] if len(sys.argv) > 1 else 'all').lower()

@@ -74,42 +74,219 @@ async function ensureAuth() {
   return loginData.access_token;
 }
 
+// ══════════════════════════════════════════════
+// DSA Engine & Client Caching Layer
+// ══════════════════════════════════════════════
+const clientCache = (typeof LRUCache !== 'undefined')
+  ? new LRUCache({ capacity: 500, defaultTTL: 60000, sweepInterval: 15000 })
+  : null;
+
+const employeeTrie = (typeof PrefixTrie !== 'undefined')
+  ? new PrefixTrie()
+  : null;
+
+const eTags = new Map();
+
 async function apiFetch(path, opts = {}) {
   let token = localStorage.getItem('authToken');
-  if (!token) {
+  if (!token && path !== '/api/auth/login') {
     token = await ensureAuth();
   }
 
-  const res = await fetch(API + path, {
-    ...opts,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-      ...(opts.headers || {})
-    }
-  });
+  const method = (opts.method || 'GET').toUpperCase();
+  const headers = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`,
+    ...(opts.headers || {})
+  };
 
-  if (res.status === 401 && path !== '/api/auth/login') {
-    localStorage.removeItem('authToken');
-    const freshToken = await ensureAuth();
-    const retry = await fetch(API + path, {
-      ...opts,
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${freshToken}`,
-        ...(opts.headers || {})
-      }
-    });
-    return retry.json();
+  // Conditional GET via ETag (O(1) HTTP 304 Not Modified validation)
+  if (method === 'GET' && eTags.has(path)) {
+    headers['If-None-Match'] = eTags.get(path);
   }
 
-  return res.json();
+  try {
+    const res = await fetch(API + path, { ...opts, headers });
+
+    // HTTP 304 Not Modified -> Serve instantaneously from local LRU cache
+    if (res.status === 304 && clientCache && clientCache.has(path)) {
+      return clientCache.get(path);
+    }
+
+    if (res.status === 401 && path !== '/api/auth/login') {
+      localStorage.removeItem('authToken');
+      const freshToken = await ensureAuth();
+      const retryHeaders = {
+        ...headers,
+        Authorization: `Bearer ${freshToken}`
+      };
+      const retry = await fetch(API + path, { ...opts, headers: retryHeaders });
+      return retry.json();
+    }
+
+    // Capture and index server ETag
+    const responseETag = res.headers.get('ETag');
+    if (responseETag) {
+      eTags.set(path, responseETag);
+    }
+
+    const data = await res.json();
+
+    // Cache successful GET responses in client-side LRU Cache with TTL
+    if (method === 'GET' && res.ok && clientCache) {
+      const ttl = path.includes('/api/stats') ? 30000 : 120000;
+      clientCache.set(path, data, ttl, [path.split('?')[0]]);
+    }
+
+    return data;
+  } catch (err) {
+    if (method === 'GET' && clientCache && clientCache.has(path)) {
+      console.warn('[CACHE] Offline fallback, serving from local LRU cache:', path);
+      return clientCache.get(path);
+    }
+    throw err;
+  }
 }
 
-const apiGet    = (path)         => apiFetch(path);
+const apiGet    = (path, useCache = true) => {
+  if (useCache && clientCache && clientCache.has(path)) {
+    return Promise.resolve(clientCache.get(path));
+  }
+  return apiFetch(path);
+};
 const apiPost   = (path, body)   => apiFetch(path, { method: 'POST',   body: JSON.stringify(body) });
 const apiPut    = (path, body)   => apiFetch(path, { method: 'PUT',    body: JSON.stringify(body) });
 const apiDelete = (path)         => apiFetch(path, { method: 'DELETE' });
+
+// ══════════════════════════════════════════════
+// Real-Time DB Change Synchronization (SSE + Polling)
+// ══════════════════════════════════════════════
+let sseConnection = null;
+
+function initRealtimeSync() {
+  if (typeof EventSource === 'undefined') {
+    setInterval(pollDbVersion, 15000);
+    return;
+  }
+
+  try {
+    if (sseConnection) sseConnection.close();
+    sseConnection = new EventSource('/api/sync/events');
+
+    sseConnection.addEventListener('db_change', async (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        console.log('[SYNC] Live database change event received:', data);
+
+        // Invalidate matching keys in local client cache
+        if (clientCache) {
+          if (data.table === 'employees') {
+            clientCache.invalidateByPrefix('/api/employees');
+            clientCache.delete('/api/stats');
+          } else if (data.table === 'attendance') {
+            clientCache.invalidateByPrefix('/api/attendance');
+            clientCache.delete('/api/stats');
+          } else {
+            clientCache.clear();
+          }
+        }
+        eTags.clear();
+
+        // Refresh components in real-time
+        if (data.table === 'employees' || data.table === 'all') {
+          await refreshEmployeesFromDB();
+        }
+        if (data.table === 'attendance' || data.table === 'all') {
+          await refreshAttendanceFromDB();
+        }
+
+        // Live update whichever tab the user currently has open
+        const activeTab = document.querySelector('.tc.on');
+        if (activeTab) {
+          if (activeTab.id === 'tab-dbd') {
+            updateDbdStats();
+            renderDbdGrid();
+          } else if (activeTab.id === 'tab-hr') {
+            updateStats();
+          } else if (activeTab.id === 'tab-employee-list') {
+            renderEmployeeGrid();
+          } else if (activeTab.id === 'tab-company') {
+            renderCompanyGrid();
+          }
+        }
+
+        notify(`Real-Time Sync: ${data.table.toUpperCase()} updated`, 'ok');
+      } catch (err) {
+        console.error('[SYNC] Error processing change event:', err);
+      }
+    });
+
+    sseConnection.onerror = () => {
+      if (sseConnection.readyState === EventSource.CLOSED) {
+        setTimeout(initRealtimeSync, 6000);
+      }
+    };
+  } catch (err) {
+    console.warn('[SYNC] SSE failed, starting heartbeat polling fallback:', err);
+    setInterval(pollDbVersion, 15000);
+  }
+}
+
+let lastKnownRevision = 1;
+async function pollDbVersion() {
+  try {
+    const res = await fetch('/api/sync/version');
+    if (!res.ok) return;
+    const info = await res.json();
+    if (info.revision && info.revision > lastKnownRevision) {
+      lastKnownRevision = info.revision;
+      if (clientCache) clientCache.clear();
+      eTags.clear();
+      await loadFromDB();
+    }
+  } catch {
+    // Ignore polling network glitches
+  }
+}
+
+async function refreshEmployeesFromDB() {
+  const empRes = await apiFetch('/api/employees');
+  if (empRes && empRes.success) {
+    EMP = empRes.employees.map(e => ({
+      ...e,
+      descriptor: new Float32Array(e.descriptor)
+    }));
+    // Re-index into Prefix Trie for O(L) fast search
+    if (employeeTrie) {
+      employeeTrie.clear();
+      for (const emp of EMP) {
+        employeeTrie.insert(emp.name, emp);
+        employeeTrie.insert(emp.id, emp);
+        employeeTrie.insert(emp.department, emp);
+      }
+    }
+    renderEL();
+  }
+}
+
+async function refreshAttendanceFromDB() {
+  const attRes = await apiFetch('/api/attendance');
+  if (attRes && attRes.success) {
+    ATT = attRes.records.map(r => ({
+      empId:  r.emp_id,
+      name:   r.name,
+      dept:   r.dept,
+      role:   r.role,
+      ts:     r.timestamp,
+      status: r.status,
+      att_id: r.att_id
+    }));
+    renderLog();
+    updateStats();
+    updateDbdStats();
+  }
+}
+
 
 // ══════════════════════════════════════════════
 // Initialisation
@@ -156,6 +333,9 @@ async function init() {
     // Populate company selects
     updateCompanySelects();
 
+    // Start real-time database synchronization
+    initRealtimeSync();
+
   } catch (e) {
     const pm = document.getElementById('pm');
     pm.textContent = 'Error: ' + e.message;
@@ -168,14 +348,25 @@ async function init() {
 async function loadFromDB() {
   // Load employees
   const empRes = await apiGet('/api/employees');
-  if (empRes.success) {
+  if (empRes && empRes.success) {
     EMP = empRes.employees.map(e => ({
       ...e,
       // Restore Float32Array from plain array stored as JSON
       descriptor: new Float32Array(e.descriptor)
     }));
+
+    // Index into PrefixTrie for instant O(L) directory searches
+    if (employeeTrie) {
+      employeeTrie.clear();
+      for (const emp of EMP) {
+        employeeTrie.insert(emp.name, emp);
+        employeeTrie.insert(emp.id, emp);
+        employeeTrie.insert(emp.department, emp);
+      }
+    }
     renderEL();
   }
+
 
   // Load attendance records
   const attRes = await apiGet('/api/attendance');

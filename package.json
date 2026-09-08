@@ -12,7 +12,9 @@
     "test:node": "python3 test_all.py node || python test_all.py node",
     "test:java": "python3 test_all.py java || python test_all.py java",
     "build:java": "mvn clean package -DskipTests",
+    "optimize:db": "python3 db_optimize.py || python db_optimize.py",
     "antigravity": "./Antigravity-x64/antigravity",
+
     "antigravity:bg": "nohup ./Antigravity-x64/antigravity >/dev/null 2>&1 &"
   },
   "dependencies": {

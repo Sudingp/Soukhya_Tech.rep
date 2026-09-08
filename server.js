@@ -8,10 +8,11 @@ const rateLimit = require('express-rate-limit');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const Joi = require('joi');
-const NodeCache = require('node-cache');
 const { v4: uuidv4 } = require('uuid');
 const crypto = require('crypto');
 const path = require('path');
+const { LRUCache } = require('./lib/dsa_cache');
+
 
 require('dotenv').config();
 
@@ -133,9 +134,9 @@ function verifyRequestSignature(req, res, next) {
 }
 
 // ══════════════════════════════════════════════
-// Cache Layer (LRU in-process)
+// Cache Layer (Pure DSA Doubly-Linked LRU + TTL)
 // ══════════════════════════════════════════════
-const cache = new NodeCache({ stdTTL: 300, checkperiod: 60, useClones: false });
+const cache = new LRUCache({ capacity: 5000, defaultTTL: 300000, sweepInterval: 30000 });
 const CACHE_KEYS = {
   EMP_LIST: (page, size, status) => `emp:list:${status || 'all'}:${page}:${size}`,
   EMP_BY_ID: (id) => `emp:${id}`,
@@ -143,16 +144,83 @@ const CACHE_KEYS = {
   ATT_TODAY: (empId) => `att:today:${empId}`,
 };
 
+// ══════════════════════════════════════════════
+// Real-Time DB Change Tracker & SSE Hub
+// ══════════════════════════════════════════════
+let dbRevision = 1;
+const dbLastModified = {
+  employees: Date.now(),
+  attendance: Date.now(),
+  stats: Date.now(),
+  overall: Date.now()
+};
+
+const sseClients = new Set();
+
+function notifyDbChange(table, meta = {}) {
+  dbRevision++;
+  const now = Date.now();
+  dbLastModified.overall = now;
+  if (table && dbLastModified[table] !== undefined) {
+    dbLastModified[table] = now;
+  }
+  dbLastModified.stats = now;
+
+  // Invalidate Cache by tags or prefixes O(1)/O(k)
+  if (table === 'employees') {
+    cache.invalidateTag('employees');
+    cache.invalidateByPrefix('emp:');
+    cache.delete(CACHE_KEYS.STATS);
+  } else if (table === 'attendance') {
+    cache.invalidateTag('attendance');
+    cache.invalidateByPrefix('att:');
+    cache.delete(CACHE_KEYS.STATS);
+  } else {
+    cache.clear();
+  }
+
+  // Broadcast to all connected SSE clients
+  const payload = JSON.stringify({
+    event: 'db_change',
+    table: table || 'all',
+    revision: dbRevision,
+    timestamp: now,
+    ...meta
+  });
+
+  for (const clientRes of Array.from(sseClients)) {
+    try {
+      clientRes.write(`event: db_change\ndata: ${payload}\n\n`);
+    } catch {
+      sseClients.delete(clientRes);
+    }
+  }
+}
+
 function cacheInvalidateEmployee(id) {
-  cache.del(CACHE_KEYS.EMP_BY_ID(id));
-  cache.keys().forEach(k => { if (k.startsWith('emp:list:')) cache.del(k); });
-  cache.del(CACHE_KEYS.STATS);
+  notifyDbChange('employees', { action: 'invalidate', id });
 }
 
 function cacheInvalidateAttendance() {
-  cache.keys().forEach(k => { if (k.startsWith('att:')) cache.del(k); });
-  cache.del(CACHE_KEYS.STATS);
+  notifyDbChange('attendance', { action: 'invalidate' });
 }
+
+function handleETag(req, res, data, entity = 'overall') {
+  const version = dbLastModified[entity] || dbRevision;
+  const len = data ? (typeof data === 'string' ? data.length : JSON.stringify(data).length) : 0;
+  const hash = crypto.createHash('md5').update(`${version}-${len}`).digest('hex');
+  const etag = `W/"${hash}"`;
+
+  res.setHeader('ETag', etag);
+  res.setHeader('Cache-Control', 'public, max-age=10, must-revalidate');
+
+  if (req.headers['if-none-match'] === etag) {
+    res.status(304).end();
+    return true;
+  }
+  return false;
+}
+
 
 // ══════════════════════════════════════════════
 // Audit Logger
@@ -605,7 +673,7 @@ app.get('/api/employees', authenticate, (req, res) => {
       } else {
         rows = stmts.getAllEmployees.all();
       }
-      cache.set(cacheKey, rows, CACHE_TTL_EMP);
+      cache.set(cacheKey, rows, CACHE_TTL_EMP * 1000, ['employees']);
     }
 
     const total = rows.length;
@@ -619,7 +687,9 @@ app.get('/api/employees', authenticate, (req, res) => {
       };
     });
 
-    ok(res, { employees: paginated, pagination: { page, size, total, pages: Math.ceil(total / size) } });
+    const responseData = { employees: paginated, pagination: { page, size, total, pages: Math.ceil(total / size) } };
+    if (handleETag(req, res, responseData, 'employees')) return;
+    ok(res, responseData);
   } catch (e) {
     console.error('[GET /api/employees]', e);
     err(res, 'INTERNAL_ERROR', 'Failed to fetch employees', 500);
@@ -634,12 +704,15 @@ app.get('/api/employees/:id', authenticate, (req, res) => {
     let row = cache.get(cacheKey);
     if (!row) {
       row = stmts.getEmployee.get(req.params.id);
-      if (row) cache.set(cacheKey, row, CACHE_TTL_EMP);
+      if (row) cache.set(cacheKey, row, CACHE_TTL_EMP * 1000, ['employees']);
     }
     if (!row) return err(res, 'NOT_FOUND', 'Employee not found', 404);
 
     const decrypted = decryptEmployeePii(row, !isAdminOrHr);
-    ok(res, { employee: { ...decrypted, descriptor: JSON.parse(decrypted.descriptor), descriptor_hash: undefined } });
+    const responseData = { employee: { ...decrypted, descriptor: JSON.parse(decrypted.descriptor), descriptor_hash: undefined } };
+    if (handleETag(req, res, responseData, 'employees')) return;
+    ok(res, responseData);
+
   } catch (e) {
     console.error('[GET /api/employees/:id]', e);
     err(res, 'INTERNAL_ERROR', 'Failed to fetch employee', 500);
@@ -885,14 +958,51 @@ app.get('/api/stats', authenticate, requireRoles('ADMIN', 'HR'), (req, res) => {
         dept_hibernate_counts: stmts.deptHibernateCounts.all(),
         monthly_hibernate_trend: stmts.monthlyHibernateTrend.all(),
       };
-      cache.set(CACHE_KEYS.STATS, data, CACHE_TTL_STATS);
+      cache.set(CACHE_KEYS.STATS, data, CACHE_TTL_STATS * 1000, ['stats']);
     }
 
+    if (handleETag(req, res, data, 'stats')) return;
     ok(res, data);
   } catch (e) {
     console.error('[GET /api/stats]', e);
     err(res, 'INTERNAL_ERROR', 'Failed to fetch stats', 500);
   }
+});
+
+// ══════════════════════════════════════════════
+// REAL-TIME SYNC ROUTES (SSE & ETag Versioning)
+// ══════════════════════════════════════════════
+app.get('/api/sync/events', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  if (res.flushHeaders) res.flushHeaders();
+
+  res.write(`event: connected\ndata: ${JSON.stringify({ revision: dbRevision, timestamps: dbLastModified })}\n\n`);
+  sseClients.add(res);
+
+  const pinger = setInterval(() => {
+    try {
+      res.write(': heartbeat\n\n');
+    } catch {
+      clearInterval(pinger);
+      sseClients.delete(res);
+    }
+  }, 25000);
+
+  req.on('close', () => {
+    clearInterval(pinger);
+    sseClients.delete(res);
+  });
+});
+
+app.get('/api/sync/version', (req, res) => {
+  res.json({
+    revision: dbRevision,
+    timestamps: dbLastModified,
+    cache: cache.getStats()
+  });
 });
 
 // ══════════════════════════════════════════════
@@ -904,7 +1014,8 @@ app.post('/api/reset-seed', authenticate, requireRoles('ADMIN'), resetSeedLimite
 
     db.prepare('DELETE FROM attendance').run();
     db.prepare('DELETE FROM employees').run();
-    cache.flushAll();
+    notifyDbChange('all', { action: 'reset_seed' });
+
 
     const result = seedDatabase(req.user.username);
 
