@@ -12,20 +12,20 @@ echo "============================================================"
 echo " Soukhya Tech — Local MySQL Setup & Runner"
 echo "============================================================"
 
-# Option 1: Try Docker if running
-if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
-  echo "[INFO] Docker detected. Starting MySQL 8.4 LTS container..."
+# Option 1: Try Docker if docker compose is available
+if command -v docker-compose >/dev/null 2>&1 || (command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1); then
+  echo "[INFO] Docker Compose detected. Starting MySQL 8.4 LTS container..."
   cd "${ROOT_DIR}"
-  docker compose up -d mysql || docker-compose up -d mysql
-  echo "[INFO] Waiting for MySQL 8.4 LTS container to be healthy..."
-  for i in {1..30}; do
-    if docker exec soukhya-mysql-lts mysqladmin ping -u root -psoukhya_root_password_2026 --silent >/dev/null 2>&1; then
-      echo "[OK] MySQL 8.4 LTS is up and healthy in Docker!"
-      exit 0
-    fi
-    sleep 1
-  done
-  echo "[WARN] Docker container did not become ready within 30s. Falling back to native daemon..."
+  if docker compose up -d mysql 2>/dev/null || docker-compose up -d mysql 2>/dev/null; then
+    for i in {1..15}; do
+      if docker exec soukhya-mysql-lts mysqladmin ping -u root -psoukhya_root_password_2026 --silent >/dev/null 2>&1; then
+        echo "[OK] MySQL 8.4 LTS is up and healthy in Docker!"
+        exit 0
+      fi
+      sleep 1
+    done
+  fi
+  echo "[WARN] Docker compose did not start. Falling back to native daemon..."
 fi
 
 # Option 2: Native MySQL/MariaDB daemon in local directory
@@ -43,18 +43,33 @@ if [ ! -d "${DATA_DIR}/mysql" ]; then
   fi
 fi
 
-# Check if already running on port
-if nc -z 127.0.0.1 "${PORT}" 2>/dev/null; then
-  echo "[OK] MySQL / MariaDB is already running on port ${PORT}."
+# Check if already running via socket or port
+if mysqladmin --socket="${DATA_DIR}/mysql.sock" ping >/dev/null 2>&1 || mysqladmin -h 127.0.0.1 -P "${PORT}" ping >/dev/null 2>&1; then
+  echo "[OK] MySQL / MariaDB is already running."
 else
-  echo "[INFO] Starting local database server on port ${PORT}..."
+  echo "[INFO] Starting local database server..."
   (mariadbd --datadir="${DATA_DIR}" --port="${PORT}" --socket="${DATA_DIR}/mysql.sock" --pid-file="${DATA_DIR}/mysql.pid" --bind-address=127.0.0.1 2>/dev/null || mysqld --datadir="${DATA_DIR}" --port="${PORT}" --socket="${DATA_DIR}/mysql.sock" --pid-file="${DATA_DIR}/mysql.pid" --bind-address=127.0.0.1 2>/dev/null) &
-  sleep 2
+  for i in {1..15}; do
+    if mysqladmin --socket="${DATA_DIR}/mysql.sock" ping >/dev/null 2>&1 || mysqladmin -h 127.0.0.1 -P "${PORT}" ping >/dev/null 2>&1; then
+      break
+    fi
+    sleep 0.4
+  done
 fi
 
-# Initialize database schema
-echo "[INFO] Applying MySQL 8.4 schema..."
-mysql --port="${PORT}" --socket="${DATA_DIR}/mysql.sock" -u root -e "CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`;" 2>/dev/null || true
-mysql --port="${PORT}" --socket="${DATA_DIR}/mysql.sock" -u root "${DB_NAME}" < "${ROOT_DIR}/database/schema_mysql.sql" 2>/dev/null || true
+# Ensure user and database permissions
+mariadb --socket="${DATA_DIR}/mysql.sock" -u root -e "
+  CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`;
+  CREATE USER IF NOT EXISTS 'soukhya_user'@'%' IDENTIFIED BY 'soukhya_secure_pass_2026';
+  CREATE USER IF NOT EXISTS 'soukhya_user'@'localhost' IDENTIFIED BY 'soukhya_secure_pass_2026';
+  CREATE USER IF NOT EXISTS 'soukhya_user'@'127.0.0.1' IDENTIFIED BY 'soukhya_secure_pass_2026';
+  GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO 'soukhya_user'@'%';
+  GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO 'soukhya_user'@'localhost';
+  GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO 'soukhya_user'@'127.0.0.1';
+  FLUSH PRIVILEGES;
+" 2>/dev/null || mysql -u root -e "CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`;" 2>/dev/null || true
 
-echo "[OK] Database setup complete and ready for Soukhya Tech HR Enterprise!"
+# Initialize database schema if needed
+mariadb --socket="${DATA_DIR}/mysql.sock" -u root "${DB_NAME}" < "${ROOT_DIR}/database/schema_mysql.sql" 2>/dev/null || mysql -u root "${DB_NAME}" < "${ROOT_DIR}/database/schema_mysql.sql" 2>/dev/null || true
+
+echo "[OK] Database ready for Soukhya Tech HR Enterprise!"
