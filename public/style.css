@@ -208,10 +208,55 @@ body {
 .nwn { background: rgba(240,165,0,.1);   border: 1px solid rgba(240,165,0,.25);  color: var(--warn); }
 
 /* ── Tab content ── */
-#app { flex: 1; overflow-y: auto; padding: 18px; }
+#app {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  background: var(--bg);
+}
 
-.tc     { display: none; }
-.tc.on  { display: block; }
+.tc {
+  display: none;
+  width: 100%;
+  flex: 1;
+}
+
+.tc.on {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 100%;
+}
+
+/* Dark theme tabs retain their sleek padding */
+#tab-reg,
+#tab-att,
+#tab-hr {
+  padding: 20px 28px;
+}
+
+/* Enterprise ESSL White Theme Pages (Dashboard, Company List, Employee List) */
+#tab-dbd,
+#tab-company,
+#tab-employee-list {
+  background: #ffffff;
+  min-height: 100%;
+  flex: 1;
+}
+
+.essl-page-container {
+  background: #ffffff;
+  padding: 24px 32px 40px;
+  font-family: Arial, sans-serif;
+  color: #333;
+  width: 100%;
+  min-height: 100%;
+  flex: 1;
+  box-sizing: border-box;
+}
+
 
 /* ── Card ── */
 .card {
