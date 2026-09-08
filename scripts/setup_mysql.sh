@@ -44,16 +44,18 @@ if [ ! -d "${DATA_DIR}/mysql" ]; then
 fi
 
 # Check if already running via socket or port
-if mysqladmin --socket="${DATA_DIR}/mysql.sock" ping >/dev/null 2>&1 || mysqladmin -h 127.0.0.1 -P "${PORT}" ping >/dev/null 2>&1; then
+if mysqladmin --socket="${DATA_DIR}/mysql.sock" -u root ping >/dev/null 2>&1 || mysqladmin -h 127.0.0.1 -P "${PORT}" -u root ping >/dev/null 2>&1; then
   echo "[OK] MySQL / MariaDB is already running."
 else
   echo "[INFO] Starting local database server..."
-  (mariadbd --datadir="${DATA_DIR}" --port="${PORT}" --socket="${DATA_DIR}/mysql.sock" --pid-file="${DATA_DIR}/mysql.pid" --bind-address=127.0.0.1 2>/dev/null || mysqld --datadir="${DATA_DIR}" --port="${PORT}" --socket="${DATA_DIR}/mysql.sock" --pid-file="${DATA_DIR}/mysql.pid" --bind-address=127.0.0.1 2>/dev/null) &
-  for i in {1..15}; do
-    if mysqladmin --socket="${DATA_DIR}/mysql.sock" ping >/dev/null 2>&1 || mysqladmin -h 127.0.0.1 -P "${PORT}" ping >/dev/null 2>&1; then
+  nohup mariadbd --datadir="${DATA_DIR}" --port="${PORT}" --socket="${DATA_DIR}/mysql.sock" --pid-file="${DATA_DIR}/mysql.pid" --bind-address=127.0.0.1 --user="$(whoami)" > "${DATA_DIR}/mariadb.log" 2>&1 &
+  DAEMON_PID=$!
+  disown $DAEMON_PID 2>/dev/null || true
+  for i in {1..25}; do
+    if mysqladmin --socket="${DATA_DIR}/mysql.sock" -u root ping >/dev/null 2>&1 || mysqladmin -h 127.0.0.1 -P "${PORT}" -u root ping >/dev/null 2>&1; then
       break
     fi
-    sleep 0.4
+    sleep 0.5
   done
 fi
 

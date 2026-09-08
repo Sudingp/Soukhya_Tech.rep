@@ -52,10 +52,16 @@ class MySQLAdapter {
     const schemaPath = path.join(__dirname, 'schema_mysql.sql');
     if (fs.existsSync(schemaPath)) {
       const sql = fs.readFileSync(schemaPath, 'utf8');
-      const statements = sql
+      const cleanSql = sql
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .split('\n')
+        .filter(line => !line.trim().startsWith('--'))
+        .join('\n');
+
+      const statements = cleanSql
         .split(';')
         .map(s => s.trim())
-        .filter(s => s.length > 0 && !s.startsWith('--') && !s.startsWith('USE '));
+        .filter(s => s.length > 0 && !s.toUpperCase().startsWith('USE '));
 
       for (const statement of statements) {
         try {
