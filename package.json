@@ -5,7 +5,11 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "start:all": "bash start-all.sh",
+    "stop:all": "bash stop-all.sh",
     "dev": "nodemon server.js",
+    "test": "bash test.sh",
+    "build:java": "mvn clean package -DskipTests",
     "antigravity": "./Antigravity-x64/antigravity",
     "antigravity:bg": "nohup ./Antigravity-x64/antigravity >/dev/null 2>&1 &"
   },

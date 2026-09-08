@@ -1,13 +1,21 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # =============================================================================
 # SOUKHYA TECH — UNIFIED START SCRIPT
-# Auto-detects | Auto-installs | Auto-launches Node.js and Java backends
+# Auto-detects | Auto-builds | Auto-launches Node.js and Java backends
 # =============================================================================
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
+
+# Load environment configuration if available
+if [ -f "$SCRIPT_DIR/.env" ]; then
+    # shellcheck disable=SC1091
+    set -a
+    . "$SCRIPT_DIR/.env"
+    set +a
+fi
 
 # Colors
 RED='\033[0;31m'
@@ -18,26 +26,29 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Ports
-NODE_PORT=3000
-JAVA_PORT=3001
+NODE_PORT=${NODE_PORT:-${PORT:-3000}}
+JAVA_PORT=${JAVA_PORT:-3001}
 
-# PIDs file
+# Admin Credentials
+ADMIN_USER=${ADMIN_USER:-${ADMIN_USERNAME:-admin}}
+ADMIN_PASS=${ADMIN_PASS:-${ADMIN_PASSWORD:-admin123}}
+
+# PIDs tracking
 PIDS_FILE=".soukhya-pids"
 NODE_STARTED=false
 JAVA_STARTED=false
+NODE_PID=""
+JAVA_PID=""
 
-# Safe integration mode: do not kill the primary app blindly.
-# If a service is already listening on its expected port, skip starting it.
-
-# ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
+# ─────────────────────────────────────────────────────────────────────────────
 # Helper Functions
-# ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
+# ─────────────────────────────────────────────────────────────────────────────
 
 print_header() {
     echo ""
-    echo -e "${CYAN}‚ïî‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïó${NC}"
-    echo -e "${CYAN}‚ïë   SOUKHYA TECH  ‚Äî  Secure Backend Launcher   ‚ïë${NC}"
-    echo -e "${CYAN}‚ïö‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïê‚ïù${NC}"
+    echo -e "${CYAN}╔════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║         SOUKHYA TECH  —  Backend Launcher (V2)             ║${NC}"
+    echo -e "${CYAN}╚════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 }
 
@@ -49,9 +60,17 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 kill_port() {
     local port=$1
     local pname=$2
-    local pids=$(lsof -ti :$port 2>/dev/null || ss -tlnp 2>/dev/null | grep ":$port " | awk '{print $7}' | cut -d',' -f2 | cut -d'=' -f2 | xargs)
+    local pids=""
+    if command -v lsof >/dev/null 2>&1; then
+        pids=$(lsof -ti :"$port" 2>/dev/null || true)
+    elif command -v fuser >/dev/null 2>&1; then
+        pids=$(fuser "$port"/tcp 2>/dev/null || true)
+    elif command -v ss >/dev/null 2>&1; then
+        pids=$(ss -tlnp 2>/dev/null | grep ":$port " | awk '{print $7}' | cut -d',' -f2 | cut -d'=' -f2 | xargs || true)
+    fi
+
     if [ -n "$pids" ]; then
-        log_warn "Killing existing $pname on port $port (PIDs: $pids)"
+        log_warn "Stopping existing $pname on port $port (PID(s): $pids)"
         kill -9 $pids 2>/dev/null || true
         sleep 0.5
     fi
@@ -62,10 +81,10 @@ wait_for_port() {
     local name=$2
     local max_wait=${3:-30}
     local waited=0
-    while ! nc -z localhost $port 2>/dev/null; do
+    while ! (nc -z localhost "$port" 2>/dev/null || (echo > "/dev/tcp/127.0.0.1/$port") 2>/dev/null || curl -sS -o /dev/null "http://127.0.0.1:$port/" 2>/dev/null); do
         sleep 1
         waited=$((waited + 1))
-        if [ $waited -ge $max_wait ]; then
+        if [ "$waited" -ge "$max_wait" ]; then
             log_error "$name failed to start on port $port within ${max_wait}s"
             return 1
         fi
@@ -75,39 +94,22 @@ wait_for_port() {
 
 service_healthy() {
     local port=$1
-    local name=$2
-    local username="admin"
-    local password="admin123"
-
-    if [ -f "$SCRIPT_DIR/.env" ]; then
-        # shellcheck disable=SC1091
-        set -a
-        . "$SCRIPT_DIR/.env"
-        set +a
-        if [ -n "${ADMIN_USERNAME:-}" ]; then
-            username="$ADMIN_USERNAME"
-        fi
-        if [ -n "${ADMIN_PASSWORD:-}" ]; then
-            password="$ADMIN_PASSWORD"
-        fi
-    fi
-
     local payload
-    payload=$(printf '{"username":"%s","password":"%s"}' "$username" "$password")
+    payload=$(printf '{"username":"%s","password":"%s"}' "$ADMIN_USER" "$ADMIN_PASS")
     local code
-    code=$(curl -sS -o /tmp/${name//[^A-Za-z0-9]/_}.health.$$ -w '%{http_code}' \
+    code=$(curl -sS -o /dev/null -w '%{http_code}' \
         -X POST "http://localhost:${port}/api/auth/login" \
         -H 'Content-Type: application/json' \
-        -d "$payload" || true)
+        -d "$payload" 2>/dev/null || echo "000")
     if [ "$code" = "200" ]; then
         return 0
     fi
 
-    if [ "$password" != "admin123" ] && [ "$username" = "admin" ]; then
-        code=$(curl -sS -o /tmp/${name//[^A-Za-z0-9]/_}.health.legacy.$$ -w '%{http_code}' \
+    if [ "$ADMIN_PASS" != "admin123" ] || [ "$ADMIN_USER" != "admin" ]; then
+        code=$(curl -sS -o /dev/null -w '%{http_code}' \
             -X POST "http://localhost:${port}/api/auth/login" \
             -H 'Content-Type: application/json' \
-            -d '{"username":"admin","password":"admin123"}' || true)
+            -d '{"username":"admin","password":"admin123"}' 2>/dev/null || echo "000")
         [ "$code" = "200" ] && return 0
     fi
     return 1
@@ -116,25 +118,30 @@ service_healthy() {
 cleanup() {
     local exit_code=${1:-0}
     echo ""
-    log_warn "Shutting down all backends..."
-    if [ -f "$PIDS_FILE" ]; then
+    log_warn "Shutting down managed backends..."
+    if [ -f "$SCRIPT_DIR/$PIDS_FILE" ]; then
         while read -r pid name; do
-            if kill -0 "$pid" 2>/dev/null; then
+            if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
                 kill -9 "$pid" 2>/dev/null || true
                 log_info "Stopped $name (PID: $pid)"
             fi
-        done < "$PIDS_FILE"
-        rm -f "$PIDS_FILE"
+        done < "$SCRIPT_DIR/$PIDS_FILE"
+        rm -f "$SCRIPT_DIR/$PIDS_FILE"
     fi
+
+    # Ensure ports are freed
+    [ "$NODE_STARTED" = true ] && kill_port "$NODE_PORT" "Node.js"
+    [ "$JAVA_STARTED" = true ] && kill_port "$JAVA_PORT" "Java"
+
     log_ok "All backends stopped."
     exit "$exit_code"
 }
 
 trap 'cleanup 0' SIGINT SIGTERM EXIT
 
-# ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
+# ─────────────────────────────────────────────────────────────────────────────
 # Detect Project Layout
-# ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
+# ─────────────────────────────────────────────────────────────────────────────
 
 print_header
 
@@ -165,48 +172,46 @@ if [ -z "$JAVA_DIR" ]; then
 fi
 
 log_info "Detected layout:"
-[ -n "$NODE_DIR" ]   && echo "  Node.js  → $NODE_DIR/"
-[ -n "$JAVA_DIR" ]   && echo "  Java     → $JAVA_DIR/"
+[ -n "$NODE_DIR" ] && echo -e "  ${CYAN}Node.js${NC}  → $NODE_DIR/ (Port: $NODE_PORT)"
+[ -n "$JAVA_DIR" ] && echo -e "  ${CYAN}Java${NC}     → $JAVA_DIR/ (Port: $JAVA_PORT)"
 
 if [ -z "$NODE_DIR" ] && [ -z "$JAVA_DIR" ]; then
     log_error "No backend projects found in current directory."
-    log_info "Expected: node-backend/server.js or java-backend/pom.xml"
+    log_info "Expected: server.js or pom.xml"
     exit 1
 fi
 
-# ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
-# Kill Existing
-# ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
+# ─────────────────────────────────────────────────────────────────────────────
+# Port Pre-Checks
+# ─────────────────────────────────────────────────────────────────────────────
 
-log_info "Checking for existing processes before startup..."
-# Keep the main app alive only when it is actually healthy.
-if service_healthy "$NODE_PORT" "node"; then
-    log_warn "Node.js already responding correctly on port $NODE_PORT; skipping forced restart."
+log_info "Checking ports before startup..."
+rm -f "$SCRIPT_DIR/$PIDS_FILE"
+
+if service_healthy "$NODE_PORT"; then
+    log_warn "Node.js already responding correctly on port $NODE_PORT; reusing running instance."
     NODE_STARTED=true
 else
-    log_warn "Node.js health check failed on port $NODE_PORT; checking for stale process."
-    kill_port $NODE_PORT "Node.js"
+    kill_port "$NODE_PORT" "Node.js"
 fi
 
-# Allow explicit cleanup only for secondary services.
-if [ "${FORCE_CLEANUP:-false}" = "true" ]; then
-    kill_port $JAVA_PORT   "Java"
-fi
-rm -f "$PIDS_FILE"
-if [ "$NODE_STARTED" = true ]; then
-    echo "$NODE_PID node" >> "$SCRIPT_DIR/$PIDS_FILE"
+if service_healthy "$JAVA_PORT"; then
+    log_warn "Java already responding correctly on port $JAVA_PORT; reusing running instance."
+    JAVA_STARTED=true
+else
+    kill_port "$JAVA_PORT" "Java"
 fi
 
-# ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
-# NODE.JS
-# ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
+# ─────────────────────────────────────────────────────────────────────────────
+# Node.js Backend Startup
+# ─────────────────────────────────────────────────────────────────────────────
 
-if [ -n "$NODE_DIR" ]; then
+if [ -n "$NODE_DIR" ] && [ "$NODE_STARTED" = false ]; then
     echo ""
-    log_info "‚ïê‚ïê‚ïê Node.js Backend ‚ïê‚ïê‚ïê"
+    log_info "═══ Node.js Backend ═══"
 
     if ! command -v node &> /dev/null; then
-        log_error "Node.js not installed. Skipping."
+        log_error "Node.js not installed. Skipping Node backend."
     else
         cd "$NODE_DIR"
 
@@ -215,68 +220,59 @@ if [ -n "$NODE_DIR" ]; then
             npm install --silent
         fi
 
-        if [ ! -f "database/db.js" ]; then
-            log_warn "database/db.js not found. Node backend may fail."
-        fi
-        if [ ! -f "server.js" ]; then
-            log_warn "server.js not found. Node backend may fail."
-        fi
+        log_info "Starting Node.js on port $NODE_PORT..."
+        PORT="$NODE_PORT" node server.js > "$SCRIPT_DIR/.soukhya-node.log" 2>&1 &
+        NODE_PID=$!
+        echo "$NODE_PID node" >> "$SCRIPT_DIR/$PIDS_FILE"
+        cd "$SCRIPT_DIR"
 
-        if service_healthy "$NODE_PORT" "node"; then
-            log_warn "Node.js already responding correctly on port $NODE_PORT; skipping startup."
+        if wait_for_port "$NODE_PORT" "Node.js" 15 && service_healthy "$NODE_PORT"; then
             NODE_STARTED=true
+            log_ok "Node.js backend started successfully (PID: $NODE_PID)."
         else
-            log_warn "Node.js health check failed; restarting service on port $NODE_PORT..."
-            kill_port $NODE_PORT "Node.js"
-            log_info "Starting Node.js on port $NODE_PORT..."
-            node server.js > "$SCRIPT_DIR/.soukhya-node.log" 2>&1 &
-            NODE_PID=$!
-            echo "$NODE_PID node" >> "$SCRIPT_DIR/$PIDS_FILE"
-            cd "$SCRIPT_DIR"
-            if wait_for_port $NODE_PORT "Node.js" 15 && service_healthy "$NODE_PORT" "node"; then
-                NODE_STARTED=true
-            else
-                log_error "Node.js did not become healthy on port $NODE_PORT."
-            fi
+            log_error "Node.js did not become healthy on port $NODE_PORT. Check $SCRIPT_DIR/.soukhya-node.log"
         fi
     fi
 fi
 
-# ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
-# JAVA
-# ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
+# ─────────────────────────────────────────────────────────────────────────────
+# Java Spring Boot Backend Startup
+# ─────────────────────────────────────────────────────────────────────────────
 
-if [ -n "$JAVA_DIR" ]; then
+if [ -n "$JAVA_DIR" ] && [ "$JAVA_STARTED" = false ]; then
     echo ""
-    log_info "‚ïê‚ïê‚ïê Java Spring Boot Backend ‚ïê‚ïê‚ïê"
+    log_info "═══ Java Spring Boot Backend ═══"
 
-    if ! command -v mvn &> /dev/null; then
-        log_error "Maven not installed. Skipping."
+    if ! command -v java &> /dev/null || ! command -v mvn &> /dev/null; then
+        log_error "Java or Maven not found. Skipping Java backend."
     else
         cd "$JAVA_DIR"
 
-        if service_healthy "$JAVA_PORT" "java"; then
-            log_warn "Java already responding correctly on port $JAVA_PORT; skipping startup."
-            JAVA_STARTED=true
-        else
-            log_warn "Java health check failed; restarting service on port $JAVA_PORT..."
-            kill_port $JAVA_PORT "Java"
-            if [ ! -d "target" ] || [ ! -f "target/classes/com/soukhyatech/faceattendance/FaceAttendanceApplication.class" ]; then
-                log_info "Target not built. Running mvn clean install..."
-                mvn clean install -q -DskipTests
-            fi
+        JAR_FILE=$(find target -name 'faceattendance-*.jar' ! -name '*.original' 2>/dev/null | head -n 1 || true)
+        if [ -z "$JAR_FILE" ] || [ ! -f "$JAR_FILE" ]; then
+            log_info "Java package missing. Building faceattendance jar (mvn clean package -DskipTests)..."
+            mvn clean package -q -DskipTests
+            JAR_FILE=$(find target -name 'faceattendance-*.jar' ! -name '*.original' 2>/dev/null | head -n 1 || true)
+        fi
 
-            log_info "Starting Java on port $JAVA_PORT..."
-            mvn spring-boot:run -q -Dspring-boot.run.jvmArguments="-Dserver.port=$JAVA_PORT" > "$SCRIPT_DIR/.soukhya-java.log" 2>&1 &
+        log_info "Starting Java backend on port $JAVA_PORT..."
+        if [ -n "$JAR_FILE" ] && [ -f "$JAR_FILE" ]; then
+            java -jar "$JAR_FILE" --server.port="$JAVA_PORT" > "$SCRIPT_DIR/.soukhya-java.log" 2>&1 &
             JAVA_PID=$!
-            echo "$JAVA_PID java" >> "$SCRIPT_DIR/$PIDS_FILE"
-            cd "$SCRIPT_DIR"
+        else
+            log_info "Running via mvn spring-boot:run..."
+            mvn spring-boot:run -q -Dspring-boot.run.arguments="--server.port=$JAVA_PORT" > "$SCRIPT_DIR/.soukhya-java.log" 2>&1 &
+            JAVA_PID=$!
+        fi
 
-            if wait_for_port $JAVA_PORT "Java" 60 && service_healthy "$JAVA_PORT" "java"; then
-                JAVA_STARTED=true
-            else
-                log_error "Java did not become healthy on port $JAVA_PORT."
-            fi
+        echo "$JAVA_PID java" >> "$SCRIPT_DIR/$PIDS_FILE"
+        cd "$SCRIPT_DIR"
+
+        if wait_for_port "$JAVA_PORT" "Java" 45 && service_healthy "$JAVA_PORT"; then
+            JAVA_STARTED=true
+            log_ok "Java Spring Boot backend started successfully (PID: $JAVA_PID)."
+        else
+            log_error "Java backend did not become healthy on port $JAVA_PORT. Check $SCRIPT_DIR/.soukhya-java.log"
         fi
     fi
 fi
@@ -290,41 +286,42 @@ echo -e "${GREEN}============================================${NC}"
 echo -e "${GREEN}   BACKEND LAUNCH COMPLETE                  ${NC}"
 echo -e "${GREEN}============================================${NC}"
 echo ""
-[ "$NODE_STARTED" = true ]   && echo -e "  ${CYAN}Node.js${NC}  http://localhost:$NODE_PORT   (admin / admin123)"
-[ "$JAVA_STARTED" = true ]   && echo -e "  ${CYAN}Java${NC}     http://localhost:$JAVA_PORT   (admin / admin123)"
-[ "$NODE_STARTED" = false ] && log_warn "Node.js backend did not start."
-[ "$JAVA_STARTED" = false ] && log_warn "Java backend did not start."
-echo ""
-echo -e "  ${YELLOW}Press Ctrl+C to stop all running backends${NC}"
+[ "$NODE_STARTED" = true ] && echo -e "  ${CYAN}Node.js${NC}  http://localhost:$NODE_PORT   ($ADMIN_USER / $ADMIN_PASS)"
+[ "$JAVA_STARTED" = true ] && echo -e "  ${CYAN}Java${NC}     http://localhost:$JAVA_PORT   ($ADMIN_USER / $ADMIN_PASS)"
+[ "$NODE_STARTED" = false ] && log_warn "Node.js backend is not running."
+[ "$JAVA_STARTED" = false ] && log_warn "Java backend is not running."
 echo ""
 
 if [ -x "$SCRIPT_DIR/test.sh" ]; then
     log_info "Running post-launch endpoint verification..."
-    if ! bash "$SCRIPT_DIR/test.sh"; then
-        log_error "Endpoint verification failed. Shutting down all backends."
+    if ! NODE_PORT="$NODE_PORT" JAVA_PORT="$JAVA_PORT" bash "$SCRIPT_DIR/test.sh"; then
+        log_error "Endpoint verification failed. Shutting down backends."
         cleanup 1
     fi
     log_ok "Endpoint verification completed successfully."
 else
-    log_warn "test.sh not found or not executable; skipping endpoint verification."
+    log_warn "test.sh not executable or not found; skipping verification."
 fi
 
-# Keep script alive to catch Ctrl+C
+echo ""
+echo -e "  ${YELLOW}Press Ctrl+C to stop all running backends${NC}"
+echo ""
+
+# Keep script alive to monitor background processes
 while true; do
     sleep 5
-    # Health check: if all processes died, exit
     all_dead=true
-    if [ -f "$PIDS_FILE" ]; then
+    if [ -f "$SCRIPT_DIR/$PIDS_FILE" ]; then
         while read -r pid name; do
-            if kill -0 "$pid" 2>/dev/null; then
+            if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
                 all_dead=false
                 break
             fi
-        done < "$PIDS_FILE"
+        done < "$SCRIPT_DIR/$PIDS_FILE"
     fi
 
-    if $all_dead && [ -s "$PIDS_FILE" ]; then
-        log_warn "All backends have exited."
+    if $all_dead && [ -s "$SCRIPT_DIR/$PIDS_FILE" ]; then
+        log_warn "All launched backends have exited."
         exit 1
     fi
 done

@@ -180,12 +180,12 @@ function auditLog({ table, recordId, action, oldVals, newVals, req }) {
 // ══════════════════════════════════════════════
 function generateTokens(user) {
   const access = jwt.sign(
-    { sub: user.id, username: user.username, role: user.role },
+    { sub: user.username, id: user.id, username: user.username, role: user.role },
     JWT_ACCESS_SECRET,
     { expiresIn: JWT_ACCESS_EXPIRY, jwtid: uuidv4() }
   );
   const refresh = jwt.sign(
-    { sub: user.id, type: 'refresh' },
+    { sub: user.username, id: user.id, type: 'refresh' },
     JWT_REFRESH_SECRET,
     { expiresIn: JWT_REFRESH_EXPIRY, jwtid: uuidv4() }
   );
@@ -238,12 +238,14 @@ const generalLimiter = rateLimit({
   max: RATE_MAX,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => process.env.NODE_ENV === 'test' || process.env.DISABLE_RATE_LIMIT === 'true',
   handler: (req, res) => res.status(429).json({ success: false, error: { code: 'RATE_LIMITED', message: 'Too many requests' } }),
 });
 
 const authLimiter = rateLimit({
   windowMs: RATE_WINDOW,
-  max: RATE_AUTH_MAX,
+  max: isDev ? 200 : (parseInt(process.env.RATE_LIMIT_AUTH_MAX, 10) || 50),
+  skip: () => process.env.NODE_ENV === 'test' || process.env.DISABLE_RATE_LIMIT === 'true',
   handler: (req, res) => res.status(429).json({ success: false, error: { code: 'AUTH_RATE_LIMITED', message: 'Too many auth attempts' } }),
 });
 
