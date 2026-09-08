@@ -981,7 +981,7 @@ function ensureAdminUser() {
   }
 }
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n  ╔══════════════════════════════════════╗`);
   console.log(`  ║   SOUKHYA TECH  Server Running       ║`);
   console.log(`  ║   http://localhost:${PORT}              ║`);

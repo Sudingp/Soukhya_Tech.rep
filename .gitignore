@@ -17,3 +17,6 @@ obj/
 .env
 Antigravity-x64
 Antigravity.tar.gz
+__pycache__/
+*.py[cod]
+.pytest_cache/
