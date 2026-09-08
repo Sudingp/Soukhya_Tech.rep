@@ -5,30 +5,36 @@
 [![Java](https://img.shields.io/badge/Java-17%2B-orange.svg)](https://www.oracle.com/java/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.3-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/)
-[![Database](https://img.shields.io/badge/Database-SQLite%20v6-lightgrey.svg)](https://www.sqlite.org/)
+[![Database](https://img.shields.io/badge/Database-MySQL%208.4%20LTS%20%7C%20SQLite%20Fallback-blue.svg)](https://www.mysql.com/)
 
-An enterprise-grade, hardened face recognition attendance system featuring dual polyglot backends (**Node.js Express** and **Java Spring Boot 3**), client-side neural face recognition via `face-api.js`, AES-256-GCM PII encryption, JWT authentication with token rotation, rate limiting, and unified cross-platform Python management runners for **Windows** and **Ubuntu/Linux**.
+An enterprise-grade, hardened face recognition attendance system featuring **MySQL 8.4 LTS** persistence (with automatic SQLite fallback), dual polyglot backends (**Node.js Express** and **Java Spring Boot 3**), client-side neural face recognition via `face-api.js`, zero-plaintext credential storage (SHA-256 username hash + Bcrypt password hash), real-time role mode switching, AES-256-GCM PII encryption, JWT authentication with token rotation, rate limiting, and unified cross-platform management runners.
 
 ---
 
 ## 📑 Table of Contents
 
 - [Key Features & Hardening](#-key-features--hardening)
+- [📝 Release Changelogs](#-release-changelogs)
 - [📁 Project Structure](#-project-structure)
 - [⚙️ Prerequisites](#️-prerequisites)
 - [🚀 Quick Start](#-quick-start)
-  - [1. Install Dependencies](#1-install-dependencies)
-  - [2. Start Backends](#2-start-backends)
+  - [1. Single-Command Launch (Recommended)](#1-single-command-launch-recommended)
+  - [2. Multi-Backend Launcher](#2-multi-backend-launcher)
   - [3. Run Endpoint Tests](#3-run-endpoint-tests)
-  - [4. Stop Services](#4-stop-services)
 - [🔌 REST API Reference](#-rest-api-reference)
-  - [Authentication](#authentication)
-  - [Employees](#employees)
-  - [Attendance](#attendance)
-  - [Analytics & Health](#analytics--health)
-- [🗄️ Database Schema (v6)](#️-database-schema-v6)
+- [🗄️ Enterprise Database (MySQL 8.4 LTS)](#️-enterprise-database-mysql-84-lts)
 - [🔒 Security & Architecture](#-security--architecture)
 - [⚙️ Environment Configuration](#️-environment-configuration)
+
+---
+
+## 📝 Release Changelogs
+
+Comprehensive change documentation is maintained in the [`changelog/`](./changelog/) directory:
+
+- 🛡️ [**Administrator & Technical Changelog (`changelog/CHANGELOG_ADMIN.md`)**](./changelog/CHANGELOG_ADMIN.md): Full backend, MySQL 8.4 LTS migration, schema DDL, indexing, DSA cache, and API changes.
+- 👤 [**User Release Notes (`changelog/CHANGELOG_USER.md`)**](./changelog/CHANGELOG_USER.md): Frontend user features, full-screen viewport layout, interactive login modal, mode switcher, and security policies.
+- 📋 [**Changelog Index & Roadmap (`changelog/README.md`)**](./changelog/README.md): Cross-branch version roadmap across `HR-Enterprise-Dev-V2`, `HR-Enterprise-Dev-V1`, and `HR-Enterprise-Prod`.
 
 ---
 
@@ -98,43 +104,39 @@ cd soukhya-tech
 npm install
 ```
 
-### 2. Start Backends
+### 2. Single-Command Launch (Recommended)
 
-Run the cross-platform launcher, which frees ports, auto-builds the Java JAR if needed, starts Node.js & Java Spring Boot, verifies endpoints, and streams logs:
+Starts the local **MySQL 8.4 LTS** daemon (if not running), initializes database permissions, and boots both the **Frontend UI** and **Backend APIs** on port `3000`:
 
-#### Using npm:
 ```bash
-npm run start:all
+npm start
 ```
 
-#### Or directly via Python:
-- **Ubuntu / Linux / macOS**:
-  ```bash
-  python3 start_all.py
-  ```
-- **Windows (CMD / PowerShell)**:
-  ```cmd
-  python start_all.py
-  ```
+Once started, open your browser:
+- 🌐 **Web UI & API**: [`http://localhost:3000`](http://localhost:3000)
+- 🛡️ **Admin Account**: Username `admin` | Password `admin123`
+- 👤 **User Account**: Username `user` | Password `user123`
 
-Once started:
-- **Web App / Node.js API**: [`http://localhost:3000`](http://localhost:3000)
-- **Java Spring Boot API**: [`http://localhost:3001`](http://localhost:3001)
-- **Default Credentials**: Username `admin` | Password `admin123`
+### 3. Multi-Backend Launcher (Node + Java Spring Boot)
 
-> 💡 *Press `Ctrl+C` in the terminal to gracefully stop all running backends.*
+To run both Node.js and Java Spring Boot 3 concurrently with auto-port freeing and log streaming:
+
+```bash
+npm run start:all
+# Or directly with Python:
+python3 start_all.py   # Linux / macOS
+python start_all.py    # Windows
+```
 
 ---
 
-### 3. Run Endpoint Tests
+### 4. Run Endpoint Tests
 
-You can test all REST endpoints against the running backends at any time from another terminal:
+Run the automated 11-step integration suite verifying authentication, biometrics, attendance punches, and database operations:
 
-#### Using npm:
 ```bash
-npm test              # Tests both Node.js and Java backends
-npm run test:node     # Tests only Node.js (port 3000)
-npm run test:java     # Tests only Java Spring Boot (port 3001)
+npm run test:integration    # End-to-end integration test against active database
+npm test                    # Cross-platform Python endpoint test suite
 ```
 
 #### Or directly via Python:
@@ -245,75 +247,32 @@ CREATE TABLE users (
   id TEXT PRIMARY KEY,
   username TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
-  role TEXT DEFAULT 'USER',
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
-);
+## 🗄️ Enterprise Database (MySQL 8.4 LTS)
 
--- Revocable JWT Refresh Tokens
-CREATE TABLE refresh_tokens (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
-  token_hash TEXT NOT NULL,
-  expires_at TEXT NOT NULL,
-  revoked INTEGER DEFAULT 0,
-  created_at TEXT NOT NULL,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
+The persistence tier utilizes **MySQL 8.4 LTS / 8.0 LTS** (`InnoDB`, `utf8mb4_0900_ai_ci`) with automatic zero-downtime fallback to hardened SQLite (`attendance.db`):
 
--- Employee records with encrypted PII columns
-CREATE TABLE employees (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  department TEXT NOT NULL,
-  role TEXT NOT NULL,
-  descriptor TEXT NOT NULL,           -- JSON 128-element float array
-  image TEXT,                        -- Base64 compressed image
-  email_encrypted TEXT,              -- AES-256-GCM ciphertext
-  phone_encrypted TEXT,              -- AES-256-GCM ciphertext
-  aadhaar_encrypted TEXT,            -- AES-256-GCM ciphertext
-  pan_encrypted TEXT,                -- AES-256-GCM ciphertext
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
-);
+- **Optimized DDL Schema**: [`database/schema_mysql.sql`](database/schema_mysql.sql)
+- **High-Throughput Pool Adapter**: [`database/mysql_adapter.js`](database/mysql_adapter.js)
+- **Unified Dual-Dialect Router**: [`database/db.js`](database/db.js)
+- **Migration Pipeline**: [`database/migrate_sqlite_to_mysql.js`](database/migrate_sqlite_to_mysql.js)
 
--- Attendance event history
-CREATE TABLE attendance (
-  att_id INTEGER PRIMARY KEY AUTOINCREMENT,
-  emp_id TEXT NOT NULL,
-  name TEXT NOT NULL,
-  dept TEXT NOT NULL,
-  role TEXT NOT NULL,
-  timestamp TEXT NOT NULL,
-  status TEXT NOT NULL,
-  confidence REAL DEFAULT 1.0,
-  verified_by TEXT DEFAULT 'FACE_RECOGNITION',
-  FOREIGN KEY (emp_id) REFERENCES employees(id) ON DELETE CASCADE
-);
-
--- Immutable audit logs
-CREATE TABLE audit_logs (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  action TEXT NOT NULL,
-  performed_by TEXT NOT NULL,
-  target_id TEXT,
-  details TEXT,
-  ip_address TEXT,
-  timestamp TEXT NOT NULL
-);
-```
+### Key Database Tables:
+1. `users`: Indexed SHA-256 `username_hash`, display usernames, Bcrypt `password_hash`, and expanded role check (`ADMIN`, `HR`, `EMPLOYEE`, `USER`, `DEVICE`).
+2. `employees`: 100 seeded enterprise profiles, 40+ HR attributes, encrypted PII columns, and native `JSON` facial descriptors with companion SHA-256 descriptor hashes.
+3. `attendance`: High-speed time-clock records with foreign key cascade (`fk_attendance_employee`) and composite indexes (`idx_att_emp_ts`, `idx_att_ts_status`).
+4. `audit_log`: Non-repudiation security audit trail logging every insert, update, deletion, login, and password reset.
+5. `token_blacklist`: Revoked JWT hashes for immediate session invalidation upon log off.
 
 ---
 
 ## 🔒 Security & Architecture
 
-1. **AES-256-GCM Encryption**: High-security PII fields (Aadhaar, PAN, phone, email) are encrypted at rest with authenticated encryption (128-bit authentication tag) preventing tampering and data leakage.
-2. **JWT with Auto-Refresh**: Tokens are signed with HMAC-SHA256. Access tokens expire in 15 minutes; refresh tokens are stored hashed in SQLite and rotated upon use.
-3. **Defense-in-Depth Protection**:
-   - HTTP response hardening via Helmet (HSTS, Content Security Policy, X-Content-Type-Options).
-   - Strict CORS origin allowlisting.
-   - Brute-force throttling on login endpoints.
-4. **Resilient Port & Process Lifecycle**: `start_all.py` and `stop_all.py` manage process cleanup across Windows and Unix without leaving orphaned background services.
+1. **Zero-Plaintext Credential Storage**: Usernames are stored as SHA-256 hashes (`username_hash`) preventing username enumeration; passwords are encrypted with Bcrypt (cost 12).
+2. **Real-Time Role Switching & Governance**: Clean separation between `[🛡️ ADMIN MODE]` and `[👤 USER MODE]`. Sensitive master drawers, employee configurations, and system user management tools are strictly hidden in User Mode.
+3. **Admin-Governed Password Resets**: Self-service "Forgot Password" is permanently disabled to prevent social-engineering attacks. Credentials can only be reset by authorized System Administrators via `/api/admin/users`.
+4. **AES-256-GCM Hardware Encryption**: Sensitive PII fields (Aadhaar, PAN, phone, email) are encrypted at rest with 128-bit authentication tags.
+5. **DSA Caching & Live Sync**: In-memory Doubly-Linked-List LRU cache (`lib/dsa_cache.js`) with Server-Sent Events (SSE) `/api/sync/events` invalidation.
+6. **Defense-in-Depth**: Helmet security headers, CORS origin allowlisting, brute-force rate limiters, and token revocation blacklists.
 
 ---
 
@@ -325,16 +284,23 @@ Configuration variables can be customized in `.env`:
 |---|---|---|
 | `PORT` / `NODE_PORT` | `3000` | Port for Node.js Express server |
 | `JAVA_PORT` | `3001` | Port for Java Spring Boot server |
-| `NODE_ENV` | `development` | Environment mode (`development` / `production`) |
-| `JWT_ACCESS_SECRET` | `(32-byte hex)` | Secret key for signing Access Tokens |
-| `JWT_REFRESH_SECRET`| `(32-byte hex)` | Secret key for signing Refresh Tokens |
+| `NODE_ENV` | `production` | Environment mode (`development` / `production`) |
+| `DB_DIALECT` | `mysql` | Active database dialect (`mysql` or `sqlite`) |
+| `MYSQL_HOST` | `127.0.0.1` | MySQL server host address |
+| `MYSQL_PORT` | `3306` | MySQL server port |
+| `MYSQL_USER` | `soukhya_user` | MySQL username |
+| `MYSQL_PASSWORD` | `soukhya_secure_pass_2026` | MySQL password |
+| `MYSQL_DATABASE` | `soukhya_attendance` | MySQL database name |
+| `MYSQL_CONNECTION_LIMIT` | `20` | Max pooled connections |
+| `JWT_ACCESS_SECRET` | `(64-byte hex)` | Secret key for signing Access Tokens |
+| `JWT_REFRESH_SECRET`| `(64-byte hex)` | Secret key for signing Refresh Tokens |
 | `PII_ENCRYPTION_KEY`| `(32-byte hex)` | 256-bit AES key for PII column encryption |
 | `JWT_ACCESS_EXPIRY` | `15m` | Lifetime of access tokens |
 | `JWT_REFRESH_EXPIRY`| `7d` | Lifetime of refresh tokens |
 | `CORS_WHITELIST` | `http://localhost:3000,http://localhost:5173` | Allowed origin domains |
 | `RATE_LIMIT_WINDOW_MS` | `60000` | Rate limiter window in milliseconds (1 min) |
-| `RATE_LIMIT_MAX_REQUESTS` | `100` | Max general requests allowed per window |
-| `RATE_LIMIT_AUTH_MAX` | `10` | Max login attempts allowed per window |
+| `RATE_LIMIT_MAX_REQUESTS` | `500` | Max general requests allowed per window |
+| `RATE_LIMIT_AUTH_MAX` | `100` | Max login attempts allowed per window |
 | `ADMIN_USERNAME` | `admin` | Default administrator username |
 | `ADMIN_PASSWORD` | `admin123` | Default administrator password |
 
