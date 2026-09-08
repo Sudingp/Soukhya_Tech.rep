@@ -2,10 +2,29 @@
 const MySQLAdapter = require('./mysql_adapter');
 const mysqlAdapter = new MySQLAdapter();
 
+const path = require('path');
+const fs = require('fs');
+const { execSync } = require('child_process');
+
 let mysqlReady = false;
 
 async function checkMySQL() {
-  const status = await mysqlAdapter.testConnection();
+  let status = await mysqlAdapter.testConnection();
+  if (!status.ok) {
+    const setupScript = path.resolve(__dirname, '..', 'scripts', 'setup_mysql.sh');
+    if (fs.existsSync(setupScript)) {
+      try {
+        console.log('[DB] MySQL offline. Auto-initiating local daemon via scripts/setup_mysql.sh...');
+        execSync(`bash "${setupScript}"`, { stdio: 'inherit' });
+        // wait brief moment for socket ready
+        await new Promise(r => setTimeout(r, 1000));
+        status = await mysqlAdapter.testConnection();
+      } catch (err) {
+        console.warn('[DB] Auto-start attempt error:', err.message);
+      }
+    }
+  }
+
   if (status.ok) {
     mysqlReady = true;
     console.log(`[DB] Active Database: MySQL 8.4 LTS (${status.version})`);
