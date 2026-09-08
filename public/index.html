@@ -6,7 +6,7 @@
   <title>SOUKHYA TECH — HR Enterprise</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=2.0.1" />
   <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js" defer></script>
   <!-- Load Chart.js CDN for interactive analytics -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -1352,8 +1352,11 @@
           <button class="btn" onclick="closeUserMgmtModal()">Close</button>
         </div>
       </div>
+    </div>
+  </div>
+
   <!-- ── CHANGELOG MODAL (v2.0 WHAT'S NEW) ── -->
-  <div id="changelog-modal" class="modal-overlay" style="display:none" onclick="closeChangelogModal(event)">
+  <div id="changelog-modal" class="modal-overlay" style="display:none; z-index:10005;" onclick="closeChangelogModal(event)">
     <div class="modal-box changelog-box animate-scale-up" onclick="event.stopPropagation()">
       <div class="modal-hdr" style="padding:14px 20px">
         <div style="display:flex; align-items:center; gap:12px">
@@ -1525,7 +1528,7 @@
   </div>
 </div>
 
-<script src="dsa_cache.js"></script>
-<script src="app.js"></script>
+<script src="dsa_cache.js?v=2.0.1"></script>
+<script src="app.js?v=2.0.1"></script>
 </body>
 </html>

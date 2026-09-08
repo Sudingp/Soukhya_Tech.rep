@@ -361,7 +361,7 @@ function openChangelogModal(forceTab) {
 }
 
 function closeChangelogModal(e) {
-  if (e && e.target && e.target.id !== 'changelog-modal' && !e.target.classList.contains('modal-close-x') && !e.target.classList.contains('btnp')) return;
+  if (e && e.target && e.target.id !== 'changelog-modal') return;
   const modal = document.getElementById('changelog-modal');
   if (modal) modal.style.display = 'none';
 }
