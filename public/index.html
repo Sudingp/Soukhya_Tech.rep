@@ -1985,9 +1985,11 @@
             <label class="fl">Note / Assignment Reason</label>
             <input type="text" id="sras-note" class="fi" placeholder="e.g. Critical Release Night Coverage" maxlength="255" />
           </div>
-      <div class="modal-ftr" style="padding:10px 16px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:flex-end; gap:8px">
-        <button type="button" class="btn bsm" onclick="closeShiftRosterAssignModal()">Cancel</button>
-        <button type="button" class="btn btnp bsm" onclick="executeBulkAssignRoster(event)">💾 Apply Shift Assignment</button>
+          <div class="modal-ftr" style="padding:10px 0 0 0; background:transparent; border-top:1px solid var(--br); display:flex; justify-content:flex-end; gap:8px">
+            <button type="button" class="btn bsm" onclick="closeShiftRosterAssignModal()">Cancel</button>
+            <button type="submit" class="btn btnp bsm">💾 Apply Shift Assignment</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
