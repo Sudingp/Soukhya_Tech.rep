@@ -1683,13 +1683,379 @@ app.post('/api/shift-roster/auto-generate', authenticate, requireRoles('ADMIN'),
       req
     });
 
-    notifyDbChange('shift_roster', { action: 'auto_generate', year: value.year, month: value.month });
-    ok(res, { message: 'Monthly shift roster auto-generated successfully', ...result });
+    notifyDbChange('shift_roster', { action: 'auto_generate' });
+    ok(res, { message: 'Monthly shift roster auto-generated successfully', result });
   } catch (e) {
     console.error('[POST /api/shift-roster/auto-generate]', e);
     err(res, 'INTERNAL_ERROR', 'Failed to auto-generate shift roster: ' + e.message, 500);
   }
 });
+
+// ══════════════════════════════════════════════
+// 🏢 DEPARTMENTS APIS
+// ══════════════════════════════════════════════
+const departmentSchema = Joi.object({
+  name: Joi.string().min(2).max(100).required(),
+  code: Joi.string().min(2).max(20).required(),
+  head_emp_id: Joi.string().allow('', null).optional(),
+  parent_dept_id: Joi.string().allow('', null).optional(),
+  division: Joi.string().allow('', null).max(50).default('Corporate'),
+  location: Joi.string().max(100).default('Bangalore HQ'),
+  active: Joi.boolean().default(true)
+});
+
+app.get('/api/departments', authenticate, async (req, res) => {
+  try {
+    const departments = await stmts.getAllDepartments.all();
+    ok(res, { departments, total: departments.length });
+  } catch (e) {
+    console.error('[GET /api/departments]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch departments: ' + e.message, 500);
+  }
+});
+
+app.get('/api/departments/:id', authenticate, async (req, res) => {
+  try {
+    const department = await stmts.getDepartmentById.get(req.params.id);
+    if (!department) return err(res, 'NOT_FOUND', 'Department not found', 404);
+    ok(res, { department });
+  } catch (e) {
+    console.error('[GET /api/departments/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch department: ' + e.message, 500);
+  }
+});
+
+app.post('/api/departments', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { error, value } = departmentSchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const deptId = 'DEP_' + (value.code.toUpperCase().replace(/[^A-Z0-9]/g, '') || uuidv4().slice(0, 6).toUpperCase());
+    const deptData = { id: deptId, ...value, code: value.code.toUpperCase() };
+
+    await stmts.insertDepartment.run(deptData);
+
+    await auditLog({
+      table: 'departments',
+      recordId: deptId,
+      action: 'INSERT',
+      newValues: deptData,
+      req
+    });
+
+    notifyDbChange('departments', { action: 'insert', deptId });
+    ok(res, { message: 'Department created successfully', department: deptData }, 201);
+  } catch (e) {
+    if (e.message && e.message.includes('Duplicate')) {
+      return err(res, 'DUPLICATE_CODE', 'A department with this code already exists', 409);
+    }
+    console.error('[POST /api/departments]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to create department: ' + e.message, 500);
+  }
+});
+
+app.put('/api/departments/:id', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await stmts.getDepartmentById.get(id);
+    if (!existing) return err(res, 'NOT_FOUND', 'Department not found', 404);
+
+    const { error, value } = departmentSchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const updateData = { id, ...value, code: value.code.toUpperCase() };
+    await stmts.updateDepartment.run(updateData);
+
+    await auditLog({
+      table: 'departments',
+      recordId: id,
+      action: 'UPDATE',
+      oldValues: existing,
+      newValues: updateData,
+      req
+    });
+
+    notifyDbChange('departments', { action: 'update', deptId: id });
+    ok(res, { message: 'Department updated successfully', department: updateData });
+  } catch (e) {
+    console.error('[PUT /api/departments/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to update department: ' + e.message, 500);
+  }
+});
+
+app.delete('/api/departments/:id', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await stmts.getDepartmentById.get(id);
+    if (!existing) return err(res, 'NOT_FOUND', 'Department not found', 404);
+
+    await stmts.deleteDepartment.run(id);
+
+    await auditLog({
+      table: 'departments',
+      recordId: id,
+      action: 'DELETE',
+      oldValues: existing,
+      req
+    });
+
+    notifyDbChange('departments', { action: 'delete', deptId: id });
+    ok(res, { message: 'Department deleted successfully' });
+  } catch (e) {
+    console.error('[DELETE /api/departments/:id]', e);
+    if (e.message && e.message.includes('Cannot delete department')) {
+      return err(res, 'ACTIVE_MEMBERS_EXIST', e.message, 400);
+    }
+    err(res, 'INTERNAL_ERROR', 'Failed to delete department: ' + e.message, 500);
+  }
+});
+
+// ══════════════════════════════════════════════
+// 🔄 DEPARTMENT SHIFTS APIS
+// ══════════════════════════════════════════════
+const departmentShiftSchema = Joi.object({
+  default_shift_id: Joi.string().required(),
+  allowed_shifts: Joi.array().items(Joi.string()).min(1).required(),
+  auto_apply: Joi.boolean().default(true)
+});
+
+app.get('/api/department-shifts', authenticate, async (req, res) => {
+  try {
+    const configs = await stmts.getAllDepartmentShifts.all();
+    ok(res, { configs, total: configs.length });
+  } catch (e) {
+    console.error('[GET /api/department-shifts]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch department shifts: ' + e.message, 500);
+  }
+});
+
+app.get('/api/department-shifts/:deptId', authenticate, async (req, res) => {
+  try {
+    const config = await stmts.getDepartmentShiftsByDept.get(req.params.deptId);
+    if (!config) return err(res, 'NOT_FOUND', 'Department shift config not found', 404);
+    ok(res, { config });
+  } catch (e) {
+    console.error('[GET /api/department-shifts/:deptId]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch department shift config: ' + e.message, 500);
+  }
+});
+
+app.put('/api/department-shifts/:deptId', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { deptId } = req.params;
+    const { error, value } = departmentShiftSchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    await stmts.upsertDepartmentShifts.run({
+      dept_id: deptId,
+      ...value,
+      updated_by: req.user?.username || 'admin'
+    });
+
+    await auditLog({
+      table: 'department_shifts',
+      recordId: deptId,
+      action: 'UPDATE',
+      newValues: value,
+      req
+    });
+
+    notifyDbChange('department_shifts', { action: 'upsert', deptId });
+    ok(res, { message: 'Department shift configuration updated successfully' });
+  } catch (e) {
+    console.error('[PUT /api/department-shifts/:deptId]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to update department shift configuration: ' + e.message, 500);
+  }
+});
+
+app.post('/api/department-shifts/apply-to-employees', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { dept_id } = req.body;
+    if (!dept_id) return err(res, 'VALIDATION_ERROR', 'dept_id is required', 400);
+
+    const result = await stmts.applyDepartmentShiftsToEmployees.run(dept_id);
+
+    await auditLog({
+      table: 'department_shifts',
+      recordId: dept_id,
+      action: 'UPDATE',
+      newValues: { action: 'apply_to_employees', result },
+      req
+    });
+
+    notifyDbChange('department_shifts', { action: 'applied_to_employees', deptId: dept_id });
+    ok(res, { message: `Department shift policy applied to ${result.employees_affected} employees`, result });
+  } catch (e) {
+    console.error('[POST /api/department-shifts/apply-to-employees]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to apply department shifts: ' + e.message, 500);
+  }
+});
+
+// ══════════════════════════════════════════════
+// 🏖️ PUBLIC HOLIDAYS APIS (KARNATAKA GAZETTE)
+// ══════════════════════════════════════════════
+const publicHolidaySchema = Joi.object({
+  title: Joi.string().min(2).max(120).required(),
+  holiday_date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+  holiday_type: Joi.string().valid('MANDATORY', 'RESTRICTED', 'COMPANY_DECLARED').default('MANDATORY'),
+  applicable_state: Joi.string().default('Karnataka'),
+  applicable_location: Joi.string().default('All Locations'),
+  description: Joi.string().allow('', null).max(255).optional(),
+  is_recurring: Joi.boolean().default(false)
+});
+
+app.get('/api/public-holidays', authenticate, async (req, res) => {
+  try {
+    const year = parseInt(req.query.year || new Date().getFullYear(), 10);
+    const holidays = await stmts.getAllPublicHolidays.all(year);
+    ok(res, {
+      year,
+      holidays,
+      total: holidays.length,
+      mandatory_count: holidays.filter(h => h.holiday_type === 'MANDATORY').length,
+      restricted_count: holidays.filter(h => h.holiday_type === 'RESTRICTED').length,
+      company_declared_count: holidays.filter(h => h.holiday_type === 'COMPANY_DECLARED').length
+    });
+  } catch (e) {
+    console.error('[GET /api/public-holidays]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch public holidays: ' + e.message, 500);
+  }
+});
+
+app.get('/api/public-holidays/:id', authenticate, async (req, res) => {
+  try {
+    const holiday = await stmts.getPublicHolidayById.get(req.params.id);
+    if (!holiday) return err(res, 'NOT_FOUND', 'Public holiday not found', 404);
+    ok(res, { holiday });
+  } catch (e) {
+    console.error('[GET /api/public-holidays/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch holiday: ' + e.message, 500);
+  }
+});
+
+app.post('/api/public-holidays', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { error, value } = publicHolidaySchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const result = await stmts.insertPublicHoliday.run(value);
+    const createdId = result.lastInsertRowid;
+
+    await auditLog({
+      table: 'public_holidays',
+      recordId: String(createdId),
+      action: 'INSERT',
+      newValues: value,
+      req
+    });
+
+    notifyDbChange('public_holidays', { action: 'insert', id: createdId });
+    ok(res, { message: 'Public holiday created successfully', id: createdId, holiday: value }, 201);
+  } catch (e) {
+    if (e.message && e.message.includes('Duplicate')) {
+      return err(res, 'DUPLICATE_HOLIDAY', 'A holiday on this date with this title already exists', 409);
+    }
+    console.error('[POST /api/public-holidays]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to create public holiday: ' + e.message, 500);
+  }
+});
+
+app.put('/api/public-holidays/:id', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await stmts.getPublicHolidayById.get(id);
+    if (!existing) return err(res, 'NOT_FOUND', 'Public holiday not found', 404);
+
+    const { error, value } = publicHolidaySchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const updateData = { id, ...value };
+    await stmts.updatePublicHoliday.run(updateData);
+
+    await auditLog({
+      table: 'public_holidays',
+      recordId: id,
+      action: 'UPDATE',
+      oldValues: existing,
+      newValues: updateData,
+      req
+    });
+
+    notifyDbChange('public_holidays', { action: 'update', id });
+    ok(res, { message: 'Public holiday updated successfully', holiday: updateData });
+  } catch (e) {
+    console.error('[PUT /api/public-holidays/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to update public holiday: ' + e.message, 500);
+  }
+});
+
+app.delete('/api/public-holidays/:id', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await stmts.getPublicHolidayById.get(id);
+    if (!existing) return err(res, 'NOT_FOUND', 'Public holiday not found', 404);
+
+    await stmts.deletePublicHoliday.run(id);
+
+    await auditLog({
+      table: 'public_holidays',
+      recordId: id,
+      action: 'DELETE',
+      oldValues: existing,
+      req
+    });
+
+    notifyDbChange('public_holidays', { action: 'delete', id });
+    ok(res, { message: 'Public holiday deleted successfully' });
+  } catch (e) {
+    console.error('[DELETE /api/public-holidays/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to delete public holiday: ' + e.message, 500);
+  }
+});
+
+app.post('/api/public-holidays/import-karnataka', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const year = parseInt(req.body.year || 2026, 10);
+    const result = await stmts.importKarnatakaHolidays.run(year);
+
+    await auditLog({
+      table: 'public_holidays',
+      recordId: `KARNATAKA_${year}`,
+      action: 'INSERT',
+      newValues: { action: 'import_karnataka_gazette', result },
+      req
+    });
+
+    notifyDbChange('public_holidays', { action: 'import_karnataka', year });
+    ok(res, { message: `Imported Karnataka gazette holidays for year ${year}`, ...result });
+  } catch (e) {
+    console.error('[POST /api/public-holidays/import-karnataka]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to import Karnataka holidays: ' + e.message, 500);
+  }
+});
+
+app.post('/api/public-holidays/sync-calendar', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const year = parseInt(req.body.year || 2026, 10);
+    const result = await stmts.syncHolidaysWithCalendar.run(year, req.user?.username || 'admin');
+
+    await auditLog({
+      table: 'public_holidays',
+      recordId: `SYNC_${year}`,
+      action: 'UPDATE',
+      newValues: { action: 'sync_shift_calendar', result },
+      req
+    });
+
+    notifyDbChange('shift_calendar', { action: 'holiday_sync', year });
+    notifyDbChange('shift_roster', { action: 'holiday_sync', year });
+    ok(res, { message: `Synchronized ${result.holidays_synced} Karnataka public holidays with Shift Calendar and Roster for ${year}`, ...result });
+  } catch (e) {
+    console.error('[POST /api/public-holidays/sync-calendar]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to sync holidays with calendar: ' + e.message, 500);
+  }
+});
+
 
 
 // ══════════════════════════════════════════════

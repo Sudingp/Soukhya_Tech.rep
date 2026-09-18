@@ -271,13 +271,108 @@ CREATE TABLE IF NOT EXISTS `shift_roster` (
     ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Pre-seeded Standard Shift Groups
-INSERT IGNORE INTO `shift_groups` (`id`, `name`, `code`, `rotation_type`, `description`, `color`, `shifts_sequence`) VALUES
-  ('GRP_CORP_GEN', 'Corporate General Staff', 'CORP_GEN', 'FIXED', 'Standard 9 to 6 corporate staff shift group', '#00d4aa', '["SHIFT_GEN"]'),
-  ('GRP_ROT_OPS_A', '24x7 Operations Cohort Alpha', 'OPS_A', 'WEEKLY', 'Weekly rotational cohort: Morning -> Evening -> Night', '#4f8ef7', '["SHIFT_MOR", "SHIFT_EVE", "SHIFT_NIT"]'),
-  ('GRP_ROT_OPS_B', '24x7 Operations Cohort Beta', 'OPS_B', 'WEEKLY', 'Weekly rotational cohort: Evening -> Night -> Morning', '#f59e0b', '["SHIFT_EVE", "SHIFT_NIT", "SHIFT_MOR"]');
+-- ── 14. Departments Table (Department Master) ──
+CREATE TABLE IF NOT EXISTS `departments` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `code` VARCHAR(20) NOT NULL,
+  `name` VARCHAR(100) NOT NULL,
+  `head_emp_id` VARCHAR(50) NULL,
+  `parent_dept_id` VARCHAR(50) NULL,
+  `division` VARCHAR(50) NULL DEFAULT 'Corporate',
+  `location` VARCHAR(100) NOT NULL DEFAULT 'Bangalore HQ',
+  `active` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_dept_code` (`code`),
+  KEY `idx_dept_active` (`active`),
+  KEY `idx_dept_parent` (`parent_dept_id`),
+  CONSTRAINT `fk_dept_head`
+    FOREIGN KEY (`head_emp_id`) REFERENCES `employees` (`id`)
+    ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_dept_parent`
+    FOREIGN KEY (`parent_dept_id`) REFERENCES `departments` (`id`)
+    ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ── 15. Department Shifts Table (Department Default Shift Policy) ──
+CREATE TABLE IF NOT EXISTS `department_shifts` (
+  `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `dept_id` VARCHAR(50) NOT NULL,
+  `default_shift_id` VARCHAR(50) NOT NULL DEFAULT 'SHIFT_GEN',
+  `allowed_shifts` JSON NOT NULL,
+  `auto_apply` TINYINT(1) NOT NULL DEFAULT 1,
+  `updated_by` VARCHAR(100) NULL,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_dept_shifts_dept` (`dept_id`),
+  CONSTRAINT `fk_dept_shifts_dept`
+    FOREIGN KEY (`dept_id`) REFERENCES `departments` (`id`)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_dept_shifts_shift`
+    FOREIGN KEY (`default_shift_id`) REFERENCES `shifts` (`id`)
+    ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ── 16. Public Holidays Table (Annual Gazette Holidays Master) ──
+CREATE TABLE IF NOT EXISTS `public_holidays` (
+  `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `title` VARCHAR(120) NOT NULL,
+  `holiday_date` DATE NOT NULL,
+  `holiday_type` ENUM('MANDATORY', 'RESTRICTED', 'COMPANY_DECLARED') NOT NULL DEFAULT 'MANDATORY',
+  `applicable_state` VARCHAR(50) NOT NULL DEFAULT 'Karnataka',
+  `applicable_location` VARCHAR(100) NOT NULL DEFAULT 'All Locations',
+  `description` VARCHAR(255) NULL,
+  `is_recurring` TINYINT(1) NOT NULL DEFAULT 0,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_holiday_date_title` (`holiday_date`, `title`),
+  KEY `idx_holiday_date` (`holiday_date`),
+  KEY `idx_holiday_type` (`holiday_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Pre-seeded Standard Enterprise Departments
+INSERT IGNORE INTO `departments` (`id`, `code`, `name`, `division`, `location`, `active`) VALUES
+  ('DEP_ENG', 'ENG', 'Engineering & Product', 'Technology', 'Bangalore HQ', 1),
+  ('DEP_HR', 'HR', 'Human Resources', 'Corporate', 'Bangalore HQ', 1),
+  ('DEP_FIN', 'FIN', 'Finance & Accounts', 'Corporate', 'Bangalore HQ', 1),
+  ('DEP_OPS', 'OPS', '24x7 Operations & Support', 'Operations', 'Bangalore HQ', 1),
+  ('DEP_SALES', 'SALES', 'Sales & Marketing', 'Commercial', 'Bangalore HQ', 1),
+  ('DEP_IT', 'IT', 'IT Infrastructure & SecOps', 'Technology', 'Bangalore HQ', 1);
+
+-- Pre-seeded Department Shift Mappings
+INSERT IGNORE INTO `department_shifts` (`dept_id`, `default_shift_id`, `allowed_shifts`, `auto_apply`, `updated_by`) VALUES
+  ('DEP_ENG', 'SHIFT_GEN', '["SHIFT_GEN", "SHIFT_MOR"]', 1, 'system'),
+  ('DEP_HR', 'SHIFT_GEN', '["SHIFT_GEN"]', 1, 'system'),
+  ('DEP_FIN', 'SHIFT_GEN', '["SHIFT_GEN"]', 1, 'system'),
+  ('DEP_OPS', 'SHIFT_MOR', '["SHIFT_MOR", "SHIFT_EVE", "SHIFT_NIT"]', 1, 'system'),
+  ('DEP_SALES', 'SHIFT_GEN', '["SHIFT_GEN", "SHIFT_EVE"]', 1, 'system'),
+  ('DEP_IT', 'SHIFT_GEN', '["SHIFT_GEN", "SHIFT_NIT"]', 1, 'system');
+
+-- Pre-seeded Karnataka Gazetted Public Holidays 2026 (From Official Gazette / india.gov.in)
+INSERT IGNORE INTO `public_holidays` (`title`, `holiday_date`, `holiday_type`, `applicable_state`, `applicable_location`, `description`) VALUES
+  ('Uttarayana Punyakala, Makara Sankranti', '2026-01-15', 'MANDATORY', 'Karnataka', 'All Locations', 'Harvest Festival / Makara Sankranti (Gazetted)'),
+  ('Republic Day', '2026-01-26', 'MANDATORY', 'Karnataka', 'All Locations', 'National Holiday - Republic Day of India'),
+  ('Ugadi Festival', '2026-03-19', 'MANDATORY', 'Karnataka', 'All Locations', 'Kannada New Year (Gazetted)'),
+  ('Khutub-E-Ramzan (Eid-ul-Fitr)', '2026-03-21', 'MANDATORY', 'Karnataka', 'All Locations', 'Eid-ul-Fitr Celebration (Gazetted)'),
+  ('Mahaveera Jayanthi', '2026-03-31', 'MANDATORY', 'Karnataka', 'All Locations', 'Birth anniversary of Bhagwan Mahaveer (Gazetted)'),
+  ('Good Friday', '2026-04-03', 'MANDATORY', 'Karnataka', 'All Locations', 'Christian Observance - Good Friday (Gazetted)'),
+  ('Dr. B.R. Ambedkar Jayanthi', '2026-04-14', 'MANDATORY', 'Karnataka', 'All Locations', 'Birth anniversary of Dr. B.R. Ambedkar (Gazetted)'),
+  ('Basava Jayanthi, Akshaya Tritiya', '2026-04-20', 'MANDATORY', 'Karnataka', 'All Locations', 'Birth anniversary of Jagadjyothi Basaveshwara (Gazetted)'),
+  ('May Day (International Labour Day)', '2026-05-01', 'MANDATORY', 'Karnataka', 'All Locations', 'Labour Day / Worker Rights Day (Gazetted)'),
+  ('Bakrid (Eid al-Adha)', '2026-05-28', 'MANDATORY', 'Karnataka', 'All Locations', 'Eid al-Adha Feast of Sacrifice (Gazetted)'),
+  ('Last Day of Muharram', '2026-06-26', 'MANDATORY', 'Karnataka', 'All Locations', 'Muharram Observance (Gazetted)'),
+  ('Independence Day', '2026-08-15', 'MANDATORY', 'Karnataka', 'All Locations', 'National Holiday - 79th Independence Day of India'),
+  ('Eid-Milad', '2026-08-26', 'MANDATORY', 'Karnataka', 'All Locations', 'Milad-un-Nabi (Gazetted)'),
+  ('Varasiddhi Vinayaka Vrata', '2026-09-14', 'MANDATORY', 'Karnataka', 'All Locations', 'Ganesh Chaturthi Festival (Gazetted)'),
+  ('Mahatma Gandhi Jayanthi', '2026-10-02', 'MANDATORY', 'Karnataka', 'All Locations', 'National Holiday - Birth anniversary of Mahatma Gandhi'),
+  ('Mahanavami / Ayudha Pooja', '2026-10-20', 'MANDATORY', 'Karnataka', 'All Locations', 'Ayudha Pooja Festival (Gazetted)'),
+  ('Vijayadashami (Dussehra)', '2026-10-21', 'MANDATORY', 'Karnataka', 'All Locations', 'Vijayadashami / Mysore Dasara Festival (Gazetted)'),
+  ('Kannada Rajyotsava', '2026-11-01', 'MANDATORY', 'Karnataka', 'All Locations', 'Karnataka State Formation Day (Gazetted)'),
+  ('Kanakadasa Jayanthi', '2026-11-10', 'MANDATORY', 'Karnataka', 'All Locations', 'Birth anniversary of Saint Kanakadasa (Gazetted)'),
+  ('Guru Nanak Jayanthi', '2026-11-27', 'MANDATORY', 'Karnataka', 'All Locations', 'Birth anniversary of Guru Nanak Dev (Gazetted)'),
+  ('Christmas Day', '2026-12-25', 'MANDATORY', 'Karnataka', 'All Locations', 'Christian Festival - Christmas Day (Gazetted)');
 
 -- Default Administrator: admin / admin123 (SHA-256 username hash, Bcrypt password hash)
+
 INSERT IGNORE INTO `users` (`username`, `username_hash`, `username_display`, `password_hash`, `role`, `active`)
 VALUES (
   'admin',

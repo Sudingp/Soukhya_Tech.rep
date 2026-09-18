@@ -1172,6 +1172,365 @@ class MySQLAdapter {
     return { employees_count: employees.length, total_days: daysInMonth, total_slots: placeholders.length };
   }
 
+  // ──────────────────────────────────────────────
+  // 🏢 Departments (Department Master)
+  // ──────────────────────────────────────────────
+  async getAllDepartments() {
+    const pool = await this.getPool();
+    const [rows] = await pool.execute(`
+      SELECT d.*, h.name as head_name, p.name as parent_name,
+             (SELECT COUNT(*) FROM employees e WHERE e.department = d.name OR e.department = d.code) as employee_count
+      FROM departments d
+      LEFT JOIN employees h ON d.head_emp_id = h.id
+      LEFT JOIN departments p ON d.parent_dept_id = p.id
+      ORDER BY d.name ASC
+    `);
+    return rows.map(r => ({
+      ...r,
+      active: r.active === 1 || r.active === true,
+      employee_count: parseInt(r.employee_count || 0, 10)
+    }));
+  }
+
+  async getDepartmentById(id) {
+    const pool = await this.getPool();
+    const [rows] = await pool.execute(`
+      SELECT d.*, h.name as head_name, p.name as parent_name,
+             (SELECT COUNT(*) FROM employees e WHERE e.department = d.name OR e.department = d.code) as employee_count
+      FROM departments d
+      LEFT JOIN employees h ON d.head_emp_id = h.id
+      LEFT JOIN departments p ON d.parent_dept_id = p.id
+      WHERE d.id = ?
+    `, [id]);
+    if (!rows[0]) return null;
+    const r = rows[0];
+    return {
+      ...r,
+      active: r.active === 1 || r.active === true,
+      employee_count: parseInt(r.employee_count || 0, 10)
+    };
+  }
+
+  async insertDepartment(d) {
+    const pool = await this.getPool();
+    const [result] = await pool.execute(
+      `INSERT INTO departments (id, code, name, head_emp_id, parent_dept_id, division, location, active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        d.id,
+        d.code.toUpperCase(),
+        d.name,
+        d.head_emp_id || null,
+        d.parent_dept_id || null,
+        d.division || 'Corporate',
+        d.location || 'Bangalore HQ',
+        d.active !== false ? 1 : 0
+      ]
+    );
+
+    // Auto-create default department_shifts mapping
+    await pool.execute(
+      `INSERT IGNORE INTO department_shifts (dept_id, default_shift_id, allowed_shifts, auto_apply, updated_by)
+       VALUES (?, 'SHIFT_GEN', '["SHIFT_GEN"]', 1, 'system')`,
+      [d.id]
+    );
+
+    return { changes: result.affectedRows };
+  }
+
+  async updateDepartment(d) {
+    const pool = await this.getPool();
+    const [result] = await pool.execute(
+      `UPDATE departments SET
+        name = ?, code = ?, head_emp_id = ?, parent_dept_id = ?,
+        division = ?, location = ?, active = ?, updated_at = NOW()
+       WHERE id = ?`,
+      [
+        d.name,
+        d.code.toUpperCase(),
+        d.head_emp_id || null,
+        d.parent_dept_id || null,
+        d.division || 'Corporate',
+        d.location || 'Bangalore HQ',
+        d.active !== false ? 1 : 0,
+        d.id
+      ]
+    );
+    return { changes: result.affectedRows };
+  }
+
+  async deleteDepartment(id) {
+    const pool = await this.getPool();
+    const dept = await this.getDepartmentById(id);
+    if (!dept) return { changes: 0 };
+    if (dept.employee_count > 0) {
+      throw new Error(`Cannot delete department "${dept.name}" because it currently has ${dept.employee_count} active employees assigned.`);
+    }
+
+    const [result] = await pool.execute('DELETE FROM departments WHERE id = ?', [id]);
+    return { changes: result.affectedRows };
+  }
+
+  // ──────────────────────────────────────────────
+  // 🔄 Department Shifts (Department Policies)
+  // ──────────────────────────────────────────────
+  async getAllDepartmentShifts() {
+    const pool = await this.getPool();
+    const [rows] = await pool.execute(`
+      SELECT ds.*, d.name as dept_name, d.code as dept_code,
+             s.name as default_shift_name, s.code as default_shift_code, s.color as default_shift_color,
+             s.start_time, s.end_time
+      FROM department_shifts ds
+      JOIN departments d ON ds.dept_id = d.id
+      JOIN shifts s ON ds.default_shift_id = s.id
+      ORDER BY d.name ASC
+    `);
+    return rows.map(r => {
+      let allowed = [];
+      try {
+        allowed = typeof r.allowed_shifts === 'string' ? JSON.parse(r.allowed_shifts) : (r.allowed_shifts || []);
+      } catch {}
+      return {
+        ...r,
+        allowed_shifts: allowed,
+        auto_apply: r.auto_apply === 1 || r.auto_apply === true
+      };
+    });
+  }
+
+  async getDepartmentShiftsByDept(deptId) {
+    const pool = await this.getPool();
+    const [rows] = await pool.execute(`
+      SELECT ds.*, d.name as dept_name, d.code as dept_code,
+             s.name as default_shift_name, s.code as default_shift_code, s.color as default_shift_color,
+             s.start_time, s.end_time
+      FROM department_shifts ds
+      JOIN departments d ON ds.dept_id = d.id
+      JOIN shifts s ON ds.default_shift_id = s.id
+      WHERE ds.dept_id = ?
+    `, [deptId]);
+    if (!rows[0]) return null;
+    const r = rows[0];
+    let allowed = [];
+    try {
+      allowed = typeof r.allowed_shifts === 'string' ? JSON.parse(r.allowed_shifts) : (r.allowed_shifts || []);
+    } catch {}
+    return {
+      ...r,
+      allowed_shifts: allowed,
+      auto_apply: r.auto_apply === 1 || r.auto_apply === true
+    };
+  }
+
+  async upsertDepartmentShifts({ dept_id, default_shift_id, allowed_shifts, auto_apply, updated_by }) {
+    const pool = await this.getPool();
+    const allowedJson = JSON.stringify(Array.isArray(allowed_shifts) ? allowed_shifts : [default_shift_id || 'SHIFT_GEN']);
+    const [result] = await pool.execute(
+      `INSERT INTO department_shifts (dept_id, default_shift_id, allowed_shifts, auto_apply, updated_by)
+       VALUES (?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+        default_shift_id = VALUES(default_shift_id),
+        allowed_shifts = VALUES(allowed_shifts),
+        auto_apply = VALUES(auto_apply),
+        updated_by = VALUES(updated_by),
+        updated_at = NOW()`,
+      [
+        dept_id,
+        default_shift_id || 'SHIFT_GEN',
+        allowedJson,
+        auto_apply !== false ? 1 : 0,
+        updated_by || 'admin'
+      ]
+    );
+    return { changes: result.affectedRows };
+  }
+
+  async applyDepartmentShiftsToEmployees(deptId) {
+    const pool = await this.getPool();
+    const config = await this.getDepartmentShiftsByDept(deptId);
+    if (!config) throw new Error('Department shift config not found');
+
+    const [deptRows] = await pool.execute('SELECT name, code FROM departments WHERE id = ?', [deptId]);
+    if (!deptRows[0]) throw new Error('Department not found');
+    const { name, code } = deptRows[0];
+
+    // Find all active employees in this department
+    const [empRows] = await pool.execute(
+      'SELECT id FROM employees WHERE department = ? OR department = ?',
+      [name, code]
+    );
+
+    return { employees_affected: empRows.length, default_shift_id: config.default_shift_id };
+  }
+
+  // ──────────────────────────────────────────────
+  // 🏖️ Public Holidays (Karnataka Official Gazette)
+  // ──────────────────────────────────────────────
+  async getAllPublicHolidays(year) {
+    const pool = await this.getPool();
+    const y = parseInt(year || new Date().getFullYear(), 10);
+    const [rows] = await pool.execute(
+      `SELECT id, title, DATE_FORMAT(holiday_date, '%Y-%m-%d') as holiday_date,
+              holiday_type, applicable_state, applicable_location, description, is_recurring, created_at, updated_at
+       FROM public_holidays
+       WHERE YEAR(holiday_date) = ?
+       ORDER BY holiday_date ASC`,
+      [y]
+    );
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    return rows.map(r => {
+      const dt = new Date(r.holiday_date);
+      return {
+        ...r,
+        day_name: dt.toLocaleDateString('default', { weekday: 'long' }),
+        is_upcoming: r.holiday_date >= todayStr,
+        is_recurring: r.is_recurring === 1 || r.is_recurring === true
+      };
+    });
+  }
+
+  async getPublicHolidayById(id) {
+    const pool = await this.getPool();
+    const [rows] = await pool.execute(
+      `SELECT id, title, DATE_FORMAT(holiday_date, '%Y-%m-%d') as holiday_date,
+              holiday_type, applicable_state, applicable_location, description, is_recurring, created_at, updated_at
+       FROM public_holidays
+       WHERE id = ?`,
+      [id]
+    );
+    if (!rows[0]) return null;
+    const r = rows[0];
+    const dt = new Date(r.holiday_date);
+    return {
+      ...r,
+      day_name: dt.toLocaleDateString('default', { weekday: 'long' }),
+      is_recurring: r.is_recurring === 1 || r.is_recurring === true
+    };
+  }
+
+  async insertPublicHoliday(h) {
+    const pool = await this.getPool();
+    const [result] = await pool.execute(
+      `INSERT INTO public_holidays (title, holiday_date, holiday_type, applicable_state, applicable_location, description, is_recurring)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        h.title,
+        h.holiday_date,
+        h.holiday_type || 'MANDATORY',
+        h.applicable_state || 'Karnataka',
+        h.applicable_location || 'All Locations',
+        h.description || null,
+        h.is_recurring ? 1 : 0
+      ]
+    );
+    return { lastInsertRowid: result.insertId, changes: result.affectedRows };
+  }
+
+  async updatePublicHoliday(h) {
+    const pool = await this.getPool();
+    const [result] = await pool.execute(
+      `UPDATE public_holidays SET
+        title = ?, holiday_date = ?, holiday_type = ?, applicable_state = ?,
+        applicable_location = ?, description = ?, is_recurring = ?, updated_at = NOW()
+       WHERE id = ?`,
+      [
+        h.title,
+        h.holiday_date,
+        h.holiday_type || 'MANDATORY',
+        h.applicable_state || 'Karnataka',
+        h.applicable_location || 'All Locations',
+        h.description || null,
+        h.is_recurring ? 1 : 0,
+        h.id
+      ]
+    );
+    return { changes: result.affectedRows };
+  }
+
+  async deletePublicHoliday(id) {
+    const pool = await this.getPool();
+    const [result] = await pool.execute('DELETE FROM public_holidays WHERE id = ?', [id]);
+    return { changes: result.affectedRows };
+  }
+
+  async importKarnatakaHolidays(targetYear) {
+    const pool = await this.getPool();
+    const y = parseInt(targetYear || 2026, 10);
+
+    const karnatakaHolidays = [
+      { title: 'Uttarayana Punyakala, Makara Sankranti', date: `${y}-01-15`, desc: 'Harvest Festival / Makara Sankranti (Gazetted)' },
+      { title: 'Republic Day', date: `${y}-01-26`, desc: 'National Holiday - Republic Day of India' },
+      { title: 'Ugadi Festival', date: `${y}-03-19`, desc: 'Kannada New Year (Gazetted)' },
+      { title: 'Khutub-E-Ramzan (Eid-ul-Fitr)', date: `${y}-03-21`, desc: 'Eid-ul-Fitr Celebration (Gazetted)' },
+      { title: 'Mahaveera Jayanthi', date: `${y}-03-31`, desc: 'Birth anniversary of Bhagwan Mahaveer (Gazetted)' },
+      { title: 'Good Friday', date: `${y}-04-03`, desc: 'Christian Observance - Good Friday (Gazetted)' },
+      { title: 'Dr. B.R. Ambedkar Jayanthi', date: `${y}-04-14`, desc: 'Birth anniversary of Dr. B.R. Ambedkar (Gazetted)' },
+      { title: 'Basava Jayanthi, Akshaya Tritiya', date: `${y}-04-20`, desc: 'Birth anniversary of Jagadjyothi Basaveshwara (Gazetted)' },
+      { title: 'May Day (International Labour Day)', date: `${y}-05-01`, desc: 'Labour Day / Worker Rights Day (Gazetted)' },
+      { title: 'Bakrid (Eid al-Adha)', date: `${y}-05-28`, desc: 'Eid al-Adha Feast of Sacrifice (Gazetted)' },
+      { title: 'Last Day of Muharram', date: `${y}-06-26`, desc: 'Muharram Observance (Gazetted)' },
+      { title: 'Independence Day', date: `${y}-08-15`, desc: 'National Holiday - 79th Independence Day of India' },
+      { title: 'Eid-Milad', date: `${y}-08-26`, desc: 'Milad-un-Nabi (Gazetted)' },
+      { title: 'Varasiddhi Vinayaka Vrata', date: `${y}-09-14`, desc: 'Ganesh Chaturthi Festival (Gazetted)' },
+      { title: 'Mahatma Gandhi Jayanthi', date: `${y}-10-02`, desc: 'National Holiday - Birth anniversary of Mahatma Gandhi' },
+      { title: 'Mahanavami / Ayudha Pooja', date: `${y}-10-20`, desc: 'Ayudha Pooja Festival (Gazetted)' },
+      { title: 'Vijayadashami (Dussehra)', date: `${y}-10-21`, desc: 'Vijayadashami / Mysore Dasara Festival (Gazetted)' },
+      { title: 'Kannada Rajyotsava', date: `${y}-11-01`, desc: 'Karnataka State Formation Day (Gazetted)' },
+      { title: 'Kanakadasa Jayanthi', date: `${y}-11-10`, desc: 'Birth anniversary of Saint Kanakadasa (Gazetted)' },
+      { title: 'Guru Nanak Jayanthi', date: `${y}-11-27`, desc: 'Birth anniversary of Guru Nanak Dev (Gazetted)' },
+      { title: 'Christmas Day', date: `${y}-12-25`, desc: 'Christian Festival - Christmas Day (Gazetted)' }
+    ];
+
+    let inserted = 0;
+    for (const h of karnatakaHolidays) {
+      const [res] = await pool.execute(
+        `INSERT INTO public_holidays (title, holiday_date, holiday_type, applicable_state, applicable_location, description)
+         VALUES (?, ?, 'MANDATORY', 'Karnataka', 'All Locations', ?)
+         ON DUPLICATE KEY UPDATE description = VALUES(description), updated_at = NOW()`,
+        [h.title, h.date, h.desc]
+      );
+      if (res.affectedRows > 0) inserted++;
+    }
+
+    return { imported_count: inserted, total_holidays: karnatakaHolidays.length, year: y };
+  }
+
+  async syncHolidaysWithCalendar(targetYear, updatedBy) {
+    const pool = await this.getPool();
+    const y = parseInt(targetYear || 2026, 10);
+    const holidays = await this.getAllPublicHolidays(y);
+
+    let syncedCalendar = 0;
+    let syncedRoster = 0;
+
+    for (const h of holidays) {
+      // 1. Upsert into shift_calendar_days
+      await pool.execute(
+        `INSERT INTO shift_calendar_days (cal_date, day_type, default_shift_id, title, updated_by)
+         VALUES (?, 'HOLIDAY', NULL, ?, ?)
+         ON DUPLICATE KEY UPDATE
+          day_type = 'HOLIDAY',
+          title = VALUES(title),
+          updated_by = VALUES(updated_by),
+          updated_at = NOW()`,
+        [h.holiday_date, h.title, updatedBy || 'admin']
+      );
+      syncedCalendar++;
+
+      // 2. Update shift_roster for this date
+      const [rosterRes] = await pool.execute(
+        `UPDATE shift_roster SET day_type = 'HOLIDAY', note = ?, updated_at = NOW()
+         WHERE roster_date = ?`,
+        [h.title, h.holiday_date]
+      );
+      syncedRoster += rosterRes.affectedRows;
+    }
+
+    return { holidays_synced: syncedCalendar, roster_slots_updated: syncedRoster, year: y };
+  }
+
+
 
   // ──────────────────────────────────────────────
   // Reset & Clear

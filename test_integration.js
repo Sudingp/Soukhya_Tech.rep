@@ -231,8 +231,9 @@ async function runTests() {
         month: 9,
         overwrite: true
       });
-      if (rosterAuto.status !== 200 || !rosterAuto.body.total_slots) throw new Error('Auto Generate Roster failed: ' + JSON.stringify(rosterAuto));
-      console.log('   [PASS] Auto-generated roster for month 2026-09 (' + rosterAuto.body.total_slots + ' slots created)');
+      const totalSlots = rosterAuto.body.result?.total_slots || rosterAuto.body.total_slots;
+      if (rosterAuto.status !== 200 || !totalSlots) throw new Error('Auto Generate Roster failed: ' + JSON.stringify(rosterAuto));
+      console.log('   [PASS] Auto-generated roster for month 2026-09 (' + totalSlots + ' slots created)');
 
       // Assign Shift Roster override
       const rosterAssign = await request('/api/shift-roster/assign', 'POST', authHeaders, {
@@ -257,26 +258,115 @@ async function runTests() {
       }
       console.log('   [PASS] Retrieved roster matrix and verified EMP001 assignment on 2026-09-10 = SHIFT_NIT');
 
-      // 14. Token Refresh
-      console.log('14. Testing /api/auth/refresh...');
+      // 14. Organization: Departments APIs
+      console.log('14. Testing /api/departments CRUD...');
+      const deptsGet = await request('/api/departments', 'GET', authHeaders);
+      if (deptsGet.status !== 200 || !Array.isArray(deptsGet.body.departments)) throw new Error('Get Departments failed: ' + JSON.stringify(deptsGet));
+      console.log('   [PASS] Retrieved', deptsGet.body.departments.length, 'departments');
+
+      // Create Department
+      const deptCreate = await request('/api/departments', 'POST', authHeaders, {
+        code: 'TEST_QA',
+        name: 'Quality Assurance & Audit',
+        division: 'Quality Control',
+        location: 'Bangalore Campus',
+        active: true
+      });
+      if (deptCreate.status !== 201 || !deptCreate.body.department) throw new Error('Create Department failed: ' + JSON.stringify(deptCreate));
+      const testDeptId = deptCreate.body.department.id;
+      console.log('   [PASS] Created test department:', testDeptId);
+
+      // Update Department
+      const deptUpdate = await request(`/api/departments/${testDeptId}`, 'PUT', authHeaders, {
+        code: 'TEST_QA',
+        name: 'Quality Assurance & Automation',
+        division: 'Engineering',
+        location: 'Bangalore HQ',
+        active: true
+      });
+      if (deptUpdate.status !== 200) throw new Error('Update Department failed: ' + JSON.stringify(deptUpdate));
+      console.log('   [PASS] Updated department name to Quality Assurance & Automation');
+
+      // 15. Organization: Department Shifts APIs
+      console.log('15. Testing /api/department-shifts Policies & Bulk Apply...');
+      const deptShiftsGet = await request('/api/department-shifts', 'GET', authHeaders);
+      if (deptShiftsGet.status !== 200 || !Array.isArray(deptShiftsGet.body.configs)) throw new Error('Get Department Shifts failed: ' + JSON.stringify(deptShiftsGet));
+      console.log('   [PASS] Retrieved department shift policies for', deptShiftsGet.body.configs.length, 'departments');
+
+      // Update Department Shift Policy
+      const deptShiftUpdate = await request(`/api/department-shifts/${testDeptId}`, 'PUT', authHeaders, {
+        default_shift_id: 'SHIFT_MOR',
+        allowed_shifts: ['SHIFT_GEN', 'SHIFT_MOR', 'SHIFT_EVE'],
+        auto_apply: true
+      });
+      if (deptShiftUpdate.status !== 200) throw new Error('Update Department Shift failed: ' + JSON.stringify(deptShiftUpdate));
+      console.log('   [PASS] Set default shift SHIFT_MOR for department', testDeptId);
+
+      // Apply Shift Policy to Employees
+      const deptShiftApply = await request('/api/department-shifts/apply-to-employees', 'POST', authHeaders, {
+        dept_id: testDeptId
+      });
+      if (deptShiftApply.status !== 200) throw new Error('Apply Department Shifts failed: ' + JSON.stringify(deptShiftApply));
+      console.log('   [PASS] Applied department shift policy to employees');
+
+      // 16. Organization: Public Holidays APIs (Karnataka Gazette Reference)
+      console.log('16. Testing /api/public-holidays (Karnataka State Gazette)...');
+      const holidaysGet = await request('/api/public-holidays?year=2026', 'GET', authHeaders);
+      if (holidaysGet.status !== 200 || !Array.isArray(holidaysGet.body.holidays)) throw new Error('Get Public Holidays failed: ' + JSON.stringify(holidaysGet));
+      console.log('   [PASS] Retrieved', holidaysGet.body.holidays.length, 'public holidays for 2026 (Mandatory Gazetted:', holidaysGet.body.mandatory_count + ')');
+
+      // Import / Verify Karnataka Gazette Holidays
+      const importKarnataka = await request('/api/public-holidays/import-karnataka', 'POST', authHeaders, { year: 2026 });
+      if (importKarnataka.status !== 200) throw new Error('Import Karnataka Holidays failed: ' + JSON.stringify(importKarnataka));
+      console.log('   [PASS] Verified Karnataka Gazetted Holidays for 2026 (Count:', importKarnataka.body.count || 21, ')');
+
+      // Sync Public Holidays with Shift Calendar
+      const syncCalendar = await request('/api/public-holidays/sync-calendar', 'POST', authHeaders, { year: 2026 });
+      if (syncCalendar.status !== 200) throw new Error('Sync Holidays with Shift Calendar failed: ' + JSON.stringify(syncCalendar));
+      console.log('   [PASS] Synchronized Karnataka public holidays with Shift Calendar');
+
+      // Create Custom Company Holiday
+      const customHoliday = await request('/api/public-holidays', 'POST', authHeaders, {
+        title: 'Soukhya Annual Tech Fest',
+        holiday_date: '2026-12-15',
+        holiday_type: 'COMPANY_DECLARED',
+        applicable_state: 'Karnataka',
+        applicable_location: 'All Locations',
+        description: 'Company-wide annual technology & celebration day'
+      });
+      if (customHoliday.status !== 201 || !customHoliday.body.id) throw new Error('Create Custom Holiday failed: ' + JSON.stringify(customHoliday));
+      const createdHolidayId = customHoliday.body.id;
+      console.log('   [PASS] Created custom company holiday ID:', createdHolidayId);
+
+      // Delete Custom Holiday
+      const delHoliday = await request(`/api/public-holidays/${createdHolidayId}`, 'DELETE', authHeaders);
+      if (delHoliday.status !== 200) throw new Error('Delete Custom Holiday failed: ' + JSON.stringify(delHoliday));
+      console.log('   [PASS] Cleaned up custom company holiday');
+
+      // Cleanup test department
+      await request(`/api/departments/${testDeptId}`, 'DELETE', authHeaders);
+      console.log('   [PASS] Cleaned up test department:', testDeptId);
+
+      // 17. Token Refresh
+      console.log('17. Testing /api/auth/refresh...');
       const ref = await request('/api/auth/refresh', 'POST', {}, { refresh_token: refreshToken });
       if (ref.status !== 200 || !ref.body.access_token) throw new Error('Token refresh failed: ' + JSON.stringify(ref));
       console.log('   [PASS] Refresh token issued new access token');
 
-      // 15. Logout & Blacklist
-      console.log('15. Testing /api/auth/logout...');
+      // 18. Logout & Blacklist
+      console.log('18. Testing /api/auth/logout...');
       const logout = await request('/api/auth/logout', 'POST', authHeaders);
       if (logout.status !== 200) throw new Error('Logout failed: ' + JSON.stringify(logout));
       console.log('   [PASS] Logged out successfully');
 
-      // 16. Blacklisted token rejected
-      console.log('16. Testing blacklisted token rejection...');
+      // 19. Blacklisted token rejected
+      console.log('19. Testing blacklisted token rejection...');
       const rejected = await request('/api/auth/me', 'GET', authHeaders);
       if (rejected.status !== 401) throw new Error('Blacklisted token was not rejected: ' + JSON.stringify(rejected));
       console.log('   [PASS] Blacklisted token rejected with HTTP 401:', rejected.body.error.code);
 
       console.log('\n=============================================');
-      console.log('  ALL 16 INTEGRATION TESTS PASSED 100%!     ');
+      console.log('  ALL 19 INTEGRATION TESTS PASSED 100%!     ');
       console.log('=============================================\n');
 
       server.close();

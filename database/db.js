@@ -241,8 +241,63 @@ const stmts = {
   },
   autoGenerateMonthlyRoster: {
     run: (data) => mysqlAdapter.autoGenerateMonthlyRoster(data)
+  },
+
+  // ── 🏢 Departments ──
+  getAllDepartments: {
+    all: () => mysqlAdapter.getAllDepartments()
+  },
+  getDepartmentById: {
+    get: (id) => mysqlAdapter.getDepartmentById(id)
+  },
+  insertDepartment: {
+    run: (dept) => mysqlAdapter.insertDepartment(dept)
+  },
+  updateDepartment: {
+    run: (dept) => mysqlAdapter.updateDepartment(dept)
+  },
+  deleteDepartment: {
+    run: (id) => mysqlAdapter.deleteDepartment(id)
+  },
+
+  // ── 🔄 Department Shifts ──
+  getAllDepartmentShifts: {
+    all: () => mysqlAdapter.getAllDepartmentShifts()
+  },
+  getDepartmentShiftsByDept: {
+    get: (deptId) => mysqlAdapter.getDepartmentShiftsByDept(deptId)
+  },
+  upsertDepartmentShifts: {
+    run: (data) => mysqlAdapter.upsertDepartmentShifts(data)
+  },
+  applyDepartmentShiftsToEmployees: {
+    run: (deptId) => mysqlAdapter.applyDepartmentShiftsToEmployees(deptId)
+  },
+
+  // ── 🏖️ Public Holidays ──
+  getAllPublicHolidays: {
+    all: (year) => mysqlAdapter.getAllPublicHolidays(year)
+  },
+  getPublicHolidayById: {
+    get: (id) => mysqlAdapter.getPublicHolidayById(id)
+  },
+  insertPublicHoliday: {
+    run: (holiday) => mysqlAdapter.insertPublicHoliday(holiday)
+  },
+  updatePublicHoliday: {
+    run: (holiday) => mysqlAdapter.updatePublicHoliday(holiday)
+  },
+  deletePublicHoliday: {
+    run: (id) => mysqlAdapter.deletePublicHoliday(id)
+  },
+  importKarnatakaHolidays: {
+    run: (year) => mysqlAdapter.importKarnatakaHolidays(year)
+  },
+  syncHolidaysWithCalendar: {
+    run: (year, updatedBy) => mysqlAdapter.syncHolidaysWithCalendar(year, updatedBy)
   }
 };
+
 
 
 module.exports = {
