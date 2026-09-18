@@ -166,6 +166,37 @@ INSERT IGNORE INTO `master_settings` (`setting_key`, `setting_value`, `category`
   ('pii_masking_enabled', 'true', 'SECURITY', 'Mask sensitive Aadhaar, PAN, and phone numbers in non-admin views'),
   ('audit_retention_days', '180', 'SECURITY', 'Number of days before audit logs are eligible for archival');
 
+-- ── 9. Shift Master & Definitions Table ──
+CREATE TABLE IF NOT EXISTS `shifts` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `name` VARCHAR(100) NOT NULL,
+  `code` VARCHAR(20) NOT NULL,
+  `start_time` TIME NOT NULL,
+  `end_time` TIME NOT NULL,
+  `break_start` TIME NULL,
+  `break_end` TIME NULL,
+  `break_mins` INT UNSIGNED NOT NULL DEFAULT 60,
+  `early_in_mins` INT UNSIGNED NOT NULL DEFAULT 30,
+  `late_grace_mins` INT UNSIGNED NOT NULL DEFAULT 15,
+  `early_out_mins` INT UNSIGNED NOT NULL DEFAULT 15,
+  `min_half_day_hrs` DECIMAL(4,2) NOT NULL DEFAULT 4.00,
+  `min_full_day_hrs` DECIMAL(4,2) NOT NULL DEFAULT 8.00,
+  `is_night_shift` TINYINT(1) NOT NULL DEFAULT 0,
+  `color` VARCHAR(20) NOT NULL DEFAULT '#00d4aa',
+  `active` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_shifts_code` (`code`),
+  KEY `idx_shifts_active` (`active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Default Standard Shifts Seed
+INSERT IGNORE INTO `shifts` (`id`, `name`, `code`, `start_time`, `end_time`, `break_start`, `break_end`, `break_mins`, `early_in_mins`, `late_grace_mins`, `early_out_mins`, `min_half_day_hrs`, `min_full_day_hrs`, `is_night_shift`, `color`) VALUES
+  ('SHIFT_GEN', 'General Day Shift', 'GEN', '09:00:00', '18:00:00', '13:00:00', '14:00:00', 60, 30, 15, 15, 4.00, 8.00, 0, '#00d4aa'),
+  ('SHIFT_MOR', 'Morning Early Shift', 'MOR', '06:00:00', '14:30:00', '10:00:00', '10:30:00', 30, 30, 15, 15, 4.00, 8.00, 0, '#4f8ef7'),
+  ('SHIFT_EVE', 'Evening Afternoon Shift', 'EVE', '14:00:00', '22:30:00', '18:00:00', '18:30:00', 30, 30, 15, 15, 4.00, 8.00, 0, '#f59e0b'),
+  ('SHIFT_NIT', 'Night Overnight Shift', 'NIT', '22:00:00', '06:30:00', '02:00:00', '02:30:00', 30, 30, 15, 15, 4.00, 8.00, 1, '#a855f7');
+
 -- Default Administrator: admin / admin123 (SHA-256 username hash, Bcrypt password hash)
 INSERT IGNORE INTO `users` (`username`, `username_hash`, `username_display`, `password_hash`, `role`, `active`)
 VALUES (

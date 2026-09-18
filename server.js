@@ -1222,6 +1222,126 @@ app.put('/api/settings/master', authenticate, requireRoles('ADMIN'), async (req,
 });
 
 // ══════════════════════════════════════════════
+// SHIFTS API
+// ══════════════════════════════════════════════
+app.get('/api/shifts', authenticate, async (req, res) => {
+  try {
+    const shifts = await stmts.getAllShifts.all();
+    ok(res, { shifts, total: shifts.length });
+  } catch (e) {
+    console.error('[GET /api/shifts]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch shifts', 500);
+  }
+});
+
+const shiftSchema = Joi.object({
+  name: Joi.string().min(2).max(100).required(),
+  code: Joi.string().min(2).max(20).required(),
+  start_time: Joi.string().pattern(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/).required(),
+  end_time: Joi.string().pattern(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/).required(),
+  break_start: Joi.string().pattern(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/).allow(null, '').optional(),
+  break_end: Joi.string().pattern(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/).allow(null, '').optional(),
+  break_mins: Joi.number().integer().min(0).max(300).optional(),
+  early_in_mins: Joi.number().integer().min(0).max(180).optional(),
+  late_grace_mins: Joi.number().integer().min(0).max(180).optional(),
+  early_out_mins: Joi.number().integer().min(0).max(180).optional(),
+  min_half_day_hrs: Joi.number().min(1).max(12).optional(),
+  min_full_day_hrs: Joi.number().min(1).max(24).optional(),
+  is_night_shift: Joi.boolean().optional(),
+  color: Joi.string().pattern(/^#[0-9a-fA-F]{6}$/).optional(),
+  active: Joi.boolean().optional()
+});
+
+app.post('/api/shifts', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { error, value } = shiftSchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const shiftId = 'SHIFT_' + (value.code.toUpperCase().replace(/[^A-Z0-9]/g, '') || uuidv4().slice(0, 6).toUpperCase());
+    const shiftData = {
+      id: shiftId,
+      ...value,
+      code: value.code.toUpperCase()
+    };
+
+    await stmts.insertShift.run(shiftData);
+
+    await auditLog({
+      table: 'shifts',
+      recordId: shiftId,
+      action: 'INSERT',
+      newValues: shiftData,
+      req
+    });
+
+    notifyDbChange('shifts', { action: 'insert', shiftId });
+
+    ok(res, { message: 'Shift created successfully', shift: shiftData }, 201);
+  } catch (e) {
+    if (e.message && e.message.includes('Duplicate')) {
+      return err(res, 'DUPLICATE_CODE', 'A shift with this code already exists', 409);
+    }
+    console.error('[POST /api/shifts]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to create shift: ' + e.message, 500);
+  }
+});
+
+app.put('/api/shifts/:id', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await stmts.getShiftById.get(id);
+    if (!existing) return err(res, 'NOT_FOUND', 'Shift not found', 404);
+
+    const { error, value } = shiftSchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const updateData = { id, ...value, code: value.code.toUpperCase() };
+    await stmts.updateShift.run(updateData);
+
+    await auditLog({
+      table: 'shifts',
+      recordId: id,
+      action: 'UPDATE',
+      oldValues: existing,
+      newValues: updateData,
+      req
+    });
+
+    notifyDbChange('shifts', { action: 'update', shiftId: id });
+
+    ok(res, { message: 'Shift updated successfully', shift: updateData });
+  } catch (e) {
+    console.error('[PUT /api/shifts/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to update shift: ' + e.message, 500);
+  }
+});
+
+app.delete('/api/shifts/:id', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await stmts.getShiftById.get(id);
+    if (!existing) return err(res, 'NOT_FOUND', 'Shift not found', 404);
+
+    await stmts.deleteShift.run(id);
+
+    await auditLog({
+      table: 'shifts',
+      recordId: id,
+      action: 'DELETE',
+      oldValues: existing,
+      req
+    });
+
+    notifyDbChange('shifts', { action: 'delete', shiftId: id });
+
+    ok(res, { message: 'Shift deleted successfully' });
+  } catch (e) {
+    console.error('[DELETE /api/shifts/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to delete shift: ' + e.message, 500);
+  }
+});
+
+// ══════════════════════════════════════════════
 // HEALTH CHECK
 // ══════════════════════════════════════════════
 app.get('/api/health', (req, res) => {

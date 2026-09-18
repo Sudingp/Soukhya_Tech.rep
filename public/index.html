@@ -1371,6 +1371,153 @@
     </div>
   </div>
 
+  <!-- ── SHIFT DETAILS MASTER MODAL ── -->
+  <div id="shift-details-modal" class="modal-overlay" style="display:none; z-index:9998;">
+    <div class="modal-box animate-zoom" style="max-width:860px; width:95%; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.85); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:14px 20px; background:linear-gradient(135deg, #161b27, #1a2234); display:flex; justify-content:space-between; align-items:center">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:20px">⏱️</span>
+          <div>
+            <span class="modal-title" style="font-size:15px; font-weight:700; color:var(--tx)">Shift Details Master</span>
+            <div style="font-size:11px; color:var(--mu)">Configure enterprise work shifts, break windows & tolerance policies</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px">
+          <button type="button" class="btn btnp bsm" onclick="openAddShiftModal()">+ Add New Shift</button>
+          <button class="modal-close-x" onclick="closeShiftDetailsModal()">✕</button>
+        </div>
+      </div>
+
+      <div class="modal-body" style="padding:16px 20px; overflow-y:auto; flex:1">
+        <div style="overflow-x:auto">
+          <table class="gt" style="width:100%; border-collapse:collapse; font-size:11.5px">
+            <thead>
+              <tr style="border-bottom:1px solid var(--br); color:var(--mu); background:var(--s2)">
+                <th style="padding:8px 10px; text-align:left">Shift Code</th>
+                <th style="padding:8px 10px; text-align:left">Shift Name</th>
+                <th style="padding:8px 10px; text-align:center">Work Timings</th>
+                <th style="padding:8px 10px; text-align:center">Break</th>
+                <th style="padding:8px 10px; text-align:center">Grace In</th>
+                <th style="padding:8px 10px; text-align:center">Night Shift</th>
+                <th style="padding:8px 10px; text-align:right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="shifts-tbody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="modal-ftr" style="padding:10px 20px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center">
+        <span id="shifts-count-label" style="font-size:11px; color:var(--mu)">Loading shifts...</span>
+        <button type="button" class="btn bsm" onclick="closeShiftDetailsModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ADD / EDIT SHIFT FORM MODAL ── -->
+  <div id="shift-form-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:540px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:14px 18px; background:linear-gradient(135deg, #161b27, #1e2438)">
+        <span class="modal-title" id="shift-form-title" style="font-size:14px; font-weight:700">Add New Shift</span>
+        <button class="modal-close-x" onclick="closeShiftFormModal()">✕</button>
+      </div>
+
+      <div class="modal-body" style="padding:18px">
+        <form id="shift-crud-form" onsubmit="saveShiftForm(event)">
+          <input type="hidden" id="sf-id" value="" />
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr; gap:12px">
+            <div class="fg">
+              <label class="fl">Shift Code *</label>
+              <input class="fi" id="sf-code" placeholder="GEN" required maxlength="20" style="text-transform:uppercase" />
+            </div>
+            <div class="fg">
+              <label class="fl">Shift Color Tag</label>
+              <div style="display:flex; align-items:center; gap:8px">
+                <input type="color" id="sf-color" value="#00d4aa" style="height:32px; width:44px; padding:2px; background:transparent; border:1px solid var(--br); border-radius:4px; cursor:pointer" />
+                <span id="sf-color-preview" style="font-size:11px; font-family:var(--mo); color:var(--mu)">#00d4aa</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="fg" style="margin-top:10px">
+            <label class="fl">Shift Name *</label>
+            <input class="fi" id="sf-name" placeholder="General Day Shift" required maxlength="100" />
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr; gap:12px; margin-top:10px">
+            <div class="fg">
+              <label class="fl">Start Time (24h) *</label>
+              <input type="time" class="fi" id="sf-start_time" required value="09:00" />
+            </div>
+            <div class="fg">
+              <label class="fl">End Time (24h) *</label>
+              <input type="time" class="fi" id="sf-end_time" required value="18:00" />
+            </div>
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-top:10px">
+            <div class="fg">
+              <label class="fl">Break Start</label>
+              <input type="time" class="fi" id="sf-break_start" value="13:00" />
+            </div>
+            <div class="fg">
+              <label class="fl">Break End</label>
+              <input type="time" class="fi" id="sf-break_end" value="14:00" />
+            </div>
+            <div class="fg">
+              <label class="fl">Break (Mins)</label>
+              <input type="number" class="fi" id="sf-break_mins" value="60" min="0" max="240" />
+            </div>
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-top:10px">
+            <div class="fg">
+              <label class="fl">Early In (Mins)</label>
+              <input type="number" class="fi" id="sf-early_in_mins" value="30" min="0" max="180" />
+            </div>
+            <div class="fg">
+              <label class="fl">Late Grace (Mins)</label>
+              <input type="number" class="fi" id="sf-late_grace_mins" value="15" min="0" max="180" />
+            </div>
+            <div class="fg">
+              <label class="fl">Early Out (Mins)</label>
+              <input type="number" class="fi" id="sf-early_out_mins" value="15" min="0" max="180" />
+            </div>
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr; gap:12px; margin-top:10px">
+            <div class="fg">
+              <label class="fl">Full-Day Min (Hrs)</label>
+              <input type="number" step="0.5" class="fi" id="sf-min_full_day_hrs" value="8.0" min="1" max="24" />
+            </div>
+            <div class="fg">
+              <label class="fl">Half-Day Min (Hrs)</label>
+              <input type="number" step="0.5" class="fi" id="sf-min_half_day_hrs" value="4.0" min="1" max="12" />
+            </div>
+          </div>
+
+          <div class="ms-toggle-card" style="margin-top:12px; padding:8px 12px">
+            <div>
+              <div style="font-weight:600; font-size:12px; color:var(--tx)">🌙 Overnight / Night Shift</div>
+              <div style="font-size:10px; color:var(--mu)">Shift spans across midnight to the next day.</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="sf-is_night_shift" />
+              <span class="slider round"></span>
+            </label>
+          </div>
+        </form>
+      </div>
+
+      <div class="modal-ftr" style="padding:12px 18px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:flex-end; gap:8px">
+        <button type="button" class="btn bsm" onclick="closeShiftFormModal()">Cancel</button>
+        <button type="button" class="btn btnp bsm" id="sf-save-btn" onclick="saveShiftForm(event)">💾 Save Shift</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── AUTHENTICATION LOGIN MODAL ── -->
   <div id="login-modal" class="modal-overlay" style="display:none; z-index:9999;">
     <div class="modal-box animate-zoom" style="max-width:440px; box-shadow:0 24px 64px rgba(0,0,0,0.85); border:1px solid var(--br);">

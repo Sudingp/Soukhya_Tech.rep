@@ -182,6 +182,23 @@ const stmts = {
   },
   updateMasterSettings: {
     run: (settingsMap, updatedBy) => mysqlAdapter.updateMasterSettings(settingsMap, updatedBy)
+  },
+
+  // ── Shifts ──
+  getAllShifts: {
+    all: () => mysqlAdapter.getAllShifts()
+  },
+  getShiftById: {
+    get: (id) => mysqlAdapter.getShiftById(id)
+  },
+  insertShift: {
+    run: (shift) => mysqlAdapter.insertShift(shift)
+  },
+  updateShift: {
+    run: (shift) => mysqlAdapter.updateShift(shift)
+  },
+  deleteShift: {
+    run: (id) => mysqlAdapter.deleteShift(id)
   }
 };
 

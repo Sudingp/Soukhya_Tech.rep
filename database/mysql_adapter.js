@@ -540,6 +540,77 @@ class MySQLAdapter {
   }
 
   // ──────────────────────────────────────────────
+  // Shifts
+  // ──────────────────────────────────────────────
+  async getAllShifts() {
+    const pool = await this.getPool();
+    const [rows] = await pool.execute('SELECT * FROM shifts WHERE active = 1 ORDER BY start_time ASC');
+    return rows.map(r => ({
+      ...r,
+      is_night_shift: !!r.is_night_shift,
+      active: !!r.active
+    }));
+  }
+
+  async getShiftById(id) {
+    const pool = await this.getPool();
+    const [rows] = await pool.execute('SELECT * FROM shifts WHERE id = ?', [id]);
+    if (!rows[0]) return null;
+    return {
+      ...rows[0],
+      is_night_shift: !!rows[0].is_night_shift,
+      active: !!rows[0].active
+    };
+  }
+
+  async insertShift(s) {
+    const pool = await this.getPool();
+    const [result] = await pool.execute(
+      `INSERT INTO shifts (
+        id, name, code, start_time, end_time, break_start, break_end, break_mins,
+        early_in_mins, late_grace_mins, early_out_mins, min_half_day_hrs, min_full_day_hrs,
+        is_night_shift, color, active
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        s.id, s.name, s.code.toUpperCase(), s.start_time, s.end_time,
+        s.break_start || null, s.break_end || null, parseInt(s.break_mins || 60, 10),
+        parseInt(s.early_in_mins || 30, 10), parseInt(s.late_grace_mins || 15, 10), parseInt(s.early_out_mins || 15, 10),
+        parseFloat(s.min_half_day_hrs || 4.0), parseFloat(s.min_full_day_hrs || 8.0),
+        s.is_night_shift ? 1 : 0, s.color || '#00d4aa', s.active !== false ? 1 : 0
+      ]
+    );
+    return { changes: result.affectedRows };
+  }
+
+  async updateShift(s) {
+    const pool = await this.getPool();
+    const [result] = await pool.execute(
+      `UPDATE shifts SET
+        name = ?, code = ?, start_time = ?, end_time = ?,
+        break_start = ?, break_end = ?, break_mins = ?,
+        early_in_mins = ?, late_grace_mins = ?, early_out_mins = ?,
+        min_half_day_hrs = ?, min_full_day_hrs = ?,
+        is_night_shift = ?, color = ?, active = ?, updated_at = NOW()
+       WHERE id = ?`,
+      [
+        s.name, s.code.toUpperCase(), s.start_time, s.end_time,
+        s.break_start || null, s.break_end || null, parseInt(s.break_mins || 60, 10),
+        parseInt(s.early_in_mins || 30, 10), parseInt(s.late_grace_mins || 15, 10), parseInt(s.early_out_mins || 15, 10),
+        parseFloat(s.min_half_day_hrs || 4.0), parseFloat(s.min_full_day_hrs || 8.0),
+        s.is_night_shift ? 1 : 0, s.color || '#00d4aa', s.active !== false ? 1 : 0,
+        s.id
+      ]
+    );
+    return { changes: result.affectedRows };
+  }
+
+  async deleteShift(id) {
+    const pool = await this.getPool();
+    const [result] = await pool.execute('DELETE FROM shifts WHERE id = ?', [id]);
+    return { changes: result.affectedRows };
+  }
+
+  // ──────────────────────────────────────────────
   // Reset & Clear
   // ──────────────────────────────────────────────
   async clearAll() {

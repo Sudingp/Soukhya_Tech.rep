@@ -124,26 +124,63 @@ async function runTests() {
       }
       console.log('   [PASS] Master Settings updated and persisted to MySQL');
 
-      // 10. Token Refresh
-      console.log('10. Testing /api/auth/refresh...');
+      // 10. Shifts CRUD API
+      console.log('10. Testing /api/shifts CRUD...');
+      const shiftsGet = await request('/api/shifts', 'GET', authHeaders);
+      if (shiftsGet.status !== 200 || !Array.isArray(shiftsGet.body.shifts)) throw new Error('Get Shifts failed: ' + JSON.stringify(shiftsGet));
+      console.log('   [PASS] Retrieved', shiftsGet.body.shifts.length, 'configured shifts');
+
+      // Create test shift
+      const testShiftCode = 'TEST_' + Date.now().toString().slice(-4);
+      const shiftCreate = await request('/api/shifts', 'POST', authHeaders, {
+        code: testShiftCode,
+        name: 'Automated Test Shift',
+        start_time: '10:00',
+        end_time: '19:00',
+        break_mins: 45,
+        late_grace_mins: 10,
+        color: '#3b82f6'
+      });
+      if (shiftCreate.status !== 201 || !shiftCreate.body.shift) throw new Error('Create Shift failed: ' + JSON.stringify(shiftCreate));
+      const createdId = shiftCreate.body.shift.id;
+      console.log('   [PASS] Created shift:', createdId);
+
+      // Update test shift
+      const shiftUpdate = await request(`/api/shifts/${createdId}`, 'PUT', authHeaders, {
+        code: testShiftCode,
+        name: 'Automated Test Shift Updated',
+        start_time: '10:30',
+        end_time: '19:30',
+        color: '#10b981'
+      });
+      if (shiftUpdate.status !== 200 || shiftUpdate.body.shift.name !== 'Automated Test Shift Updated') throw new Error('Update Shift failed: ' + JSON.stringify(shiftUpdate));
+      console.log('   [PASS] Updated shift:', createdId);
+
+      // Delete test shift
+      const shiftDelete = await request(`/api/shifts/${createdId}`, 'DELETE', authHeaders);
+      if (shiftDelete.status !== 200) throw new Error('Delete Shift failed: ' + JSON.stringify(shiftDelete));
+      console.log('   [PASS] Deleted shift:', createdId);
+
+      // 11. Token Refresh
+      console.log('11. Testing /api/auth/refresh...');
       const ref = await request('/api/auth/refresh', 'POST', {}, { refresh_token: refreshToken });
       if (ref.status !== 200 || !ref.body.access_token) throw new Error('Token refresh failed: ' + JSON.stringify(ref));
       console.log('   [PASS] Refresh token issued new access token');
 
-      // 11. Logout & Blacklist
-      console.log('11. Testing /api/auth/logout...');
+      // 12. Logout & Blacklist
+      console.log('12. Testing /api/auth/logout...');
       const logout = await request('/api/auth/logout', 'POST', authHeaders);
       if (logout.status !== 200) throw new Error('Logout failed: ' + JSON.stringify(logout));
       console.log('   [PASS] Logged out successfully');
 
-      // 12. Blacklisted token rejected
-      console.log('12. Testing blacklisted token rejection...');
+      // 13. Blacklisted token rejected
+      console.log('13. Testing blacklisted token rejection...');
       const rejected = await request('/api/auth/me', 'GET', authHeaders);
       if (rejected.status !== 401) throw new Error('Blacklisted token was not rejected: ' + JSON.stringify(rejected));
       console.log('   [PASS] Blacklisted token rejected with HTTP 401:', rejected.body.error.code);
 
       console.log('\n=============================================');
-      console.log('  ALL 12 INTEGRATION TESTS PASSED 100%!     ');
+      console.log('  ALL 13 INTEGRATION TESTS PASSED 100%!     ');
       console.log('=============================================\n');
       server.close();
       process.exit(0);
