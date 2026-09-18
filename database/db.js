@@ -11,12 +11,21 @@ let mysqlReady = false;
 async function checkMySQL() {
   let status = await mysqlAdapter.testConnection();
   if (!status.ok) {
-    const setupScript = path.resolve(__dirname, '..', 'scripts', 'setup_mysql.sh');
-    if (fs.existsSync(setupScript)) {
+    const setupScriptJs = path.resolve(__dirname, '..', 'scripts', 'setup_mysql.js');
+    const setupScriptSh = path.resolve(__dirname, '..', 'scripts', 'setup_mysql.sh');
+    if (fs.existsSync(setupScriptJs)) {
+      try {
+        console.log('[DB] MySQL offline. Auto-initiating local daemon via scripts/setup_mysql.js...');
+        execSync(`node "${setupScriptJs}"`, { stdio: 'inherit' });
+        await new Promise(r => setTimeout(r, 1000));
+        status = await mysqlAdapter.testConnection();
+      } catch (err) {
+        console.warn('[DB] Auto-start attempt error:', err.message);
+      }
+    } else if (fs.existsSync(setupScriptSh) && process.platform !== 'win32') {
       try {
         console.log('[DB] MySQL offline. Auto-initiating local daemon via scripts/setup_mysql.sh...');
-        execSync(`bash "${setupScript}"`, { stdio: 'inherit' });
-        // wait brief moment for socket ready
+        execSync(`bash "${setupScriptSh}"`, { stdio: 'inherit' });
         await new Promise(r => setTimeout(r, 1000));
         status = await mysqlAdapter.testConnection();
       } catch (err) {

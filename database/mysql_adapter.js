@@ -382,7 +382,7 @@ class MySQLAdapter {
         SUBSTRING(hibernate_start_date, 1, 7) as month,
         COUNT(*) as count
       FROM employees
-      WHERE status = 'Hibernate' AND hibernate_start_date IS NOT NULL AND hibernate_start_date != ''
+      WHERE status = 'Hibernate' AND hibernate_start_date IS NOT NULL
       GROUP BY SUBSTRING(hibernate_start_date, 1, 7)
       ORDER BY month ASC
     `);

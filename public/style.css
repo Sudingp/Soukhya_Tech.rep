@@ -1426,6 +1426,19 @@ tr:hover td      { background: var(--s2); }
   text-align: center;
 }
 
+.menu-list-item.has-sub {
+  user-select: none;
+}
+
+.menu-submenu {
+  animation: fadeInDown 0.15s ease-out;
+}
+
+.menu-submenu .menu-list-item {
+  padding: 6px 10px;
+  font-size: 11.5px;
+}
+
 /* ══════════════════════════════════════════════ */
 /* ✨ CHANGELOG v2.0 UI STYLES                   */
 /* ══════════════════════════════════════════════ */

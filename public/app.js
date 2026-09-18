@@ -2344,6 +2344,23 @@ function closeInfoDrawer() {
   document.getElementById('info-drawer').style.display = 'none';
 }
 
+function toggleMasterSubmenu(id, event) {
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+  const el = document.getElementById(id);
+  const arrow = document.getElementById(id + '-arrow');
+  if (!el) return;
+  const isHidden = el.style.display === 'none' || !el.style.display;
+  el.style.display = isHidden ? 'block' : 'none';
+  if (arrow) {
+    arrow.style.transform = isHidden ? 'rotate(90deg)' : 'rotate(0deg)';
+    arrow.style.color = isHidden ? 'var(--ac)' : 'var(--mu)';
+  }
+}
+window.toggleMasterSubmenu = toggleMasterSubmenu;
+
 // Horizontal Navigation Menu Drawer Content Generators
 function openMenuDrawer(section) {
   let title = 'System Details';
@@ -2399,68 +2416,127 @@ function openMenuDrawer(section) {
             <div class="menu-list-item" onclick="closeInfoDrawer(); showTab('company', null)">
               <span class="menu-icon">🏢</span> <span class="menu-text">Companies</span>
             </div>
-            <div class="menu-list-item" onclick="notify('Master Settings config loaded.', 'ok')">
-              <span class="menu-icon">⚙️</span> <span class="menu-text">Master Settings</span>
+
+            <!-- Settings Dropdown / Submenu Option -->
+            <div class="menu-list-item has-sub" onclick="toggleMasterSubmenu('sub-settings', event)" style="display:flex; justify-content:space-between; align-items:center">
+              <div style="display:flex; align-items:center; gap:10px">
+                <span class="menu-icon">⚙️</span> <span class="menu-text" style="font-weight:600">Settings</span>
+              </div>
+              <span id="sub-settings-arrow" style="font-size:10px; color:var(--mu); transition:transform 0.2s">▶</span>
             </div>
-            <div class="menu-list-item" onclick="notify('Mail Settings config loaded.', 'ok')">
-              <span class="menu-icon">✉️</span> <span class="menu-text">Mail Settings</span>
+            <div id="sub-settings" class="menu-submenu" style="display:none; padding-left:14px; margin-left:12px; border-left:2px solid var(--ac); margin-top:2px; margin-bottom:4px">
+              <div class="menu-list-item" onclick="notify('Master Settings config loaded.', 'ok')">
+                <span class="menu-icon">⚙️</span> <span class="menu-text">Master Settings</span>
+              </div>
+              <div class="menu-list-item" onclick="notify('Mail Settings config loaded.', 'ok')">
+                <span class="menu-icon">✉️</span> <span class="menu-text">Mail Settings</span>
+              </div>
+              <div class="menu-list-item" onclick="notify('SMS Settings config loaded.', 'ok')">
+                <span class="menu-icon">💬</span> <span class="menu-text">SMS Settings</span>
+              </div>
             </div>
-            <div class="menu-list-item" onclick="notify('SMS Settings config loaded.', 'ok')">
-              <span class="menu-icon">💬</span> <span class="menu-text">SMS Settings</span>
+
+            <!-- Shift Dropdown / Submenu Option -->
+            <div class="menu-list-item has-sub" onclick="toggleMasterSubmenu('sub-shift', event)" style="display:flex; justify-content:space-between; align-items:center">
+              <div style="display:flex; align-items:center; gap:10px">
+                <span class="menu-icon">⏱️</span> <span class="menu-text" style="font-weight:600">Shift</span>
+              </div>
+              <span id="sub-shift-arrow" style="font-size:10px; color:var(--mu); transition:transform 0.2s">▶</span>
             </div>
-            <div class="menu-list-item" onclick="notify('Shift Details config loaded.', 'ok')">
-              <span class="menu-icon">⏱️</span> <span class="menu-text">Shift Details</span>
+            <div id="sub-shift" class="menu-submenu" style="display:none; padding-left:14px; margin-left:12px; border-left:2px solid var(--ac); margin-top:2px; margin-bottom:4px">
+              <div class="menu-list-item" onclick="notify('Shift Details config loaded.', 'ok')">
+                <span class="menu-icon">⏱️</span> <span class="menu-text">Shift Details</span>
+              </div>
+              <div class="menu-list-item" onclick="notify('Shift Calendar config loaded.', 'ok')">
+                <span class="menu-icon">📅</span> <span class="menu-text">Shift Calendar</span>
+              </div>
+              <div class="menu-list-item" onclick="notify('Shift Roster config loaded.', 'ok')">
+                <span class="menu-icon">📋</span> <span class="menu-text">Shift Roster</span>
+              </div>
+              <div class="menu-list-item" onclick="notify('Shift Group config loaded.', 'ok')">
+                <span class="menu-icon">👥</span> <span class="menu-text">Shift Group</span>
+              </div>
             </div>
-            <div class="menu-list-item" onclick="notify('Shift Calendar config loaded.', 'ok')">
-              <span class="menu-icon">📅</span> <span class="menu-text">Shift Calendar</span>
+            <!-- Organization Dropdown / Submenu Option -->
+            <div class="menu-list-item has-sub" onclick="toggleMasterSubmenu('sub-org', event)" style="display:flex; justify-content:space-between; align-items:center">
+              <div style="display:flex; align-items:center; gap:10px">
+                <span class="menu-icon">🏢</span> <span class="menu-text" style="font-weight:600">Organization</span>
+              </div>
+              <span id="sub-org-arrow" style="font-size:10px; color:var(--mu); transition:transform 0.2s">▶</span>
             </div>
-            <div class="menu-list-item" onclick="notify('Shift Roster config loaded.', 'ok')">
-              <span class="menu-icon">📋</span> <span class="menu-text">Shift Roster</span>
+            <div id="sub-org" class="menu-submenu" style="display:none; padding-left:14px; margin-left:12px; border-left:2px solid var(--ac); margin-top:2px; margin-bottom:4px">
+              <div class="menu-list-item" onclick="notify('Departments config loaded.', 'ok')">
+                <span class="menu-icon">🏢</span> <span class="menu-text">Departments</span>
+              </div>
+              <div class="menu-list-item" onclick="notify('Departments Shifts config loaded.', 'ok')">
+                <span class="menu-icon">🔄</span> <span class="menu-text">Departments Shifts</span>
+              </div>
+              <div class="menu-list-item" onclick="notify('Public Holidays config loaded.', 'ok')">
+                <span class="menu-icon">🏖️</span> <span class="menu-text">Public Holidays</span>
+              </div>
             </div>
-            <div class="menu-list-item" onclick="notify('Shift Group config loaded.', 'ok')">
-              <span class="menu-icon">👥</span> <span class="menu-text">Shift Group</span>
+
+            <!-- Employee Management Dropdown / Submenu Option -->
+            <div class="menu-list-item has-sub" onclick="toggleMasterSubmenu('sub-emp', event)" style="display:flex; justify-content:space-between; align-items:center">
+              <div style="display:flex; align-items:center; gap:10px">
+                <span class="menu-icon">👥</span> <span class="menu-text" style="font-weight:600">Employee Management</span>
+              </div>
+              <span id="sub-emp-arrow" style="font-size:10px; color:var(--mu); transition:transform 0.2s">▶</span>
             </div>
-            <div class="menu-list-item" onclick="notify('Leave Types config loaded.', 'ok')">
-              <span class="menu-icon">🏥</span> <span class="menu-text">Leave Types</span>
+            <div id="sub-emp" class="menu-submenu" style="display:none; padding-left:14px; margin-left:12px; border-left:2px solid var(--ac); margin-top:2px; margin-bottom:4px">
+              <div class="menu-list-item" onclick="closeInfoDrawer(); showTab('employee-list', null)">
+                <span class="menu-icon">👤</span> <span class="menu-text">Employees</span>
+              </div>
+              <div class="menu-list-item" onclick="notify('Employees Categories config loaded.', 'ok')">
+                <span class="menu-icon">🏷️</span> <span class="menu-text">Employee Categories</span>
+              </div>
+              <div class="menu-list-item" onclick="notify('Employees Shifts config loaded.', 'ok')">
+                <span class="menu-icon">⏰</span> <span class="menu-text">Employee Shifts</span>
+              </div>
+              <div class="menu-list-item" onclick="notify('Employees Shift Schedule config loaded.', 'ok')">
+                <span class="menu-icon">🗓️</span> <span class="menu-text">Employee Shift Schedule</span>
+              </div>
             </div>
-            <div class="menu-list-item" onclick="notify('Employees Categories config loaded.', 'ok')">
-              <span class="menu-icon">🏷️</span> <span class="menu-text">Employees Categories</span>
+
+            <!-- Attendance & Time Dropdown / Submenu Option -->
+            <div class="menu-list-item has-sub" onclick="toggleMasterSubmenu('sub-att', event)" style="display:flex; justify-content:space-between; align-items:center">
+              <div style="display:flex; align-items:center; gap:10px">
+                <span class="menu-icon">🕐</span> <span class="menu-text" style="font-weight:600">Attendance & Time</span>
+              </div>
+              <span id="sub-att-arrow" style="font-size:10px; color:var(--mu); transition:transform 0.2s">▶</span>
             </div>
-            <div class="menu-list-item" onclick="notify('Public Holidays config loaded.', 'ok')">
-              <span class="menu-icon">🏖️</span> <span class="menu-text">Public Holidays</span>
+            <div id="sub-att" class="menu-submenu" style="display:none; padding-left:14px; margin-left:12px; border-left:2px solid var(--ac); margin-top:2px; margin-bottom:4px">
+              <div class="menu-list-item" onclick="closeInfoDrawer(); showTab('hr', null)">
+                <span class="menu-icon">📊</span> <span class="menu-text">Attendance Log</span>
+              </div>
+              <div class="menu-list-item" onclick="notify('Geofences config loaded.', 'ok')">
+                <span class="menu-icon">📍</span> <span class="menu-text">Geofences</span>
+              </div>
+              <div class="menu-list-item" onclick="notify('Manage Work Code config loaded.', 'ok')">
+                <span class="menu-icon">🔢</span> <span class="menu-text">Manage Work Code</span>
+              </div>
+              <div class="menu-list-item" onclick="notify('Employee OT Register config loaded.', 'ok')">
+                <span class="menu-icon">⏱️</span> <span class="menu-text">Employee OT Register</span>
+              </div>
             </div>
-            <div class="menu-list-item" onclick="notify('Departments config loaded.', 'ok')">
-              <span class="menu-icon">🏢</span> <span class="menu-text">Departments</span>
+
+            <!-- Leave & Outdoor Dropdown / Submenu Option -->
+            <div class="menu-list-item has-sub" onclick="toggleMasterSubmenu('sub-leave', event)" style="display:flex; justify-content:space-between; align-items:center">
+              <div style="display:flex; align-items:center; gap:10px">
+                <span class="menu-icon">🏖️</span> <span class="menu-text" style="font-weight:600">Leave & Outdoor</span>
+              </div>
+              <span id="sub-leave-arrow" style="font-size:10px; color:var(--mu); transition:transform 0.2s">▶</span>
             </div>
-            <div class="menu-list-item" onclick="notify('Departments Shifts config loaded.', 'ok')">
-              <span class="menu-icon">🔄</span> <span class="menu-text">Departments Shifts</span>
-            </div>
-            <div class="menu-list-item" onclick="closeInfoDrawer(); showTab('employee-list', null)">
-              <span class="menu-icon">👤</span> <span class="menu-text">Employees</span>
-            </div>
-            <div class="menu-list-item" onclick="notify('Employees Shifts config loaded.', 'ok')">
-              <span class="menu-icon">⏰</span> <span class="menu-text">Employees Shifts</span>
-            </div>
-            <div class="menu-list-item" onclick="notify('Employees Shift Schedule config loaded.', 'ok')">
-              <span class="menu-icon">🗓️</span> <span class="menu-text">Employees Shift Schedule</span>
-            </div>
-            <div class="menu-list-item" onclick="notify('Employees Leave Entries config loaded.', 'ok')">
-              <span class="menu-icon">📝</span> <span class="menu-text">Employees Leave Entries</span>
-            </div>
-            <div class="menu-list-item" onclick="notify('Employee OutDoor Entries config loaded.', 'ok')">
-              <span class="menu-icon">🚶</span> <span class="menu-text">Employee OutDoor Entries</span>
-            </div>
-            <div class="menu-list-item" onclick="closeInfoDrawer(); showTab('hr', null)">
-              <span class="menu-icon">📊</span> <span class="menu-text">Attendance Log</span>
-            </div>
-            <div class="menu-list-item" onclick="notify('Employee OT Register config loaded.', 'ok')">
-              <span class="menu-icon">⏱️</span> <span class="menu-text">Employee OT Register</span>
-            </div>
-            <div class="menu-list-item" onclick="notify('Geofences config loaded.', 'ok')">
-              <span class="menu-icon">📍</span> <span class="menu-text">Geofences</span>
-            </div>
-            <div class="menu-list-item" onclick="notify('Manage Work Code config loaded.', 'ok')">
-              <span class="menu-icon">🔢</span> <span class="menu-text">Manage Work Code</span>
+            <div id="sub-leave" class="menu-submenu" style="display:none; padding-left:14px; margin-left:12px; border-left:2px solid var(--ac); margin-top:2px; margin-bottom:4px">
+              <div class="menu-list-item" onclick="notify('Leave Types config loaded.', 'ok')">
+                <span class="menu-icon">🏥</span> <span class="menu-text">Leave Types</span>
+              </div>
+              <div class="menu-list-item" onclick="notify('Employees Leave Entries config loaded.', 'ok')">
+                <span class="menu-icon">📝</span> <span class="menu-text">Employee Leave Entries</span>
+              </div>
+              <div class="menu-list-item" onclick="notify('Employee OutDoor Entries config loaded.', 'ok')">
+                <span class="menu-icon">🚶</span> <span class="menu-text">Employee Outdoor Entries</span>
+              </div>
             </div>
           </div>
         </div>
