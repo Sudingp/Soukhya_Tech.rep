@@ -1530,7 +1530,222 @@ class MySQLAdapter {
     return { holidays_synced: syncedCalendar, roster_slots_updated: syncedRoster, year: y };
   }
 
+  // ──────────────────────────────────────────────
+  // 16. Employment Types Master
+  // ──────────────────────────────────────────────
+  async getAllEmploymentTypes() {
+    const pool = await this.getPool();
+    const [rows] = await pool.execute(`
+      SELECT et.*,
+        (SELECT COUNT(*) FROM employees e WHERE e.employment_type = et.code OR e.employment_type = et.id) AS headcount
+      FROM employment_types et
+      ORDER BY et.active DESC, et.title ASC
+    `);
+    return rows.map(r => ({
+      ...r,
+      pf_esi_eligible: Boolean(r.pf_esi_eligible),
+      active: Boolean(r.active),
+      headcount: Number(r.headcount || 0)
+    }));
+  }
 
+  async getEmploymentTypeById(id) {
+    const pool = await this.getPool();
+    const [rows] = await pool.execute(`
+      SELECT et.*,
+        (SELECT COUNT(*) FROM employees e WHERE e.employment_type = et.code OR e.employment_type = et.id) AS headcount
+      FROM employment_types et
+      WHERE et.id = ? OR et.code = ?
+    `, [id, id]);
+    if (rows.length === 0) return null;
+    const r = rows[0];
+    return {
+      ...r,
+      pf_esi_eligible: Boolean(r.pf_esi_eligible),
+      active: Boolean(r.active),
+      headcount: Number(r.headcount || 0)
+    };
+  }
+
+  async insertEmploymentType(data) {
+    const pool = await this.getPool();
+    const id = data.id || ('ET_' + data.code.toUpperCase().replace(/[^A-Z0-9]/g, ''));
+    await pool.execute(
+      `INSERT INTO employment_types (id, code, title, description, probation_days, notice_period_days, pf_esi_eligible, active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        data.code.toUpperCase(),
+        data.title,
+        data.description || null,
+        data.probation_days !== undefined ? data.probation_days : 90,
+        data.notice_period_days !== undefined ? data.notice_period_days : 30,
+        data.pf_esi_eligible ? 1 : 0,
+        data.active !== undefined ? (data.active ? 1 : 0) : 1
+      ]
+    );
+    return { id, code: data.code.toUpperCase() };
+  }
+
+  async updateEmploymentType(id, data) {
+    const pool = await this.getPool();
+    await pool.execute(
+      `UPDATE employment_types SET
+        code = ?,
+        title = ?,
+        description = ?,
+        probation_days = ?,
+        notice_period_days = ?,
+        pf_esi_eligible = ?,
+        active = ?,
+        updated_at = NOW()
+       WHERE id = ?`,
+      [
+        data.code.toUpperCase(),
+        data.title,
+        data.description || null,
+        data.probation_days !== undefined ? data.probation_days : 90,
+        data.notice_period_days !== undefined ? data.notice_period_days : 30,
+        data.pf_esi_eligible ? 1 : 0,
+        data.active ? 1 : 0,
+        id
+      ]
+    );
+    return { id, updated: true };
+  }
+
+  async deleteEmploymentType(id) {
+    const pool = await this.getPool();
+    const [emps] = await pool.execute(
+      'SELECT COUNT(*) as cnt FROM employees WHERE employment_type = ? OR employment_type = (SELECT code FROM employment_types WHERE id = ?)',
+      [id, id]
+    );
+    if (emps[0]?.cnt > 0) {
+      throw new Error(`Cannot delete employment type: ${emps[0].cnt} employee(s) currently assigned.`);
+    }
+    await pool.execute('DELETE FROM employment_types WHERE id = ?', [id]);
+    return { id, deleted: true };
+  }
+
+  // ──────────────────────────────────────────────
+  // 17. Employee Cohort Groups Master
+  // ──────────────────────────────────────────────
+  async getAllEmployeeCohortGroups() {
+    const pool = await this.getPool();
+    const [rows] = await pool.execute(`
+      SELECT g.*,
+        e.name AS leader_name,
+        (SELECT COUNT(*) FROM employee_cohort_members m WHERE m.group_id = g.id) AS members_count
+      FROM employee_cohort_groups g
+      LEFT JOIN employees e ON g.leader_emp_id = e.id
+      ORDER BY g.active DESC, g.name ASC
+    `);
+    return rows.map(r => ({
+      ...r,
+      active: Boolean(r.active),
+      members_count: Number(r.members_count || 0)
+    }));
+  }
+
+  async getEmployeeCohortGroupById(id) {
+    const pool = await this.getPool();
+    const [rows] = await pool.execute(`
+      SELECT g.*,
+        e.name AS leader_name,
+        (SELECT COUNT(*) FROM employee_cohort_members m WHERE m.group_id = g.id) AS members_count
+      FROM employee_cohort_groups g
+      LEFT JOIN employees e ON g.leader_emp_id = e.id
+      WHERE g.id = ? OR g.code = ?
+    `, [id, id]);
+    if (rows.length === 0) return null;
+    const g = rows[0];
+
+    const [members] = await pool.execute(`
+      SELECT m.emp_id, m.role_in_group, m.assigned_at, e.name, e.department, e.role, e.image, e.status
+      FROM employee_cohort_members m
+      JOIN employees e ON m.emp_id = e.id
+      WHERE m.group_id = ?
+      ORDER BY e.name ASC
+    `, [g.id]);
+
+    return {
+      ...g,
+      active: Boolean(g.active),
+      members_count: members.length,
+      members
+    };
+  }
+
+  async insertEmployeeCohortGroup(data) {
+    const pool = await this.getPool();
+    const id = data.id || ('EGRP_' + data.code.toUpperCase().replace(/[^A-Z0-9]/g, ''));
+    await pool.execute(
+      `INSERT INTO employee_cohort_groups (id, code, name, category, description, leader_emp_id, color, active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        data.code.toUpperCase(),
+        data.name,
+        data.category || 'OPERATIONAL',
+        data.description || null,
+        data.leader_emp_id || null,
+        data.color || '#4f8ef7',
+        data.active !== undefined ? (data.active ? 1 : 0) : 1
+      ]
+    );
+    return { id, code: data.code.toUpperCase() };
+  }
+
+  async updateEmployeeCohortGroup(id, data) {
+    const pool = await this.getPool();
+    await pool.execute(
+      `UPDATE employee_cohort_groups SET
+        code = ?,
+        name = ?,
+        category = ?,
+        description = ?,
+        leader_emp_id = ?,
+        color = ?,
+        active = ?,
+        updated_at = NOW()
+       WHERE id = ?`,
+      [
+        data.code.toUpperCase(),
+        data.name,
+        data.category || 'OPERATIONAL',
+        data.description || null,
+        data.leader_emp_id || null,
+        data.color || '#4f8ef7',
+        data.active ? 1 : 0,
+        id
+      ]
+    );
+    return { id, updated: true };
+  }
+
+  async deleteEmployeeCohortGroup(id) {
+    const pool = await this.getPool();
+    await pool.execute('DELETE FROM employee_cohort_groups WHERE id = ?', [id]);
+    return { id, deleted: true };
+  }
+
+  async setEmployeeCohortGroupMembers(groupId, empIds, roleInGroup = 'Member') {
+    const pool = await this.getPool();
+    const ids = Array.isArray(empIds) ? empIds : [empIds];
+
+    await pool.execute('DELETE FROM employee_cohort_members WHERE group_id = ?', [groupId]);
+
+    if (ids.length > 0) {
+      const placeholders = ids.map(() => '(?, ?, ?)').join(', ');
+      const values = [];
+      for (const eid of ids) {
+        values.push(groupId, eid, roleInGroup || 'Member');
+      }
+      await pool.query(`INSERT INTO employee_cohort_members (group_id, emp_id, role_in_group) VALUES ${placeholders}`, values);
+    }
+
+    return { group_id: groupId, members_count: ids.length };
+  }
 
   // ──────────────────────────────────────────────
   // Reset & Clear

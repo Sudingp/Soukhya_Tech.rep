@@ -295,6 +295,46 @@ const stmts = {
   },
   syncHolidaysWithCalendar: {
     run: (year, updatedBy) => mysqlAdapter.syncHolidaysWithCalendar(year, updatedBy)
+  },
+
+  // ── 👔 Employment Types ──
+  getAllEmploymentTypes: {
+    all: () => mysqlAdapter.getAllEmploymentTypes()
+  },
+  getEmploymentTypeById: {
+    get: (id) => mysqlAdapter.getEmploymentTypeById(id)
+  },
+  insertEmploymentType: {
+    run: (data) => mysqlAdapter.insertEmploymentType(data)
+  },
+  updateEmploymentType: {
+    run: (id, data) => mysqlAdapter.updateEmploymentType(id, data)
+  },
+  deleteEmploymentType: {
+    run: (id) => mysqlAdapter.deleteEmploymentType(id)
+  },
+
+  // ── 👥 Employee Cohort Groups ──
+  getAllEmployeeCohortGroups: {
+    all: () => mysqlAdapter.getAllEmployeeCohortGroups()
+  },
+  getEmployeeCohortGroupById: {
+    get: (id) => mysqlAdapter.getEmployeeCohortGroupById(id)
+  },
+  insertEmployeeCohortGroup: {
+    run: (data) => mysqlAdapter.insertEmployeeCohortGroup(data)
+  },
+  updateEmployeeCohortGroup: {
+    run: (id, data) => mysqlAdapter.updateEmployeeCohortGroup(id, data)
+  },
+  deleteEmployeeCohortGroup: {
+    run: (id) => mysqlAdapter.deleteEmployeeCohortGroup(id)
+  },
+  getEmployeeCohortGroupMembers: {
+    all: (groupId) => mysqlAdapter.getEmployeeCohortGroupById(groupId)
+  },
+  setEmployeeCohortGroupMembers: {
+    run: (groupId, empIds, roleInGroup) => mysqlAdapter.setEmployeeCohortGroupMembers(groupId, empIds, roleInGroup)
   }
 };
 

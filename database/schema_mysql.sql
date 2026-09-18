@@ -371,6 +371,74 @@ INSERT IGNORE INTO `public_holidays` (`title`, `holiday_date`, `holiday_type`, `
   ('Guru Nanak Jayanthi', '2026-11-27', 'MANDATORY', 'Karnataka', 'All Locations', 'Birth anniversary of Guru Nanak Dev (Gazetted)'),
   ('Christmas Day', '2026-12-25', 'MANDATORY', 'Karnataka', 'All Locations', 'Christian Festival - Christmas Day (Gazetted)');
 
+-- ── 16. Employment Types Table (Workforce Classifications) ──
+CREATE TABLE IF NOT EXISTS `employment_types` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `code` VARCHAR(20) NOT NULL,
+  `title` VARCHAR(100) NOT NULL,
+  `description` VARCHAR(255) NULL,
+  `probation_days` INT UNSIGNED NOT NULL DEFAULT 90,
+  `notice_period_days` INT UNSIGNED NOT NULL DEFAULT 30,
+  `pf_esi_eligible` TINYINT(1) NOT NULL DEFAULT 1,
+  `active` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_employment_type_code` (`code`),
+  KEY `idx_employment_type_active` (`active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Pre-seeded Employment Types
+INSERT IGNORE INTO `employment_types` (`id`, `code`, `title`, `description`, `probation_days`, `notice_period_days`, `pf_esi_eligible`, `active`) VALUES
+  ('ET_PERM', 'PERM', 'Permanent / Full-Time', 'Regular permanent employee with standard company benefits', 90, 30, 1, 1),
+  ('ET_PROB', 'PROB', 'Probationary Staff', 'New joiner under probation evaluation', 180, 15, 1, 1),
+  ('ET_CONT', 'CONT', 'Fixed-Term Contract', 'Contractual staff hired for fixed durations/deliverables', 0, 30, 1, 1),
+  ('ET_INTR', 'INTR', 'Intern / Trainee', 'Apprenticeship and university trainee roles', 0, 7, 0, 1),
+  ('ET_PTME', 'PTME', 'Part-Time Employee', 'Part-time hourly or flexible shift schedule', 0, 15, 0, 1),
+  ('ET_CONS', 'CONS', 'Consultant / Retainer', 'Professional external advisory or retainer engagement', 0, 15, 0, 1);
+
+-- ── 17. Employee Groups Table (Cohorts & Cross-Functional Teams) ──
+CREATE TABLE IF NOT EXISTS `employee_cohort_groups` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `code` VARCHAR(20) NOT NULL,
+  `name` VARCHAR(100) NOT NULL,
+  `category` VARCHAR(50) NOT NULL DEFAULT 'OPERATIONAL',
+  `description` VARCHAR(255) NULL,
+  `leader_emp_id` VARCHAR(50) NULL,
+  `color` VARCHAR(20) NOT NULL DEFAULT '#4f8ef7',
+  `active` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_emp_cohort_group_code` (`code`),
+  KEY `idx_emp_cohort_group_active` (`active`),
+  CONSTRAINT `fk_emp_cohort_group_leader`
+    FOREIGN KEY (`leader_emp_id`) REFERENCES `employees` (`id`)
+    ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ── 18. Employee Group Members Table (Junction Mapping) ──
+CREATE TABLE IF NOT EXISTS `employee_cohort_members` (
+  `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `group_id` VARCHAR(50) NOT NULL,
+  `emp_id` VARCHAR(50) NOT NULL,
+  `role_in_group` VARCHAR(50) NOT NULL DEFAULT 'Member',
+  `assigned_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_cohort_grp_emp` (`group_id`, `emp_id`),
+  KEY `idx_cohort_member_emp` (`emp_id`),
+  CONSTRAINT `fk_cohort_member_group`
+    FOREIGN KEY (`group_id`) REFERENCES `employee_cohort_groups` (`id`)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_cohort_member_emp`
+    FOREIGN KEY (`emp_id`) REFERENCES `employees` (`id`)
+    ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Pre-seeded Employee Groups
+INSERT IGNORE INTO `employee_cohort_groups` (`id`, `code`, `name`, `category`, `description`, `color`, `active`) VALUES
+  ('EGRP_EXEC', 'EXEC', 'Executive & Leadership Council', 'GOVERNANCE', 'Core strategic and executive operational team', '#8b5cf6', 1),
+  ('EGRP_SAFETY', 'SAFETY', 'Emergency & Workplace Safety Taskforce', 'COMPLIANCE', 'First-aid, fire safety, and emergency response leads', '#ef4444', 1),
+  ('EGRP_INNOV', 'INNOV', 'R&D Innovation & AI Lab', 'PROJECT', 'Deep-tech research and product incubation squad', '#00d4aa', 1),
+  ('EGRP_OPS', 'OPS_SWAT', '24x7 Tier-2 Rapid Support Team', 'OPERATIONAL', 'Critical response and production incident resolution', '#f59e0b', 1);
+
 -- Default Administrator: admin / admin123 (SHA-256 username hash, Bcrypt password hash)
 
 INSERT IGNORE INTO `users` (`username`, `username_hash`, `username_display`, `password_hash`, `role`, `active`)

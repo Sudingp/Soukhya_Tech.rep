@@ -2255,7 +2255,260 @@
     </div>
   </div>
 
+  <!-- ── 👔 EMPLOYMENT TYPES MASTER MODAL ── -->
+  <div id="employment-types-modal" class="modal-overlay" style="display:none; z-index:9998;">
+    <div class="modal-box animate-zoom" style="max-width:920px; width:96%; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.85); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:14px 20px; background:linear-gradient(135deg, #161b27, #1a2234); display:flex; justify-content:space-between; align-items:center">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:22px">👔</span>
+          <div>
+            <span class="modal-title" style="font-size:15px; font-weight:700; color:var(--tx)">Employment Types Master</span>
+            <div style="font-size:11px; color:var(--mu)">Configure workforce categories, probation & notice period rules, and statutory benefits</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px">
+          <button type="button" class="btn btnp bsm" onclick="openAddEmploymentTypeModal()">+ Add Employment Type</button>
+          <button class="modal-close-x" onclick="closeEmploymentTypesModal()">✕</button>
+        </div>
+      </div>
 
+      <div class="modal-body" style="padding:16px 20px; overflow-y:auto; flex:1">
+        <table class="gt" style="width:100%; border-collapse:collapse; font-size:11.5px">
+          <thead>
+            <tr style="border-bottom:1px solid var(--br); color:var(--mu); background:var(--s2)">
+              <th style="padding:8px 10px; text-align:left">Type Code</th>
+              <th style="padding:8px 10px; text-align:left">Title / Classification</th>
+              <th style="padding:8px 10px; text-align:left">Description</th>
+              <th style="padding:8px 10px; text-align:center">Probation</th>
+              <th style="padding:8px 10px; text-align:center">Notice Period</th>
+              <th style="padding:8px 10px; text-align:center">PF / ESI</th>
+              <th style="padding:8px 10px; text-align:center">Headcount</th>
+              <th style="padding:8px 10px; text-align:right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="employment-types-tbody">
+            <!-- Populated dynamically -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-ftr" style="padding:10px 20px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center">
+        <span id="et-count-label" style="font-size:11px; color:var(--mu)">Loading employment types...</span>
+        <button type="button" class="btn bsm" onclick="closeEmploymentTypesModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ADD / EDIT EMPLOYMENT TYPE FORM MODAL ── -->
+  <div id="employment-type-form-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:480px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438)">
+        <span class="modal-title" id="et-form-title" style="font-size:14px; font-weight:700">Add Employment Type</span>
+        <button class="modal-close-x" onclick="closeEmploymentTypeFormModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <form id="et-form" onsubmit="saveEmploymentTypeForm(event)">
+          <input type="hidden" id="et-id" />
+          <div class="ms-grid" style="grid-template-columns: 1fr 2fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Type Code *</label>
+              <input class="fi" id="et-code" placeholder="PERM" required maxlength="20" style="text-transform:uppercase" />
+            </div>
+            <div class="fg">
+              <label class="fl">Title / Classification *</label>
+              <input class="fi" id="et-title" placeholder="Permanent / Full-Time" required maxlength="100" />
+            </div>
+          </div>
+
+          <div class="fg" style="margin-bottom:10px">
+            <label class="fl">Description</label>
+            <input class="fi" id="et-desc" placeholder="Standard regular employee terms" maxlength="255" />
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px">
+            <div class="fg">
+              <label class="fl">Probation (Days)</label>
+              <input type="number" class="fi" id="et-probation" min="0" max="365" value="90" required />
+            </div>
+            <div class="fg">
+              <label class="fl">Notice Period (Days)</label>
+              <input type="number" class="fi" id="et-notice" min="0" max="180" value="30" required />
+            </div>
+          </div>
+
+          <div class="ms-toggle-card" style="margin-bottom:8px; padding:8px 12px">
+            <div>
+              <div style="font-weight:600; font-size:12px; color:var(--tx)">PF / ESI Statutory Eligible</div>
+              <div style="font-size:10px; color:var(--mu)">Employee receives statutory retirement & insurance benefits.</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="et-pf-esi" checked />
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div class="ms-toggle-card" style="margin-bottom:14px; padding:8px 12px">
+            <div>
+              <div style="font-weight:600; font-size:12px; color:var(--tx)">Active Status</div>
+              <div style="font-size:10px; color:var(--mu)">Active types appear in employee registration and profile forms.</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="et-active" checked />
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:8px">
+            <button type="button" class="btn bsm" onclick="closeEmploymentTypeFormModal()">Cancel</button>
+            <button type="submit" class="btn btnp bsm">💾 Save Employment Type</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 👥 EMPLOYEE GROUPS MASTER MODAL (COHORTS & TEAMS) ── -->
+  <div id="employee-groups-modal" class="modal-overlay" style="display:none; z-index:9998;">
+    <div class="modal-box animate-zoom" style="max-width:960px; width:96%; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.85); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:14px 20px; background:linear-gradient(135deg, #161b27, #1a2234); display:flex; justify-content:space-between; align-items:center">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:22px">👥</span>
+          <div>
+            <span class="modal-title" style="font-size:15px; font-weight:700; color:var(--tx)">Employee Groups Master (Cohorts & Teams)</span>
+            <div style="font-size:11px; color:var(--mu)">Create cross-functional employee cohorts, taskforces, and operational groups</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px">
+          <button type="button" class="btn btnp bsm" onclick="openAddEmployeeGroupModal()">+ Add Employee Group</button>
+          <button class="modal-close-x" onclick="closeEmployeeGroupsModal()">✕</button>
+        </div>
+      </div>
+
+      <div class="modal-body" style="padding:16px 20px; overflow-y:auto; flex:1">
+        <div id="employee-groups-cards" class="ms-grid" style="grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:14px">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <div class="modal-ftr" style="padding:10px 20px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center">
+        <span id="egrp-count-label" style="font-size:11px; color:var(--mu)">Loading employee groups...</span>
+        <button type="button" class="btn bsm" onclick="closeEmployeeGroupsModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ADD / EDIT EMPLOYEE GROUP FORM MODAL ── -->
+  <div id="employee-group-form-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:480px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438)">
+        <span class="modal-title" id="egrp-form-title" style="font-size:14px; font-weight:700">Add Employee Group</span>
+        <button class="modal-close-x" onclick="closeEmployeeGroupFormModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <form id="egrp-form" onsubmit="saveEmployeeGroupForm(event)">
+          <input type="hidden" id="egrp-id" />
+          <div class="ms-grid" style="grid-template-columns: 1fr 2fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Group Code *</label>
+              <input class="fi" id="egrp-code" placeholder="EXEC" required maxlength="20" style="text-transform:uppercase" />
+            </div>
+            <div class="fg">
+              <label class="fl">Group Name *</label>
+              <input class="fi" id="egrp-name" placeholder="Executive Leadership Council" required maxlength="100" />
+            </div>
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Category</label>
+              <select class="fs" id="egrp-category">
+                <option value="OPERATIONAL">Operational</option>
+                <option value="GOVERNANCE">Governance</option>
+                <option value="PROJECT">Project / Squad</option>
+                <option value="COMPLIANCE">Compliance / Safety</option>
+                <option value="SOCIAL">Social / Culture</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="fl">Badge Theme Color</label>
+              <input type="color" class="fi" id="egrp-color" value="#4f8ef7" style="height:36px; padding:2px" />
+            </div>
+          </div>
+
+          <div class="fg" style="margin-bottom:10px">
+            <label class="fl">Group Leader / Anchor</label>
+            <select class="fs" id="egrp-leader-emp">
+              <option value="">None / Unassigned</option>
+            </select>
+          </div>
+
+          <div class="fg" style="margin-bottom:12px">
+            <label class="fl">Description / Charter</label>
+            <input class="fi" id="egrp-desc" placeholder="Mission and operational scope of this group" maxlength="255" />
+          </div>
+
+          <div class="ms-toggle-card" style="margin-bottom:14px; padding:8px 12px">
+            <div>
+              <div style="font-weight:600; font-size:12px; color:var(--tx)">Active Status</div>
+              <div style="font-size:10px; color:var(--mu)">Active groups appear in reports, filters, and broadcasts.</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="egrp-active" checked />
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:8px">
+            <button type="button" class="btn bsm" onclick="closeEmployeeGroupFormModal()">Cancel</button>
+            <button type="submit" class="btn btnp bsm">💾 Save Group</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ASSIGN MEMBERS TO EMPLOYEE GROUP MODAL ── -->
+  <div id="employee-group-members-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:680px; width:94%; max-height:85vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438); display:flex; justify-content:space-between; align-items:center">
+        <span class="modal-title" id="egrpm-title" style="font-size:14px; font-weight:700">Assign Members to Group</span>
+        <button class="modal-close-x" onclick="closeEmployeeGroupMembersModal()">✕</button>
+      </div>
+
+      <div style="padding:10px 16px; background:var(--s2); border-bottom:1px solid var(--br); display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+        <input type="text" id="egrpm-search" class="fi" placeholder="🔍 Search employee by name or ID..." style="flex:1; min-width:180px; padding:6px 10px; font-size:12px" oninput="filterEmployeeCohortMembersList()" />
+        <select id="egrpm-dept-filter" class="fs" style="padding:6px 8px; font-size:12px" onchange="filterEmployeeCohortMembersList()">
+          <option value="">All Departments</option>
+        </select>
+        <button type="button" class="btn bsm" onclick="selectAllEmployeeCohortMembers(true)">Select All</button>
+        <button type="button" class="btn bsm" onclick="selectAllEmployeeCohortMembers(false)">Clear</button>
+      </div>
+
+      <div class="modal-body" style="padding:12px 16px; overflow-y:auto; flex:1">
+        <table class="gt" style="width:100%; border-collapse:collapse; font-size:11.5px">
+          <thead>
+            <tr style="border-bottom:1px solid var(--br); color:var(--mu); background:var(--s1)">
+              <th style="padding:6px 8px; width:36px; text-align:center">✓</th>
+              <th style="padding:6px 8px; text-align:left">Employee</th>
+              <th style="padding:6px 8px; text-align:left">Department</th>
+              <th style="padding:6px 8px; text-align:left">Designation / Role</th>
+            </tr>
+          </thead>
+          <tbody id="egrpm-members-tbody">
+            <!-- Populated dynamically -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-ftr" style="padding:10px 16px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center">
+        <span id="egrpm-selected-count" style="font-size:11px; color:var(--mu)">0 employees selected</span>
+        <div style="display:flex; gap:8px">
+          <button type="button" class="btn bsm" onclick="closeEmployeeGroupMembersModal()">Cancel</button>
+          <button type="button" class="btn btnp bsm" onclick="saveEmployeeCohortGroupMembers()">💾 Save Group Members</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- ── AUTHENTICATION LOGIN MODAL ── -->
   <div id="login-modal" class="modal-overlay" style="display:none; z-index:9999;">

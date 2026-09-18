@@ -2056,7 +2056,275 @@ app.post('/api/public-holidays/sync-calendar', authenticate, requireRoles('ADMIN
   }
 });
 
+// ══════════════════════════════════════════════
+// 👔 EMPLOYMENT TYPES APIS
+// ══════════════════════════════════════════════
+const employmentTypeSchema = Joi.object({
+  code: Joi.string().min(2).max(20).required(),
+  title: Joi.string().min(2).max(100).required(),
+  description: Joi.string().allow('', null).max(255).optional(),
+  probation_days: Joi.number().integer().min(0).max(365).default(90),
+  notice_period_days: Joi.number().integer().min(0).max(180).default(30),
+  pf_esi_eligible: Joi.boolean().default(true),
+  active: Joi.boolean().default(true)
+});
 
+app.get('/api/employment-types', authenticate, async (req, res) => {
+  try {
+    const types = await stmts.getAllEmploymentTypes.all();
+    ok(res, { types, total: types.length });
+  } catch (e) {
+    console.error('[GET /api/employment-types]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch employment types: ' + e.message, 500);
+  }
+});
+
+app.get('/api/employment-types/:id', authenticate, async (req, res) => {
+  try {
+    const type = await stmts.getEmploymentTypeById.get(req.params.id);
+    if (!type) return err(res, 'NOT_FOUND', 'Employment type not found', 404);
+    ok(res, { type });
+  } catch (e) {
+    console.error('[GET /api/employment-types/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch employment type: ' + e.message, 500);
+  }
+});
+
+app.post('/api/employment-types', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { error, value } = employmentTypeSchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const typeId = 'ET_' + (value.code.toUpperCase().replace(/[^A-Z0-9]/g, '') || uuidv4().slice(0, 6).toUpperCase());
+    const typeData = { id: typeId, ...value, code: value.code.toUpperCase() };
+
+    await stmts.insertEmploymentType.run(typeData);
+
+    await auditLog({
+      table: 'employment_types',
+      recordId: typeId,
+      action: 'INSERT',
+      newValues: typeData,
+      req
+    });
+
+    notifyDbChange('employment_types', { action: 'insert', typeId });
+    ok(res, { message: 'Employment type created successfully', type: typeData }, 201);
+  } catch (e) {
+    if (e.message && e.message.includes('Duplicate')) {
+      return err(res, 'DUPLICATE_CODE', 'An employment type with this code already exists', 409);
+    }
+    console.error('[POST /api/employment-types]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to create employment type: ' + e.message, 500);
+  }
+});
+
+app.put('/api/employment-types/:id', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await stmts.getEmploymentTypeById.get(id);
+    if (!existing) return err(res, 'NOT_FOUND', 'Employment type not found', 404);
+
+    const { error, value } = employmentTypeSchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const updateData = { ...value, code: value.code.toUpperCase() };
+    await stmts.updateEmploymentType.run(id, updateData);
+
+    await auditLog({
+      table: 'employment_types',
+      recordId: id,
+      action: 'UPDATE',
+      oldValues: existing,
+      newValues: updateData,
+      req
+    });
+
+    notifyDbChange('employment_types', { action: 'update', typeId: id });
+    ok(res, { message: 'Employment type updated successfully', type: { id, ...updateData } });
+  } catch (e) {
+    console.error('[PUT /api/employment-types/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to update employment type: ' + e.message, 500);
+  }
+});
+
+app.delete('/api/employment-types/:id', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await stmts.getEmploymentTypeById.get(id);
+    if (!existing) return err(res, 'NOT_FOUND', 'Employment type not found', 404);
+
+    await stmts.deleteEmploymentType.run(id);
+
+    await auditLog({
+      table: 'employment_types',
+      recordId: id,
+      action: 'DELETE',
+      oldValues: existing,
+      req
+    });
+
+    notifyDbChange('employment_types', { action: 'delete', typeId: id });
+    ok(res, { message: 'Employment type deleted successfully' });
+  } catch (e) {
+    console.error('[DELETE /api/employment-types/:id]', e);
+    if (e.message && e.message.includes('Cannot delete employment type')) {
+      return err(res, 'ACTIVE_MEMBERS_EXIST', e.message, 400);
+    }
+    err(res, 'INTERNAL_ERROR', 'Failed to delete employment type: ' + e.message, 500);
+  }
+});
+
+// ══════════════════════════════════════════════
+// 👥 EMPLOYEE COHORT GROUPS APIS
+// ══════════════════════════════════════════════
+const employeeCohortGroupSchema = Joi.object({
+  code: Joi.string().min(2).max(20).required(),
+  name: Joi.string().min(2).max(100).required(),
+  category: Joi.string().valid('OPERATIONAL', 'GOVERNANCE', 'PROJECT', 'COMPLIANCE', 'SOCIAL').default('OPERATIONAL'),
+  description: Joi.string().allow('', null).max(255).optional(),
+  leader_emp_id: Joi.string().allow('', null).optional(),
+  color: Joi.string().pattern(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/).default('#4f8ef7'),
+  active: Joi.boolean().default(true)
+});
+
+app.get('/api/employee-groups', authenticate, async (req, res) => {
+  try {
+    const groups = await stmts.getAllEmployeeCohortGroups.all();
+    ok(res, { groups, total: groups.length });
+  } catch (e) {
+    console.error('[GET /api/employee-groups]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch employee groups: ' + e.message, 500);
+  }
+});
+
+app.get('/api/employee-groups/:id', authenticate, async (req, res) => {
+  try {
+    const group = await stmts.getEmployeeCohortGroupById.get(req.params.id);
+    if (!group) return err(res, 'NOT_FOUND', 'Employee group not found', 404);
+    ok(res, { group });
+  } catch (e) {
+    console.error('[GET /api/employee-groups/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch employee group: ' + e.message, 500);
+  }
+});
+
+app.post('/api/employee-groups', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { error, value } = employeeCohortGroupSchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const groupId = 'EGRP_' + (value.code.toUpperCase().replace(/[^A-Z0-9]/g, '') || uuidv4().slice(0, 6).toUpperCase());
+    const groupData = { id: groupId, ...value, code: value.code.toUpperCase() };
+
+    await stmts.insertEmployeeCohortGroup.run(groupData);
+
+    await auditLog({
+      table: 'employee_cohort_groups',
+      recordId: groupId,
+      action: 'INSERT',
+      newValues: groupData,
+      req
+    });
+
+    notifyDbChange('employee_cohort_groups', { action: 'insert', groupId });
+    ok(res, { message: 'Employee group created successfully', group: groupData }, 201);
+  } catch (e) {
+    if (e.message && e.message.includes('Duplicate')) {
+      return err(res, 'DUPLICATE_CODE', 'An employee group with this code already exists', 409);
+    }
+    console.error('[POST /api/employee-groups]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to create employee group: ' + e.message, 500);
+  }
+});
+
+app.put('/api/employee-groups/:id', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await stmts.getEmployeeCohortGroupById.get(id);
+    if (!existing) return err(res, 'NOT_FOUND', 'Employee group not found', 404);
+
+    const { error, value } = employeeCohortGroupSchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const updateData = { ...value, code: value.code.toUpperCase() };
+    await stmts.updateEmployeeCohortGroup.run(id, updateData);
+
+    await auditLog({
+      table: 'employee_cohort_groups',
+      recordId: id,
+      action: 'UPDATE',
+      oldValues: existing,
+      newValues: updateData,
+      req
+    });
+
+    notifyDbChange('employee_cohort_groups', { action: 'update', groupId: id });
+    ok(res, { message: 'Employee group updated successfully', group: { id, ...updateData } });
+  } catch (e) {
+    console.error('[PUT /api/employee-groups/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to update employee group: ' + e.message, 500);
+  }
+});
+
+app.delete('/api/employee-groups/:id', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await stmts.getEmployeeCohortGroupById.get(id);
+    if (!existing) return err(res, 'NOT_FOUND', 'Employee group not found', 404);
+
+    await stmts.deleteEmployeeCohortGroup.run(id);
+
+    await auditLog({
+      table: 'employee_cohort_groups',
+      recordId: id,
+      action: 'DELETE',
+      oldValues: existing,
+      req
+    });
+
+    notifyDbChange('employee_cohort_groups', { action: 'delete', groupId: id });
+    ok(res, { message: 'Employee group deleted successfully' });
+  } catch (e) {
+    console.error('[DELETE /api/employee-groups/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to delete employee group: ' + e.message, 500);
+  }
+});
+
+app.get('/api/employee-groups/:id/members', authenticate, async (req, res) => {
+  try {
+    const group = await stmts.getEmployeeCohortGroupById.get(req.params.id);
+    if (!group) return err(res, 'NOT_FOUND', 'Employee group not found', 404);
+    ok(res, { members: group.members || [], total: (group.members || []).length });
+  } catch (e) {
+    console.error('[GET /api/employee-groups/:id/members]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch group members: ' + e.message, 500);
+  }
+});
+
+app.post('/api/employee-groups/:id/members', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { emp_ids, role_in_group } = req.body;
+    if (!Array.isArray(emp_ids)) return err(res, 'VALIDATION_ERROR', 'emp_ids array is required', 400);
+
+    const result = await stmts.setEmployeeCohortGroupMembers.run(id, emp_ids, role_in_group);
+
+    await auditLog({
+      table: 'employee_cohort_members',
+      recordId: id,
+      action: 'UPDATE',
+      newValues: { action: 'set_members', count: emp_ids.length },
+      req
+    });
+
+    notifyDbChange('employee_cohort_groups', { action: 'set_members', groupId: id });
+    ok(res, { message: `Updated group members (${result.members_count} assigned)`, ...result });
+  } catch (e) {
+    console.error('[POST /api/employee-groups/:id/members]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to assign group members: ' + e.message, 500);
+  }
+});
 
 // ══════════════════════════════════════════════
 // HEALTH CHECK

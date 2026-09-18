@@ -347,26 +347,101 @@ async function runTests() {
       await request(`/api/departments/${testDeptId}`, 'DELETE', authHeaders);
       console.log('   [PASS] Cleaned up test department:', testDeptId);
 
-      // 17. Token Refresh
-      console.log('17. Testing /api/auth/refresh...');
+      // 17. Employee Management: Employment Types APIs
+      console.log('17. Testing /api/employment-types CRUD...');
+      const typesGet = await request('/api/employment-types', 'GET', authHeaders);
+      if (typesGet.status !== 200 || !Array.isArray(typesGet.body.types)) throw new Error('Get Employment Types failed: ' + JSON.stringify(typesGet));
+      console.log('   [PASS] Retrieved', typesGet.body.types.length, 'employment types');
+
+      // Create Employment Type
+      const typeCreate = await request('/api/employment-types', 'POST', authHeaders, {
+        code: 'TEST_APPR',
+        title: 'Apprentice / Industrial Trainee',
+        description: 'Vocational training program under Apprenticeship Act',
+        probation_days: 60,
+        notice_period_days: 15,
+        pf_esi_eligible: true,
+        active: true
+      });
+      if (typeCreate.status !== 201 || !typeCreate.body.type) throw new Error('Create Employment Type failed: ' + JSON.stringify(typeCreate));
+      const testTypeId = typeCreate.body.type.id;
+      console.log('   [PASS] Created employment type:', testTypeId);
+
+      // Update Employment Type
+      const typeUpdate = await request(`/api/employment-types/${testTypeId}`, 'PUT', authHeaders, {
+        code: 'TEST_APPR',
+        title: 'Graduate Apprentice Trainee',
+        description: 'GAT / Industrial Trainee Program',
+        probation_days: 90,
+        notice_period_days: 15,
+        pf_esi_eligible: true,
+        active: true
+      });
+      if (typeUpdate.status !== 200) throw new Error('Update Employment Type failed: ' + JSON.stringify(typeUpdate));
+      console.log('   [PASS] Updated employment type to Graduate Apprentice Trainee');
+
+      // Delete Employment Type
+      const typeDelete = await request(`/api/employment-types/${testTypeId}`, 'DELETE', authHeaders);
+      if (typeDelete.status !== 200) throw new Error('Delete Employment Type failed: ' + JSON.stringify(typeDelete));
+      console.log('   [PASS] Cleaned up test employment type:', testTypeId);
+
+      // 18. Employee Management: Employee Cohort Groups APIs
+      console.log('18. Testing /api/employee-groups CRUD and Members Assignment...');
+      const empCohortGroupsGet = await request('/api/employee-groups', 'GET', authHeaders);
+      if (empCohortGroupsGet.status !== 200 || !Array.isArray(empCohortGroupsGet.body.groups)) throw new Error('Get Employee Groups failed: ' + JSON.stringify(empCohortGroupsGet));
+      console.log('   [PASS] Retrieved', empCohortGroupsGet.body.groups.length, 'configured employee groups');
+
+      // Create Employee Group
+      const groupCreate = await request('/api/employee-groups', 'POST', authHeaders, {
+        code: 'TEST_TASKFORCE',
+        name: 'Alpha Product Launch Taskforce',
+        category: 'PROJECT',
+        description: 'Cross-functional SWAT team for Q4 product release',
+        color: '#8b5cf6',
+        active: true
+      });
+      if (groupCreate.status !== 201 || !groupCreate.body.group) throw new Error('Create Employee Group failed: ' + JSON.stringify(groupCreate));
+      const testGroupId2 = groupCreate.body.group.id;
+      console.log('   [PASS] Created employee cohort group:', testGroupId2);
+
+      // Assign Members to Group
+      const setCohortMembers = await request(`/api/employee-groups/${testGroupId2}/members`, 'POST', authHeaders, {
+        emp_ids: ['EMP001', 'EMP002', 'EMP003'],
+        role_in_group: 'Core Member'
+      });
+      if (setCohortMembers.status !== 200) throw new Error('Set Group Members failed: ' + JSON.stringify(setCohortMembers));
+      console.log('   [PASS] Assigned 3 employees to employee group');
+
+      // Verify Group Members
+      const cohortMembersGet = await request(`/api/employee-groups/${testGroupId2}/members`, 'GET', authHeaders);
+      if (cohortMembersGet.status !== 200 || cohortMembersGet.body.total !== 3) throw new Error('Verify Group Members failed: ' + JSON.stringify(cohortMembersGet));
+      console.log('   [PASS] Verified 3 group members retrieved');
+
+      // Delete Group
+      const groupDelete = await request(`/api/employee-groups/${testGroupId2}`, 'DELETE', authHeaders);
+      if (groupDelete.status !== 200) throw new Error('Delete Employee Group failed: ' + JSON.stringify(groupDelete));
+      console.log('   [PASS] Cleaned up test employee group:', testGroupId2);
+
+      // 19. Token Refresh
+      console.log('19. Testing /api/auth/refresh...');
       const ref = await request('/api/auth/refresh', 'POST', {}, { refresh_token: refreshToken });
       if (ref.status !== 200 || !ref.body.access_token) throw new Error('Token refresh failed: ' + JSON.stringify(ref));
       console.log('   [PASS] Refresh token issued new access token');
 
-      // 18. Logout & Blacklist
-      console.log('18. Testing /api/auth/logout...');
+      // 20. Logout & Blacklist
+      console.log('20. Testing /api/auth/logout...');
       const logout = await request('/api/auth/logout', 'POST', authHeaders);
       if (logout.status !== 200) throw new Error('Logout failed: ' + JSON.stringify(logout));
       console.log('   [PASS] Logged out successfully');
 
-      // 19. Blacklisted token rejected
-      console.log('19. Testing blacklisted token rejection...');
+      // 21. Blacklisted token rejected
+      console.log('21. Testing blacklisted token rejection...');
       const rejected = await request('/api/auth/me', 'GET', authHeaders);
       if (rejected.status !== 401) throw new Error('Blacklisted token was not rejected: ' + JSON.stringify(rejected));
       console.log('   [PASS] Blacklisted token rejected with HTTP 401:', rejected.body.error.code);
 
       console.log('\n=============================================');
-      console.log('  ALL 19 INTEGRATION TESTS PASSED 100%!     ');
+      console.log('  ALL 21 INTEGRATION TESTS PASSED 100%!     ');
       console.log('=============================================\n');
 
       server.close();
