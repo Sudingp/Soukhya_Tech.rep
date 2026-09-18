@@ -197,6 +197,86 @@ INSERT IGNORE INTO `shifts` (`id`, `name`, `code`, `start_time`, `end_time`, `br
   ('SHIFT_EVE', 'Evening Afternoon Shift', 'EVE', '14:00:00', '22:30:00', '18:00:00', '18:30:00', 30, 30, 15, 15, 4.00, 8.00, 0, '#f59e0b'),
   ('SHIFT_NIT', 'Night Overnight Shift', 'NIT', '22:00:00', '06:30:00', '02:00:00', '02:30:00', 30, 30, 15, 15, 4.00, 8.00, 1, '#a855f7');
 
+-- ── 10. Shift Calendar Days Table (Holidays, Weekly Offs & Default Shifts) ──
+CREATE TABLE IF NOT EXISTS `shift_calendar_days` (
+  `cal_id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `cal_date` DATE NOT NULL,
+  `day_type` ENUM('WORK', 'WEEKLY_OFF', 'HOLIDAY', 'HALF_DAY') NOT NULL DEFAULT 'WORK',
+  `default_shift_id` VARCHAR(50) NULL,
+  `title` VARCHAR(100) NULL,
+  `is_recurring` TINYINT(1) NOT NULL DEFAULT 0,
+  `updated_by` VARCHAR(100) NULL,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_cal_date` (`cal_date`),
+  KEY `idx_cal_day_type` (`day_type`),
+  CONSTRAINT `fk_cal_shift`
+    FOREIGN KEY (`default_shift_id`) REFERENCES `shifts` (`id`)
+    ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ── 11. Shift Groups Table (Team Cohort & Rotation Rules) ──
+CREATE TABLE IF NOT EXISTS `shift_groups` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `name` VARCHAR(100) NOT NULL,
+  `code` VARCHAR(20) NOT NULL,
+  `rotation_type` ENUM('FIXED', 'WEEKLY', 'BI_WEEKLY', 'MONTHLY') NOT NULL DEFAULT 'FIXED',
+  `description` VARCHAR(255) NULL,
+  `color` VARCHAR(20) NOT NULL DEFAULT '#4f8ef7',
+  `shifts_sequence` JSON NOT NULL,
+  `active` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_shift_group_code` (`code`),
+  KEY `idx_shift_group_active` (`active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ── 12. Shift Group Members Table (Employee to Group Assignment) ──
+CREATE TABLE IF NOT EXISTS `shift_group_members` (
+  `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `group_id` VARCHAR(50) NOT NULL,
+  `emp_id` VARCHAR(50) NOT NULL,
+  `start_date` DATE NOT NULL,
+  `active` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_grp_emp` (`group_id`, `emp_id`),
+  KEY `idx_grp_member_emp` (`emp_id`),
+  CONSTRAINT `fk_grp_member_group`
+    FOREIGN KEY (`group_id`) REFERENCES `shift_groups` (`id`)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_grp_member_emp`
+    FOREIGN KEY (`emp_id`) REFERENCES `employees` (`id`)
+    ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ── 13. Shift Roster Matrix Table (Day-by-Day Employee Assignments) ──
+CREATE TABLE IF NOT EXISTS `shift_roster` (
+  `roster_id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `emp_id` VARCHAR(50) NOT NULL,
+  `roster_date` DATE NOT NULL,
+  `shift_id` VARCHAR(50) NOT NULL,
+  `day_type` ENUM('WORK', 'WEEKLY_OFF', 'HOLIDAY', 'LEAVE', 'OUTDOOR') NOT NULL DEFAULT 'WORK',
+  `source` ENUM('DEFAULT', 'GROUP_ROTATION', 'MANUAL_OVERRIDE') NOT NULL DEFAULT 'DEFAULT',
+  `note` VARCHAR(255) NULL,
+  `assigned_by` VARCHAR(100) NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_roster_emp_date` (`emp_id`, `roster_date`),
+  KEY `idx_roster_date` (`roster_date`),
+  KEY `idx_roster_emp_month` (`emp_id`, `roster_date`),
+  CONSTRAINT `fk_roster_emp`
+    FOREIGN KEY (`emp_id`) REFERENCES `employees` (`id`)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_roster_shift`
+    FOREIGN KEY (`shift_id`) REFERENCES `shifts` (`id`)
+    ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Pre-seeded Standard Shift Groups
+INSERT IGNORE INTO `shift_groups` (`id`, `name`, `code`, `rotation_type`, `description`, `color`, `shifts_sequence`) VALUES
+  ('GRP_CORP_GEN', 'Corporate General Staff', 'CORP_GEN', 'FIXED', 'Standard 9 to 6 corporate staff shift group', '#00d4aa', '["SHIFT_GEN"]'),
+  ('GRP_ROT_OPS_A', '24x7 Operations Cohort Alpha', 'OPS_A', 'WEEKLY', 'Weekly rotational cohort: Morning -> Evening -> Night', '#4f8ef7', '["SHIFT_MOR", "SHIFT_EVE", "SHIFT_NIT"]'),
+  ('GRP_ROT_OPS_B', '24x7 Operations Cohort Beta', 'OPS_B', 'WEEKLY', 'Weekly rotational cohort: Evening -> Night -> Morning', '#f59e0b', '["SHIFT_EVE", "SHIFT_NIT", "SHIFT_MOR"]');
+
 -- Default Administrator: admin / admin123 (SHA-256 username hash, Bcrypt password hash)
 INSERT IGNORE INTO `users` (`username`, `username_hash`, `username_display`, `password_hash`, `role`, `active`)
 VALUES (

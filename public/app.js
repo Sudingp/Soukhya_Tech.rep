@@ -2444,16 +2444,17 @@ function openMenuDrawer(section) {
               <div class="menu-list-item" onclick="closeInfoDrawer(); openShiftDetailsModal()">
                 <span class="menu-icon">⏱️</span> <span class="menu-text">Shift Details</span>
               </div>
-              <div class="menu-list-item" onclick="notify('Shift Calendar config loaded.', 'ok')">
+              <div class="menu-list-item" onclick="closeInfoDrawer(); openShiftCalendarModal()">
                 <span class="menu-icon">📅</span> <span class="menu-text">Shift Calendar</span>
               </div>
-              <div class="menu-list-item" onclick="notify('Shift Roster config loaded.', 'ok')">
+              <div class="menu-list-item" onclick="closeInfoDrawer(); openShiftRosterModal()">
                 <span class="menu-icon">📋</span> <span class="menu-text">Shift Roster</span>
               </div>
-              <div class="menu-list-item" onclick="notify('Shift Group config loaded.', 'ok')">
+              <div class="menu-list-item" onclick="closeInfoDrawer(); openShiftGroupModal()">
                 <span class="menu-icon">👥</span> <span class="menu-text">Shift Group</span>
               </div>
             </div>
+
             <!-- Organization Dropdown / Submenu Option -->
             <div class="menu-list-item has-sub" onclick="toggleMasterSubmenu('sub-org', event)" style="display:flex; justify-content:space-between; align-items:center">
               <div style="display:flex; align-items:center; gap:10px">
@@ -4281,6 +4282,1068 @@ async function saveMasterSettings(event) {
 }
 
 // ══════════════════════════════════════════════
+// 📅 SHIFT CALENDAR CONTROLLER
+// ══════════════════════════════════════════════
+let activeCalendarYear = new Date().getFullYear();
+let activeCalendarMonth = new Date().getMonth() + 1;
+let cachedShiftsList = [];
+
+async function getCachedShifts() {
+  if (cachedShiftsList.length === 0) {
+    try {
+      const res = await api('/shifts');
+      if (res && res.success && Array.isArray(res.data?.shifts)) {
+        cachedShiftsList = res.data.shifts;
+      }
+    } catch (e) {
+      console.warn('[SHIFTS] Failed to fetch cached shifts:', e);
+    }
+  }
+  return cachedShiftsList;
+}
+
+async function openShiftCalendarModal() {
+  const modal = document.getElementById('shift-calendar-modal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+
+  const mSelect = document.getElementById('cal-month-select');
+  const ySelect = document.getElementById('cal-year-select');
+  if (mSelect) mSelect.value = activeCalendarMonth;
+  if (ySelect) ySelect.value = activeCalendarYear;
+
+  await loadCalendarMonth();
+}
+
+function closeShiftCalendarModal() {
+  const modal = document.getElementById('shift-calendar-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function navCalendarMonth(delta) {
+  let m = parseInt(document.getElementById('cal-month-select')?.value || activeCalendarMonth, 10);
+  let y = parseInt(document.getElementById('cal-year-select')?.value || activeCalendarYear, 10);
+
+  m += delta;
+  if (m < 1) {
+    m = 12;
+    y -= 1;
+  } else if (m > 12) {
+    m = 1;
+    y += 1;
+  }
+
+  activeCalendarMonth = m;
+  activeCalendarYear = y;
+
+  const mSelect = document.getElementById('cal-month-select');
+  const ySelect = document.getElementById('cal-year-select');
+  if (mSelect) mSelect.value = m;
+  if (ySelect) ySelect.value = y;
+
+  loadCalendarMonth();
+}
+
+function setCalendarToToday() {
+  const now = new Date();
+  activeCalendarYear = now.getFullYear();
+  activeCalendarMonth = now.getMonth() + 1;
+
+  const mSelect = document.getElementById('cal-month-select');
+  const ySelect = document.getElementById('cal-year-select');
+  if (mSelect) mSelect.value = activeCalendarMonth;
+  if (ySelect) ySelect.value = activeCalendarYear;
+
+  loadCalendarMonth();
+}
+
+async function loadCalendarMonth() {
+  const mSelect = document.getElementById('cal-month-select');
+  const ySelect = document.getElementById('cal-year-select');
+  const y = ySelect ? parseInt(ySelect.value, 10) : activeCalendarYear;
+  const m = mSelect ? parseInt(mSelect.value, 10) : activeCalendarMonth;
+  activeCalendarYear = y;
+  activeCalendarMonth = m;
+
+  const mStr = String(m).padStart(2, '0');
+  const gridEl = document.getElementById('cal-days-grid');
+  if (gridEl) gridEl.innerHTML = '<div style="grid-column:span 7; text-align:center; padding:30px; color:var(--mu)">Loading monthly schedule...</div>';
+
+  try {
+    const res = await api(`/shift-calendar?month=${y}-${mStr}`);
+    if (res && res.success && res.data) {
+      renderCalendarGrid(res.data);
+    } else {
+      notify('Failed to load shift calendar', 'er');
+    }
+  } catch (err) {
+    notify(`Error loading calendar: ${err.message}`, 'er');
+  }
+}
+
+function renderCalendarGrid(data) {
+  const gridEl = document.getElementById('cal-days-grid');
+  const statsEl = document.getElementById('cal-stats-summary');
+  if (!gridEl) return;
+
+  // Stats bar
+  if (statsEl && data.summary) {
+    statsEl.innerHTML = `
+      <span style="color:#00d4aa; font-weight:600">💼 Workdays: <strong>${data.summary.working_days}</strong></span>
+      <span style="color:#64748b; font-weight:600">☕ Off Days: <strong>${data.summary.weekly_offs}</strong></span>
+      <span style="color:#ef4444; font-weight:600">🎉 Holidays: <strong>${data.summary.holidays}</strong></span>
+    `;
+  }
+
+  const days = data.days || [];
+  if (days.length === 0) return;
+
+  const firstDayOfWeek = new Date(data.year, data.month - 1, 1).getDay(); // 0 = Sun
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  let html = '';
+
+  // Leading empty placeholders
+  for (let i = 0; i < firstDayOfWeek; i++) {
+    html += '<div class="cal-day-card other-month"></div>';
+  }
+
+  // Days cards
+  days.forEach(d => {
+    const isToday = d.date === todayStr;
+    const isOff = d.day_type === 'WEEKLY_OFF';
+    const isHol = d.day_type === 'HOLIDAY';
+    const isHalf = d.day_type === 'HALF_DAY';
+
+    let cardClass = 'cal-day-card';
+    if (isToday) cardClass += ' is-today';
+    if (isOff) cardClass += ' type-off';
+    if (isHol) cardClass += ' type-holiday';
+
+    let badgeBg = isOff ? '#64748b' : (isHol ? '#ef4444' : (isHalf ? '#f59e0b' : (d.shift_color || '#00d4aa')));
+    let badgeText = isOff ? 'WO' : (isHol ? 'HOL' : (isHalf ? 'HD' : d.shift_code));
+
+    html += `
+      <div class="${cardClass}" onclick="openShiftDayModal('${d.date}', '${d.day_type}', '${d.default_shift_id || 'SHIFT_GEN'}', '${escapeHtml(d.title || '')}')">
+        <div class="cal-day-hdr">
+          <span class="cal-day-num">${d.day_number}</span>
+          <span class="cal-shift-pill" style="background:${badgeBg}22; color:${badgeBg}; border:1px solid ${badgeBg}55">
+            <span style="width:6px; height:6px; border-radius:50%; background:${badgeBg}"></span>
+            ${badgeText}
+          </span>
+        </div>
+        <div>
+          <div style="font-size:10.5px; font-weight:600; color:var(--tx)">${isOff ? 'Weekly Off' : (isHol ? 'Public Holiday' : d.shift_name)}</div>
+          <div class="cal-day-title" title="${escapeHtml(d.title || '')}">${escapeHtml(d.title || '')}</div>
+        </div>
+      </div>
+    `;
+  });
+
+  gridEl.innerHTML = html;
+}
+
+async function openShiftDayModal(dateStr, currentDayType, currentShiftId, currentTitle) {
+  const modal = document.getElementById('shift-day-modal');
+  if (!modal) return;
+
+  document.getElementById('sd-date').value = dateStr;
+  document.getElementById('sd-date-display').value = `${dateStr} (${new Date(dateStr).toLocaleDateString('default', { weekday: 'long' })})`;
+  document.getElementById('sd-day-type').value = currentDayType || 'WORK';
+  document.getElementById('sd-title').value = currentTitle || '';
+
+  // Populate shifts dropdown
+  const shifts = await getCachedShifts();
+  const shiftSelect = document.getElementById('sd-shift-select');
+  if (shiftSelect) {
+    shiftSelect.innerHTML = shifts.map(s => `
+      <option value="${s.id}" ${s.id === currentShiftId ? 'selected' : ''}>${s.code} - ${s.name} (${s.start_time.slice(0, 5)} - ${s.end_time.slice(0, 5)})</option>
+    `).join('');
+  }
+
+  onShiftDayTypeChange();
+  modal.style.display = 'flex';
+}
+
+function closeShiftDayModal() {
+  const modal = document.getElementById('shift-day-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function onShiftDayTypeChange() {
+  const dayType = document.getElementById('sd-day-type')?.value;
+  const shiftGroup = document.getElementById('sd-shift-group');
+  if (shiftGroup) {
+    shiftGroup.style.display = (dayType === 'WORK' || dayType === 'HALF_DAY') ? 'block' : 'none';
+  }
+}
+
+async function saveShiftDayOverride(event) {
+  if (event) event.preventDefault();
+
+  const cal_date = document.getElementById('sd-date').value;
+  const day_type = document.getElementById('sd-day-type').value;
+  const default_shift_id = (day_type === 'WORK' || day_type === 'HALF_DAY') ? document.getElementById('sd-shift-select').value : null;
+  const title = document.getElementById('sd-title').value.trim();
+
+  try {
+    const res = await api('/shift-calendar/day', {
+      method: 'PUT',
+      body: JSON.stringify({ cal_date, day_type, default_shift_id, title })
+    });
+
+    if (res && res.success) {
+      notify(`Calendar day ${cal_date} updated successfully!`, 'ok');
+      closeShiftDayModal();
+      await loadCalendarMonth();
+    } else {
+      notify(`Failed to update calendar day: ${res?.error?.message || 'Server error'}`, 'er');
+    }
+  } catch (err) {
+    notify(`Error updating day: ${err.message}`, 'er');
+  }
+}
+
+async function openShiftCalendarPatternModal() {
+  const modal = document.getElementById('shift-pattern-modal');
+  if (!modal) return;
+
+  const mSelect = document.getElementById('sp-month');
+  const ySelect = document.getElementById('sp-year');
+  if (mSelect) {
+    mSelect.innerHTML = [
+      'January','February','March','April','May','June','July','August','September','October','November','December'
+    ].map((name, i) => `<option value="${i + 1}" ${i + 1 === activeCalendarMonth ? 'selected' : ''}>${name}</option>`).join('');
+  }
+  if (ySelect) {
+    ySelect.innerHTML = [2025, 2026, 2027, 2028].map(y => `<option value="${y}" ${y === activeCalendarYear ? 'selected' : ''}>${y}</option>`).join('');
+  }
+
+  const shifts = await getCachedShifts();
+  const shiftSelect = document.getElementById('sp-default-shift');
+  if (shiftSelect) {
+    shiftSelect.innerHTML = shifts.map(s => `<option value="${s.id}">${s.code} - ${s.name}</option>`).join('');
+  }
+
+  modal.style.display = 'flex';
+}
+
+function closeShiftPatternModal() {
+  const modal = document.getElementById('shift-pattern-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function applyCalendarPatternSubmit(event) {
+  if (event) event.preventDefault();
+
+  const year = parseInt(document.getElementById('sp-year').value, 10);
+  const month = parseInt(document.getElementById('sp-month').value, 10);
+  const pattern_type = document.getElementById('sp-pattern-type').value;
+  const default_shift_id = document.getElementById('sp-default-shift').value;
+
+  try {
+    const res = await api('/shift-calendar/apply-pattern', {
+      method: 'POST',
+      body: JSON.stringify({ year, month, pattern_type, default_shift_id })
+    });
+
+    if (res && res.success) {
+      notify(`Weekly off pattern applied to ${month}/${year} (${res.data?.result?.count || 0} days configured)!`, 'ok');
+      closeShiftPatternModal();
+      activeCalendarYear = year;
+      activeCalendarMonth = month;
+      const mSelect = document.getElementById('cal-month-select');
+      const ySelect = document.getElementById('cal-year-select');
+      if (mSelect) mSelect.value = month;
+      if (ySelect) ySelect.value = year;
+      await loadCalendarMonth();
+    } else {
+      notify(`Failed to apply pattern: ${res?.error?.message || 'Server error'}`, 'er');
+    }
+  } catch (err) {
+    notify(`Error applying pattern: ${err.message}`, 'er');
+  }
+}
+
+// ══════════════════════════════════════════════
+// 👥 SHIFT GROUP CONTROLLER
+// ══════════════════════════════════════════════
+let allShiftGroupsList = [];
+let activeManagingGroupId = null;
+let allEmployeesCache = [];
+
+async function openShiftGroupModal() {
+  const modal = document.getElementById('shift-group-modal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  await loadShiftGroups();
+}
+
+function closeShiftGroupModal() {
+  const modal = document.getElementById('shift-group-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function loadShiftGroups() {
+  const container = document.getElementById('shift-groups-container');
+  const countLabel = document.getElementById('shift-groups-count-label');
+  if (container) container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:30px; color:var(--mu)">Loading shift groups...</div>';
+
+  try {
+    const res = await api('/shift-groups');
+    if (res && res.success && Array.isArray(res.data?.groups)) {
+      allShiftGroupsList = res.data.groups;
+      if (countLabel) countLabel.textContent = `Showing ${allShiftGroupsList.length} configured shift group(s)`;
+      renderShiftGroups(allShiftGroupsList);
+    } else {
+      notify('Failed to load shift groups', 'er');
+    }
+  } catch (err) {
+    notify(`Error loading shift groups: ${err.message}`, 'er');
+  }
+}
+
+async function renderShiftGroups(groups) {
+  const container = document.getElementById('shift-groups-container');
+  if (!container) return;
+
+  if (groups.length === 0) {
+    container.innerHTML = `
+      <div style="grid-column:1/-1; text-align:center; padding:40px; background:var(--s2); border-radius:8px; border:1px solid var(--br)">
+        <div style="font-size:28px; margin-bottom:10px">👥</div>
+        <div style="font-size:13px; font-weight:600; color:var(--tx)">No Shift Groups Configured</div>
+        <div style="font-size:11px; color:var(--mu); margin-top:4px">Create a group to configure team shift rotation cycles.</div>
+        <button class="btn btnp bsm" style="margin-top:12px" onclick="openAddShiftGroupModal()">+ Add Shift Group</button>
+      </div>
+    `;
+    return;
+  }
+
+  const shifts = await getCachedShifts();
+  const shiftMap = {};
+  shifts.forEach(s => { shiftMap[s.id] = s; });
+
+  const html = groups.map(g => {
+    const seq = Array.isArray(g.shifts_sequence) ? g.shifts_sequence : [];
+    const seqBadges = seq.map((sId, idx) => {
+      const s = shiftMap[sId] || { code: sId, name: sId, color: '#4f8ef7' };
+      const arrow = idx < seq.length - 1 ? '<span class="sg-seq-arrow">→</span>' : '';
+      return `
+        <span class="sg-seq-item" style="background:${s.color || '#4f8ef7'}22; color:${s.color || '#4f8ef7'}; border:1px solid ${s.color || '#4f8ef7'}44">
+          ${s.code || sId}
+        </span>
+        ${arrow}
+      `;
+    }).join(' ');
+
+    return `
+      <div class="shift-group-card">
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px">
+            <div style="display:flex; align-items:center; gap:8px">
+              <span style="width:10px; height:10px; border-radius:50%; background:${g.color || '#4f8ef7'}"></span>
+              <strong style="font-size:13px; color:var(--tx)">${escapeHtml(g.name)}</strong>
+            </div>
+            <span class="sg-badge-mode">${g.rotation_type}</span>
+          </div>
+
+          <div style="font-size:10.5px; font-family:var(--mo); color:var(--mu); margin-bottom:8px">
+            Code: <strong style="color:var(--ac)">${escapeHtml(g.code)}</strong>
+          </div>
+
+          <div style="margin-bottom:10px">
+            <div style="font-size:10px; color:var(--mu); margin-bottom:4px">Rotation Shift Sequence:</div>
+            <div class="sg-seq-flow">${seqBadges || '<span style="font-size:10px; color:var(--mu)">No sequence</span>'}</div>
+          </div>
+
+          <div style="font-size:11px; color:var(--mu); line-height:1.4">
+            ${escapeHtml(g.description || 'No description provided.')}
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--br); padding-top:10px; margin-top:4px">
+          <span style="font-size:11px; font-weight:600; color:var(--tx); display:flex; align-items:center; gap:4px">
+            👥 <span>${g.member_count || 0} Members</span>
+          </span>
+          <div style="display:flex; gap:6px">
+            <button class="btn bsm" style="font-size:10.5px; padding:3px 8px" onclick="openShiftGroupMembersModal('${g.id}', '${escapeHtml(g.name)}')">👥 Members</button>
+            <button class="btn bsm" style="font-size:10.5px; padding:3px 8px" onclick="openEditShiftGroupModal('${g.id}')">✏️ Edit</button>
+            <button class="btn bsm" style="font-size:10.5px; padding:3px 8px; color:var(--err)" onclick="deleteShiftGroupPrompt('${g.id}', '${escapeHtml(g.name)}')">🗑️</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  container.innerHTML = html;
+}
+
+async function openAddShiftGroupModal() {
+  const modal = document.getElementById('shift-group-form-modal');
+  if (!modal) return;
+
+  document.getElementById('sg-form-title').textContent = 'Add New Shift Group';
+  document.getElementById('sg-id').value = '';
+  document.getElementById('sg-name').value = '';
+  document.getElementById('sg-code').value = '';
+  document.getElementById('sg-code').disabled = false;
+  document.getElementById('sg-desc').value = '';
+  document.getElementById('sg-rotation-type').value = 'WEEKLY';
+  document.getElementById('sg-color').value = '#4f8ef7';
+  document.getElementById('sg-color-preview').textContent = '#4f8ef7';
+  document.getElementById('sg-active').checked = true;
+
+  await renderShiftGroupSequenceSelector(['SHIFT_MOR', 'SHIFT_EVE', 'SHIFT_NIT']);
+  modal.style.display = 'flex';
+}
+
+async function openEditShiftGroupModal(id) {
+  const modal = document.getElementById('shift-group-form-modal');
+  if (!modal) return;
+
+  try {
+    const res = await api(`/shift-groups/${encodeURIComponent(id)}`);
+    if (res && res.success && res.data?.group) {
+      const g = res.data.group;
+      document.getElementById('sg-form-title').textContent = `Edit Shift Group (${g.code})`;
+      document.getElementById('sg-id').value = g.id;
+      document.getElementById('sg-name').value = g.name;
+      document.getElementById('sg-code').value = g.code;
+      document.getElementById('sg-code').disabled = true;
+      document.getElementById('sg-desc').value = g.description || '';
+      document.getElementById('sg-rotation-type').value = g.rotation_type || 'FIXED';
+      document.getElementById('sg-color').value = g.color || '#4f8ef7';
+      document.getElementById('sg-color-preview').textContent = g.color || '#4f8ef7';
+      document.getElementById('sg-active').checked = g.active !== false;
+
+      await renderShiftGroupSequenceSelector(g.shifts_sequence || ['SHIFT_GEN']);
+      modal.style.display = 'flex';
+    } else {
+      notify('Failed to load group details', 'er');
+    }
+  } catch (err) {
+    notify(`Error opening group: ${err.message}`, 'er');
+  }
+}
+
+async function renderShiftGroupSequenceSelector(selectedShiftIds) {
+  const container = document.getElementById('sg-sequence-selector');
+  if (!container) return;
+
+  const shifts = await getCachedShifts();
+  const selectedSet = new Set(selectedShiftIds || []);
+
+  container.innerHTML = shifts.map(s => {
+    const checked = selectedSet.has(s.id) ? 'checked' : '';
+    return `
+      <label style="display:inline-flex; align-items:center; gap:6px; background:var(--s1); padding:4px 10px; border-radius:4px; border:1px solid var(--br); font-size:11px; cursor:pointer">
+        <input type="checkbox" name="sg-shift-seq" value="${s.id}" ${checked} />
+        <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${s.color}"></span>
+        <span><strong>${s.code}</strong> (${s.name})</span>
+      </label>
+    `;
+  }).join('');
+}
+
+function closeShiftGroupFormModal() {
+  const modal = document.getElementById('shift-group-form-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function saveShiftGroupForm(event) {
+  if (event) event.preventDefault();
+
+  const id = document.getElementById('sg-id').value;
+  const name = document.getElementById('sg-name').value.trim();
+  const code = document.getElementById('sg-code').value.trim().toUpperCase();
+  const rotation_type = document.getElementById('sg-rotation-type').value;
+  const description = document.getElementById('sg-desc').value.trim();
+  const color = document.getElementById('sg-color').value;
+  const active = !!document.getElementById('sg-active').checked;
+
+  const checkedBoxes = Array.from(document.querySelectorAll('input[name="sg-shift-seq"]:checked'));
+  const shifts_sequence = checkedBoxes.map(cb => cb.value);
+
+  if (shifts_sequence.length === 0) {
+    notify('Please select at least one shift in the rotation sequence', 'wn');
+    return;
+  }
+
+  const payload = { name, code, rotation_type, description, color, shifts_sequence, active };
+
+  try {
+    let res;
+    if (id) {
+      res = await api(`/shift-groups/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      });
+    } else {
+      res = await api('/shift-groups', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+    }
+
+    if (res && res.success) {
+      notify(`Shift Group "${name}" saved successfully!`, 'ok');
+      closeShiftGroupFormModal();
+      await loadShiftGroups();
+    } else {
+      notify(`Failed to save shift group: ${res?.error?.message || 'Server error'}`, 'er');
+    }
+  } catch (err) {
+    notify(`Error saving group: ${err.message}`, 'er');
+  }
+}
+
+async function deleteShiftGroupPrompt(id, name) {
+  if (!confirm(`Are you sure you want to delete shift group "${name}"? Assigned members will be unlinked.`)) return;
+
+  try {
+    const res = await api(`/shift-groups/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    if (res && res.success) {
+      notify(`Shift group "${name}" deleted successfully.`, 'ok');
+      await loadShiftGroups();
+    } else {
+      notify(`Failed to delete group: ${res?.error?.message || 'Server error'}`, 'er');
+    }
+  } catch (err) {
+    notify(`Error deleting group: ${err.message}`, 'er');
+  }
+}
+
+// ── Manage Shift Group Members ──
+async function openShiftGroupMembersModal(groupId, groupName) {
+  activeManagingGroupId = groupId;
+  const modal = document.getElementById('shift-group-members-modal');
+  if (!modal) return;
+
+  document.getElementById('sgm-title').textContent = `Manage Members: ${groupName}`;
+  document.getElementById('sgm-subtitle').textContent = `Assign employees to shift group ${groupId}`;
+
+  // Fetch employees
+  try {
+    const [empRes, grpRes] = await Promise.all([
+      api('/employees?pageSize=500'),
+      api(`/shift-groups/${encodeURIComponent(groupId)}`)
+    ]);
+
+    allEmployeesCache = empRes?.data?.employees || [];
+    const assignedMemberIds = new Set((grpRes?.data?.group?.members || []).map(m => m.emp_id));
+
+    // Populate department filter
+    const depts = Array.from(new Set(allEmployeesCache.map(e => e.dept || e.department).filter(Boolean)));
+    const deptSelect = document.getElementById('sgm-dept-filter');
+    if (deptSelect) {
+      deptSelect.innerHTML = '<option value="">All Departments</option>' + depts.map(d => `<option value="${d}">${d}</option>`).join('');
+    }
+
+    renderGroupMembersList(allEmployeesCache, assignedMemberIds);
+    modal.style.display = 'flex';
+  } catch (err) {
+    notify(`Error loading members: ${err.message}`, 'er');
+  }
+}
+
+function renderGroupMembersList(employees, assignedMemberIds) {
+  const tbody = document.getElementById('sgm-tbody');
+  if (!tbody) return;
+
+  const html = employees.map(emp => {
+    const isChecked = assignedMemberIds.has(emp.id) ? 'checked' : '';
+    const dept = emp.dept || emp.department || 'General';
+    return `
+      <tr class="sgm-row" data-emp-id="${emp.id}" data-dept="${escapeHtml(dept)}" data-name="${escapeHtml(emp.name.toLowerCase())}" style="border-bottom:1px solid var(--br)">
+        <td style="padding:6px; text-align:center">
+          <input type="checkbox" class="sgm-chk" value="${emp.id}" ${isChecked} onchange="updateGroupMemberCount()" />
+        </td>
+        <td style="padding:6px; font-family:var(--mo); font-weight:600; color:var(--ac)">${emp.id}</td>
+        <td style="padding:6px; font-weight:600; color:var(--tx)">${escapeHtml(emp.name)}</td>
+        <td style="padding:6px; color:var(--mu)">${escapeHtml(dept)}</td>
+        <td style="padding:6px; color:var(--mu)">${escapeHtml(emp.role || 'Staff')}</td>
+      </tr>
+    `;
+  }).join('');
+
+  tbody.innerHTML = html;
+  updateGroupMemberCount();
+}
+
+function filterGroupMembersList() {
+  const search = document.getElementById('sgm-search')?.value?.trim().toLowerCase() || '';
+  const dept = document.getElementById('sgm-dept-filter')?.value || '';
+  const rows = document.querySelectorAll('.sgm-row');
+
+  rows.forEach(row => {
+    const empId = (row.getAttribute('data-emp-id') || '').toLowerCase();
+    const name = (row.getAttribute('data-name') || '').toLowerCase();
+    const rowDept = row.getAttribute('data-dept') || '';
+
+    const matchSearch = !search || empId.includes(search) || name.includes(search);
+    const matchDept = !dept || rowDept === dept;
+
+    row.style.display = (matchSearch && matchDept) ? '' : 'none';
+  });
+}
+
+function selectAllGroupMembers(check) {
+  const visibleCheckboxes = document.querySelectorAll('.sgm-row:not([style*="display: none"]) .sgm-chk');
+  visibleCheckboxes.forEach(cb => { cb.checked = check; });
+  updateGroupMemberCount();
+}
+
+function updateGroupMemberCount() {
+  const totalChecked = document.querySelectorAll('.sgm-chk:checked').length;
+  const countEl = document.getElementById('sgm-selected-count');
+  if (countEl) countEl.textContent = `${totalChecked} employee(s) assigned`;
+}
+
+async function saveShiftGroupMembers() {
+  if (!activeManagingGroupId) return;
+
+  const checkedBoxes = Array.from(document.querySelectorAll('.sgm-chk:checked'));
+  const emp_ids = checkedBoxes.map(cb => cb.value);
+
+  try {
+    const res = await api(`/shift-groups/${encodeURIComponent(activeManagingGroupId)}/members`, {
+      method: 'POST',
+      body: JSON.stringify({ emp_ids })
+    });
+
+    if (res && res.success) {
+      notify(`Successfully assigned ${emp_ids.length} employees to group!`, 'ok');
+      closeShiftGroupMembersModal();
+      await loadShiftGroups();
+    } else {
+      notify(`Failed to assign group members: ${res?.error?.message || 'Server error'}`, 'er');
+    }
+  } catch (err) {
+    notify(`Error saving group assignments: ${err.message}`, 'er');
+  }
+}
+
+function closeShiftGroupMembersModal() {
+  const modal = document.getElementById('shift-group-members-modal');
+  if (modal) modal.style.display = 'none';
+  activeManagingGroupId = null;
+}
+
+// ══════════════════════════════════════════════
+// 📋 SHIFT ROSTER CONTROLLER
+// ══════════════════════════════════════════════
+let rosterSearchTimer = null;
+
+async function openShiftRosterModal() {
+  const modal = document.getElementById('shift-roster-modal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+
+  // Initialize Month Picker
+  const monthPicker = document.getElementById('roster-month-picker');
+  if (monthPicker && !monthPicker.value) {
+    const now = new Date();
+    monthPicker.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  // Populate Dept and Group Filters
+  try {
+    const [empRes, grpRes] = await Promise.all([
+      api('/employees?pageSize=500'),
+      api('/shift-groups')
+    ]);
+
+    const employees = empRes?.data?.employees || [];
+    const depts = Array.from(new Set(employees.map(e => e.dept || e.department).filter(Boolean)));
+    const deptSelect = document.getElementById('roster-dept-filter');
+    if (deptSelect) {
+      deptSelect.innerHTML = '<option value="">All Departments</option>' + depts.map(d => `<option value="${d}">${d}</option>`).join('');
+    }
+
+    const groups = grpRes?.data?.groups || [];
+    const grpSelect = document.getElementById('roster-group-filter');
+    if (grpSelect) {
+      grpSelect.innerHTML = '<option value="">All Groups</option>' + groups.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+    }
+  } catch (e) {
+    console.warn('[ROSTER] Error loading filter options:', e);
+  }
+
+  await loadShiftRosterMatrix();
+}
+
+function closeShiftRosterModal() {
+  const modal = document.getElementById('shift-roster-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function debounceRosterSearch() {
+  clearTimeout(rosterSearchTimer);
+  rosterSearchTimer = setTimeout(() => {
+    loadShiftRosterMatrix();
+  }, 300);
+}
+
+async function loadShiftRosterMatrix() {
+  const monthVal = document.getElementById('roster-month-picker')?.value || new Date().toISOString().slice(0, 7);
+  const dept = document.getElementById('roster-dept-filter')?.value || '';
+  const groupId = document.getElementById('roster-group-filter')?.value || '';
+  const search = document.getElementById('roster-search-input')?.value?.trim() || '';
+
+  const tbody = document.getElementById('roster-table-tbody');
+  const thead = document.getElementById('roster-table-thead');
+  const statsLabel = document.getElementById('roster-footer-stats');
+
+  if (tbody) tbody.innerHTML = '<tr><td colspan="35" style="text-align:center; padding:40px; color:var(--mu)">Loading monthly roster matrix...</td></tr>';
+
+  try {
+    const query = new URLSearchParams({ month: monthVal, dept, groupId, search }).toString();
+    const res = await api(`/shift-roster?${query}`);
+
+    if (res && res.success && res.data) {
+      renderShiftRosterTable(res.data);
+      if (statsLabel) statsLabel.textContent = `Showing ${res.data.total_employees} employee schedules for ${res.data.month}/${res.data.year}`;
+    } else {
+      notify('Failed to load shift roster matrix', 'er');
+    }
+  } catch (err) {
+    notify(`Error loading roster: ${err.message}`, 'er');
+  }
+}
+
+function renderShiftRosterTable(data) {
+  const thead = document.getElementById('roster-table-thead');
+  const tbody = document.getElementById('roster-table-tbody');
+  if (!thead || !tbody) return;
+
+  const days = data.calendar_days || [];
+  const employees = data.employees || [];
+
+  // Header
+  let headerHtml = '<tr>';
+  headerHtml += '<th class="roster-emp-sticky" style="padding:8px 10px">Employee Details</th>';
+  days.forEach(d => {
+    const isWeekend = d.day_name === 'Sun' || d.day_name === 'Sat';
+    headerHtml += `
+      <th style="padding:6px 4px; min-width:34px; color:${isWeekend ? '#f59e0b' : 'inherit'}">
+        <div style="font-size:11px">${d.day_number}</div>
+        <div style="font-size:9px; color:var(--mu)">${d.day_name}</div>
+      </th>
+    `;
+  });
+  headerHtml += '<th style="padding:6px 8px; color:#00d4aa">Work</th>';
+  headerHtml += '<th style="padding:6px 8px; color:#64748b">Off</th>';
+  headerHtml += '</tr>';
+  thead.innerHTML = headerHtml;
+
+  // Body
+  if (employees.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="${days.length + 3}" style="text-align:center; padding:30px; color:var(--mu)">No active employees match the selected criteria.</td></tr>`;
+    return;
+  }
+
+  let bodyHtml = '';
+  employees.forEach(row => {
+    const emp = row.employee;
+    const sched = row.schedule;
+    const stats = row.stats;
+
+    bodyHtml += '<tr>';
+    bodyHtml += `
+      <td class="roster-emp-sticky" style="padding:6px 10px">
+        <div style="display:flex; align-items:center; gap:8px">
+          <div style="width:24px; height:24px; border-radius:50%; background:var(--s3); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:var(--ac); flex-shrink:0">
+            ${emp.name.charAt(0)}
+          </div>
+          <div style="overflow:hidden">
+            <div style="font-weight:600; color:var(--tx); white-space:nowrap; overflow:hidden; text-overflow:ellipsis">${escapeHtml(emp.name)}</div>
+            <div style="font-size:10px; color:var(--mu)">${emp.id} · <span style="color:var(--ac)">${escapeHtml(emp.dept || 'Staff')}</span></div>
+          </div>
+        </div>
+      </td>
+    `;
+
+    days.forEach(d => {
+      const cell = sched[d.date] || { shift_code: d.shift_code, shift_color: d.shift_color, day_type: d.day_type };
+      const isOff = cell.day_type === 'WEEKLY_OFF';
+      const isHol = cell.day_type === 'HOLIDAY';
+      const isLeave = cell.day_type === 'LEAVE';
+      const isOd = cell.day_type === 'OUTDOOR';
+
+      let bg = cell.shift_color || '#00d4aa';
+      let text = cell.shift_code || 'GEN';
+
+      if (isOff) { bg = '#64748b'; text = 'WO'; }
+      else if (isHol) { bg = '#ef4444'; text = 'HOL'; }
+      else if (isLeave) { bg = '#ec4899'; text = 'LV'; }
+      else if (isOd) { bg = '#8b5cf6'; text = 'OD'; }
+
+      bodyHtml += `
+        <td style="padding:4px 2px">
+          <span class="roster-cell-chip" style="background:${bg}22; color:${bg}; border:1px solid ${bg}55"
+                title="${escapeHtml(emp.name)} - ${d.date} (${text})\nClick to change shift"
+                onclick="quickChangeRosterShift('${emp.id}', '${d.date}', '${cell.shift_id || 'SHIFT_GEN'}')">
+            ${text}
+          </span>
+        </td>
+      `;
+    });
+
+    bodyHtml += `<td style="font-weight:700; color:#00d4aa; font-family:var(--mo)">${stats.working_days}</td>`;
+    bodyHtml += `<td style="font-weight:700; color:#64748b; font-family:var(--mo)">${stats.off_days}</td>`;
+    bodyHtml += '</tr>';
+  });
+
+  tbody.innerHTML = bodyHtml;
+}
+
+async function quickChangeRosterShift(empId, dateStr, currentShiftId) {
+  const shifts = await getCachedShifts();
+  const options = [
+    ...shifts.map(s => `[${s.code}] ${s.name}`),
+    '[WO] Weekly Off',
+    '[HOL] Public Holiday',
+    '[LV] On Leave'
+  ];
+
+  const choice = prompt(`Change shift for employee ${empId} on date ${dateStr}:\nEnter option code (e.g. GEN, MOR, EVE, NIT, WO, HOL, LV):`, 'GEN');
+  if (!choice) return;
+
+  const clean = choice.trim().toUpperCase();
+  let shift_id = 'SHIFT_GEN';
+  let day_type = 'WORK';
+
+  if (clean === 'WO') {
+    day_type = 'WEEKLY_OFF';
+  } else if (clean === 'HOL') {
+    day_type = 'HOLIDAY';
+  } else if (clean === 'LV') {
+    day_type = 'LEAVE';
+  } else {
+    const matchedShift = shifts.find(s => s.code === clean || s.id === clean);
+    if (matchedShift) {
+      shift_id = matchedShift.id;
+    } else {
+      notify(`Unknown shift code "${clean}". Valid shifts: ${shifts.map(s => s.code).join(', ')}`, 'wn');
+      return;
+    }
+  }
+
+  try {
+    const res = await api('/shift-roster/assign', {
+      method: 'POST',
+      body: JSON.stringify({
+        emp_ids: [empId],
+        start_date: dateStr,
+        shift_id,
+        day_type,
+        note: 'Quick interactive roster update'
+      })
+    });
+
+    if (res && res.success) {
+      notify(`Updated shift for ${empId} on ${dateStr}`, 'ok');
+      await loadShiftRosterMatrix();
+    } else {
+      notify(`Failed to update roster: ${res?.error?.message || 'Server error'}`, 'er');
+    }
+  } catch (err) {
+    notify(`Error assigning shift: ${err.message}`, 'er');
+  }
+}
+
+// ── Auto Generate Roster Modal ──
+async function openShiftRosterAutoModal() {
+  const modal = document.getElementById('shift-roster-auto-modal');
+  if (!modal) return;
+
+  const currentMonthVal = document.getElementById('roster-month-picker')?.value || new Date().toISOString().slice(0, 7);
+  document.getElementById('sra-month').value = currentMonthVal;
+
+  const [empRes, grpRes] = await Promise.all([
+    api('/employees?pageSize=500'),
+    api('/shift-groups')
+  ]);
+
+  const employees = empRes?.data?.employees || [];
+  const depts = Array.from(new Set(employees.map(e => e.dept || e.department).filter(Boolean)));
+  const deptSelect = document.getElementById('sra-dept');
+  if (deptSelect) {
+    deptSelect.innerHTML = '<option value="">All Departments</option>' + depts.map(d => `<option value="${d}">${d}</option>`).join('');
+  }
+
+  const groups = grpRes?.data?.groups || [];
+  const grpSelect = document.getElementById('sra-group');
+  if (grpSelect) {
+    grpSelect.innerHTML = '<option value="">All Groups</option>' + groups.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+  }
+
+  modal.style.display = 'flex';
+}
+
+function closeShiftRosterAutoModal() {
+  const modal = document.getElementById('shift-roster-auto-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function executeAutoGenerateRoster(event) {
+  if (event) event.preventDefault();
+
+  const monthStr = document.getElementById('sra-month').value;
+  if (!monthStr) return;
+  const parts = monthStr.split('-');
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10);
+  const dept = document.getElementById('sra-dept').value || null;
+  const groupId = document.getElementById('sra-group').value || null;
+  const overwrite = !!document.getElementById('sra-overwrite').checked;
+
+  try {
+    const res = await api('/shift-roster/auto-generate', {
+      method: 'POST',
+      body: JSON.stringify({ year, month, dept, groupId, overwrite })
+    });
+
+    if (res && res.success) {
+      notify(`Auto-generated roster for ${res.data?.employees_count || 0} employees (${res.data?.total_slots || 0} date slots created)!`, 'ok');
+      closeShiftRosterAutoModal();
+      document.getElementById('roster-month-picker').value = monthStr;
+      await loadShiftRosterMatrix();
+    } else {
+      notify(`Failed to generate roster: ${res?.error?.message || 'Server error'}`, 'er');
+    }
+  } catch (err) {
+    notify(`Error generating roster: ${err.message}`, 'er');
+  }
+}
+
+// ── Bulk Assign Shift Modal ──
+async function openShiftRosterAssignModal() {
+  const modal = document.getElementById('shift-roster-assign-modal');
+  if (!modal) return;
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  document.getElementById('sras-start-date').value = todayStr;
+  document.getElementById('sras-end-date').value = todayStr;
+  document.getElementById('sras-day-type').value = 'WORK';
+  document.getElementById('sras-note').value = '';
+
+  const [empRes, shifts] = await Promise.all([
+    api('/employees?pageSize=500'),
+    getCachedShifts()
+  ]);
+
+  const employees = empRes?.data?.employees || [];
+  const empSelect = document.getElementById('sras-emp-select');
+  if (empSelect) {
+    empSelect.innerHTML = employees.map(e => `
+      <option value="${e.id}">${e.name} (${e.id}) - ${e.dept || 'Staff'}</option>
+    `).join('');
+  }
+
+  const shiftSelect = document.getElementById('sras-shift-id');
+  if (shiftSelect) {
+    shiftSelect.innerHTML = shifts.map(s => `
+      <option value="${s.id}">${s.code} - ${s.name} (${s.start_time.slice(0, 5)} - ${s.end_time.slice(0, 5)})</option>
+    `).join('');
+  }
+
+  onRosterBulkDayTypeChange();
+  modal.style.display = 'flex';
+}
+
+function closeShiftRosterAssignModal() {
+  const modal = document.getElementById('shift-roster-assign-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function onRosterBulkDayTypeChange() {
+  const dayType = document.getElementById('sras-day-type')?.value;
+  const shiftWrap = document.getElementById('sras-shift-wrap');
+  if (shiftWrap) {
+    shiftWrap.style.display = (dayType === 'WORK') ? 'block' : 'none';
+  }
+}
+
+async function executeBulkAssignRoster(event) {
+  if (event) event.preventDefault();
+
+  const selectedEmpOptions = Array.from(document.getElementById('sras-emp-select').selectedOptions);
+  const emp_ids = selectedEmpOptions.map(opt => opt.value);
+  if (emp_ids.length === 0) {
+    notify('Please select at least one employee', 'wn');
+    return;
+  }
+
+  const start_date = document.getElementById('sras-start-date').value;
+  const end_date = document.getElementById('sras-end-date').value;
+  const day_type = document.getElementById('sras-day-type').value;
+  const shift_id = (day_type === 'WORK') ? document.getElementById('sras-shift-id').value : 'SHIFT_GEN';
+  const note = document.getElementById('sras-note').value.trim();
+
+  try {
+    const res = await api('/shift-roster/assign', {
+      method: 'POST',
+      body: JSON.stringify({ emp_ids, start_date, end_date, shift_id, day_type, note })
+    });
+
+    if (res && res.success) {
+      notify(`Shift assigned successfully to ${emp_ids.length} employees (${res.data?.result?.records_processed || 0} date records)!`, 'ok');
+      closeShiftRosterAssignModal();
+      await loadShiftRosterMatrix();
+    } else {
+      notify(`Failed to assign shifts: ${res?.error?.message || 'Server error'}`, 'er');
+    }
+  } catch (err) {
+    notify(`Error bulk assigning shifts: ${err.message}`, 'er');
+  }
+}
+
+// Window exports
+window.openShiftCalendarModal = openShiftCalendarModal;
+window.closeShiftCalendarModal = closeShiftCalendarModal;
+window.navCalendarMonth = navCalendarMonth;
+window.setCalendarToToday = setCalendarToToday;
+window.loadCalendarMonth = loadCalendarMonth;
+window.openShiftDayModal = openShiftDayModal;
+window.closeShiftDayModal = closeShiftDayModal;
+window.onShiftDayTypeChange = onShiftDayTypeChange;
+window.saveShiftDayOverride = saveShiftDayOverride;
+window.openShiftCalendarPatternModal = openShiftCalendarPatternModal;
+window.closeShiftPatternModal = closeShiftPatternModal;
+window.applyCalendarPatternSubmit = applyCalendarPatternSubmit;
+
+window.openShiftGroupModal = openShiftGroupModal;
+window.closeShiftGroupModal = closeShiftGroupModal;
+window.loadShiftGroups = loadShiftGroups;
+window.openAddShiftGroupModal = openAddShiftGroupModal;
+window.openEditShiftGroupModal = openEditShiftGroupModal;
+window.closeShiftGroupFormModal = closeShiftGroupFormModal;
+window.saveShiftGroupForm = saveShiftGroupForm;
+window.deleteShiftGroupPrompt = deleteShiftGroupPrompt;
+window.openShiftGroupMembersModal = openShiftGroupMembersModal;
+window.closeShiftGroupMembersModal = closeShiftGroupMembersModal;
+window.filterGroupMembersList = filterGroupMembersList;
+window.selectAllGroupMembers = selectAllGroupMembers;
+window.updateGroupMemberCount = updateGroupMemberCount;
+window.saveShiftGroupMembers = saveShiftGroupMembers;
+
+window.openShiftRosterModal = openShiftRosterModal;
+window.closeShiftRosterModal = closeShiftRosterModal;
+window.debounceRosterSearch = debounceRosterSearch;
+window.loadShiftRosterMatrix = loadShiftRosterMatrix;
+window.quickChangeRosterShift = quickChangeRosterShift;
+window.openShiftRosterAutoModal = openShiftRosterAutoModal;
+window.closeShiftRosterAutoModal = closeShiftRosterAutoModal;
+window.executeAutoGenerateRoster = executeAutoGenerateRoster;
+window.openShiftRosterAssignModal = openShiftRosterAssignModal;
+window.closeShiftRosterAssignModal = closeShiftRosterAssignModal;
+window.onRosterBulkDayTypeChange = onRosterBulkDayTypeChange;
+window.executeBulkAssignRoster = executeBulkAssignRoster;
+
+
+// ══════════════════════════════════════════════
 // Boot
 // ══════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', init);
+

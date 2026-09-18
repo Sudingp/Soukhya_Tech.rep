@@ -1832,4 +1832,184 @@ input:checked + .slider:before {
   font-size: 10.5px;
 }
 
+/* ══════════════════════════════════════════════ */
+/* 📅 SHIFT CALENDAR STYLES                       */
+/* ══════════════════════════════════════════════ */
+.cal-day-card {
+  background: var(--s2);
+  border: 1px solid var(--br);
+  border-radius: 8px;
+  padding: 8px 10px;
+  min-height: 86px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  position: relative;
+}
+
+.cal-day-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--ac);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+.cal-day-card.other-month {
+  opacity: 0.35;
+  background: rgba(255, 255, 255, 0.02);
+  pointer-events: none;
+}
+
+.cal-day-card.is-today {
+  border-color: var(--ac);
+  background: linear-gradient(135deg, rgba(0, 212, 170, 0.08), var(--s2));
+}
+
+.cal-day-card.type-off {
+  background: rgba(100, 116, 139, 0.08);
+  border-color: rgba(100, 116, 139, 0.3);
+}
+
+.cal-day-card.type-holiday {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.cal-day-hdr {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cal-day-num {
+  font-family: var(--mo);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--tx);
+}
+
+.cal-shift-pill {
+  font-size: 9.5px;
+  font-family: var(--mo);
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cal-day-title {
+  font-size: 10px;
+  color: var(--mu);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 4px;
+}
+
+/* ══════════════════════════════════════════════ */
+/* 👥 SHIFT GROUP STYLES                          */
+/* ══════════════════════════════════════════════ */
+.shift-group-card {
+  background: var(--s2);
+  border: 1px solid var(--br);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+
+.shift-group-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(79, 142, 247, 0.5);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+.sg-badge-mode {
+  font-size: 9.5px;
+  font-family: var(--mo);
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(79, 142, 247, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(79, 142, 247, 0.3);
+}
+
+.sg-seq-flow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.sg-seq-item {
+  font-size: 10px;
+  font-family: var(--mo);
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.sg-seq-arrow {
+  color: var(--mu);
+  font-size: 10px;
+}
+
+/* ══════════════════════════════════════════════ */
+/* 📋 SHIFT ROSTER MATRIX STYLES                  */
+/* ══════════════════════════════════════════════ */
+#roster-matrix-table th, #roster-matrix-table td {
+  border: 1px solid var(--br);
+  padding: 5px 6px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+#roster-matrix-table th {
+  background: #141926;
+  font-weight: 600;
+}
+
+.roster-emp-sticky {
+  position: sticky;
+  left: 0;
+  background: #101522 !important;
+  z-index: 5;
+  text-align: left !important;
+  min-width: 190px;
+  max-width: 220px;
+  box-shadow: 2px 0 6px rgba(0, 0, 0, 0.4);
+}
+
+.roster-cell-chip {
+  display: inline-block;
+  font-family: var(--mo);
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.12s;
+  min-width: 28px;
+  text-align: center;
+}
+
+.roster-cell-chip:hover {
+  transform: scale(1.15);
+  box-shadow: 0 0 8px rgba(0, 212, 170, 0.5);
+  z-index: 6;
+  position: relative;
+}
+
+
 

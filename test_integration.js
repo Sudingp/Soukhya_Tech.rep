@@ -161,27 +161,124 @@ async function runTests() {
       if (shiftDelete.status !== 200) throw new Error('Delete Shift failed: ' + JSON.stringify(shiftDelete));
       console.log('   [PASS] Deleted shift:', createdId);
 
-      // 11. Token Refresh
-      console.log('11. Testing /api/auth/refresh...');
+      // 11. Shift Calendar APIs
+      console.log('11. Testing /api/shift-calendar APIs...');
+      const calGet = await request('/api/shift-calendar?month=2026-09', 'GET', authHeaders);
+      if (calGet.status !== 200 || !Array.isArray(calGet.body.days)) throw new Error('Get Calendar failed: ' + JSON.stringify(calGet));
+      console.log('   [PASS] Retrieved shift calendar for 2026-09 (' + calGet.body.days.length + ' days, ' + calGet.body.summary.working_days + ' working days)');
+
+      // Upsert a day in calendar
+      const calDayPut = await request('/api/shift-calendar/day', 'PUT', authHeaders, {
+        cal_date: '2026-09-25',
+        day_type: 'HOLIDAY',
+        title: 'Company Foundation Day'
+      });
+      if (calDayPut.status !== 200) throw new Error('Upsert Calendar Day failed: ' + JSON.stringify(calDayPut));
+      console.log('   [PASS] Calendar day override created for 2026-09-25 (HOLIDAY)');
+
+      // Apply pattern
+      const calPattern = await request('/api/shift-calendar/apply-pattern', 'POST', authHeaders, {
+        year: 2026,
+        month: 9,
+        pattern_type: 'SUN_AND_ALT_SAT',
+        default_shift_id: 'SHIFT_GEN'
+      });
+      if (calPattern.status !== 200) throw new Error('Apply Calendar Pattern failed: ' + JSON.stringify(calPattern));
+      console.log('   [PASS] Applied weekly off pattern SUN_AND_ALT_SAT');
+
+      // 12. Shift Groups APIs
+      console.log('12. Testing /api/shift-groups CRUD and Members...');
+      const groupsGet = await request('/api/shift-groups', 'GET', authHeaders);
+      if (groupsGet.status !== 200 || !Array.isArray(groupsGet.body.groups)) throw new Error('Get Shift Groups failed: ' + JSON.stringify(groupsGet));
+      console.log('   [PASS] Retrieved ' + groupsGet.body.groups.length + ' shift groups');
+
+      // Create Shift Group
+      const testGrpCode = 'TEST_GRP_' + Date.now().toString().slice(-4);
+      const grpCreate = await request('/api/shift-groups', 'POST', authHeaders, {
+        name: 'Automated Test Shift Group',
+        code: testGrpCode,
+        rotation_type: 'WEEKLY',
+        shifts_sequence: ['SHIFT_MOR', 'SHIFT_EVE'],
+        color: '#8b5cf6'
+      });
+      if (grpCreate.status !== 201 || !grpCreate.body.group) throw new Error('Create Shift Group failed: ' + JSON.stringify(grpCreate));
+      const testGroupId = grpCreate.body.group.id;
+      console.log('   [PASS] Created shift group:', testGroupId);
+
+      // Assign Members to Shift Group
+      const grpMembersSet = await request(`/api/shift-groups/${testGroupId}/members`, 'POST', authHeaders, {
+        emp_ids: ['EMP001', 'EMP002']
+      });
+      if (grpMembersSet.status !== 200) throw new Error('Assign Shift Group members failed: ' + JSON.stringify(grpMembersSet));
+      console.log('   [PASS] Assigned 2 employees to group', testGroupId);
+
+      // Get Group with Members
+      const grpGetOne = await request(`/api/shift-groups/${testGroupId}`, 'GET', authHeaders);
+      if (grpGetOne.status !== 200 || !grpGetOne.body.group || grpGetOne.body.group.members.length !== 2) {
+        throw new Error('Get Shift Group members count mismatch: ' + JSON.stringify(grpGetOne));
+      }
+      console.log('   [PASS] Verified shift group members count = 2');
+
+      // Delete Shift Group
+      const grpDelete = await request(`/api/shift-groups/${testGroupId}`, 'DELETE', authHeaders);
+      if (grpDelete.status !== 200) throw new Error('Delete Shift Group failed: ' + JSON.stringify(grpDelete));
+      console.log('   [PASS] Deleted shift group:', testGroupId);
+
+      // 13. Shift Roster APIs
+      console.log('13. Testing /api/shift-roster Matrix, Assign & Auto-Generate...');
+      const rosterAuto = await request('/api/shift-roster/auto-generate', 'POST', authHeaders, {
+        year: 2026,
+        month: 9,
+        overwrite: true
+      });
+      if (rosterAuto.status !== 200 || !rosterAuto.body.total_slots) throw new Error('Auto Generate Roster failed: ' + JSON.stringify(rosterAuto));
+      console.log('   [PASS] Auto-generated roster for month 2026-09 (' + rosterAuto.body.total_slots + ' slots created)');
+
+      // Assign Shift Roster override
+      const rosterAssign = await request('/api/shift-roster/assign', 'POST', authHeaders, {
+        emp_ids: ['EMP001'],
+        start_date: '2026-09-10',
+        end_date: '2026-09-12',
+        shift_id: 'SHIFT_NIT',
+        day_type: 'WORK',
+        note: 'Special Night Project Duty'
+      });
+      if (rosterAssign.status !== 200) throw new Error('Assign Shift Roster failed: ' + JSON.stringify(rosterAssign));
+      console.log('   [PASS] Assigned custom night shift to EMP001 for 2026-09-10 to 2026-09-12');
+
+      // Get Roster Matrix
+      const rosterMatrix = await request('/api/shift-roster?month=2026-09&search=EMP001', 'GET', authHeaders);
+      if (rosterMatrix.status !== 200 || !Array.isArray(rosterMatrix.body.employees) || rosterMatrix.body.employees.length === 0) {
+        throw new Error('Get Shift Roster matrix failed: ' + JSON.stringify(rosterMatrix));
+      }
+      const emp1Schedule = rosterMatrix.body.employees[0].schedule;
+      if (emp1Schedule['2026-09-10']?.shift_id !== 'SHIFT_NIT') {
+        throw new Error('Shift assignment verification failed for EMP001 on 2026-09-10');
+      }
+      console.log('   [PASS] Retrieved roster matrix and verified EMP001 assignment on 2026-09-10 = SHIFT_NIT');
+
+      // 14. Token Refresh
+      console.log('14. Testing /api/auth/refresh...');
       const ref = await request('/api/auth/refresh', 'POST', {}, { refresh_token: refreshToken });
       if (ref.status !== 200 || !ref.body.access_token) throw new Error('Token refresh failed: ' + JSON.stringify(ref));
       console.log('   [PASS] Refresh token issued new access token');
 
-      // 12. Logout & Blacklist
-      console.log('12. Testing /api/auth/logout...');
+      // 15. Logout & Blacklist
+      console.log('15. Testing /api/auth/logout...');
       const logout = await request('/api/auth/logout', 'POST', authHeaders);
       if (logout.status !== 200) throw new Error('Logout failed: ' + JSON.stringify(logout));
       console.log('   [PASS] Logged out successfully');
 
-      // 13. Blacklisted token rejected
-      console.log('13. Testing blacklisted token rejection...');
+      // 16. Blacklisted token rejected
+      console.log('16. Testing blacklisted token rejection...');
       const rejected = await request('/api/auth/me', 'GET', authHeaders);
       if (rejected.status !== 401) throw new Error('Blacklisted token was not rejected: ' + JSON.stringify(rejected));
       console.log('   [PASS] Blacklisted token rejected with HTTP 401:', rejected.body.error.code);
 
       console.log('\n=============================================');
-      console.log('  ALL 13 INTEGRATION TESTS PASSED 100%!     ');
+      console.log('  ALL 16 INTEGRATION TESTS PASSED 100%!     ');
       console.log('=============================================\n');
+
       server.close();
       process.exit(0);
     } catch (e) {

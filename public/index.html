@@ -1518,6 +1518,483 @@
     </div>
   </div>
 
+  <!-- ── SHIFT CALENDAR MASTER MODAL ── -->
+  <div id="shift-calendar-modal" class="modal-overlay" style="display:none; z-index:9998;">
+    <div class="modal-box animate-zoom" style="max-width:1040px; width:96%; max-height:92vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.85); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:14px 20px; background:linear-gradient(135deg, #161b27, #1a2234); display:flex; justify-content:space-between; align-items:center">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:22px">📅</span>
+          <div>
+            <span class="modal-title" style="font-size:15px; font-weight:700; color:var(--tx)">Shift Calendar Master</span>
+            <div style="font-size:11px; color:var(--mu)">Monthly schedule planner, weekly off configuration & holiday manager</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px">
+          <button type="button" class="btn bsm" style="border-color:var(--ac); color:var(--ac)" onclick="openShiftCalendarPatternModal()">⚡ Apply Weekly Off Pattern</button>
+          <button class="modal-close-x" onclick="closeShiftCalendarModal()">✕</button>
+        </div>
+      </div>
+
+      <!-- Calendar Toolbar -->
+      <div style="padding:10px 20px; background:var(--s2); border-bottom:1px solid var(--br); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px">
+        <div style="display:flex; align-items:center; gap:8px">
+          <button class="btn bsm" onclick="navCalendarMonth(-1)">◀ Prev</button>
+          <select id="cal-month-select" class="fs" style="padding:4px 8px; font-size:12px; font-weight:600" onchange="loadCalendarMonth()">
+            <option value="1">January</option>
+            <option value="2">February</option>
+            <option value="3">March</option>
+            <option value="4">April</option>
+            <option value="5">May</option>
+            <option value="6">June</option>
+            <option value="7">July</option>
+            <option value="8">August</option>
+            <option value="9">September</option>
+            <option value="10">October</option>
+            <option value="11">November</option>
+            <option value="12">December</option>
+          </select>
+          <select id="cal-year-select" class="fs" style="padding:4px 8px; font-size:12px; font-weight:600" onchange="loadCalendarMonth()">
+            <option value="2025">2025</option>
+            <option value="2026">2026</option>
+            <option value="2027">2027</option>
+            <option value="2028">2028</option>
+          </select>
+          <button class="btn bsm" onclick="navCalendarMonth(1)">Next ▶</button>
+          <button class="btn bsm" style="font-size:11px" onclick="setCalendarToToday()">Today</button>
+        </div>
+
+        <div id="cal-stats-summary" style="display:flex; gap:12px; font-size:11.5px">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Calendar Days Grid -->
+      <div class="modal-body" style="padding:16px 20px; overflow-y:auto; flex:1">
+        <div style="display:grid; grid-template-columns: repeat(7, 1fr); gap:8px; margin-bottom:8px; text-align:center; font-weight:700; font-size:11px; color:var(--mu)">
+          <div style="color:#ef4444">SUN</div>
+          <div>MON</div>
+          <div>TUE</div>
+          <div>WED</div>
+          <div>THU</div>
+          <div>FRI</div>
+          <div style="color:#f59e0b">SAT</div>
+        </div>
+        <div id="cal-days-grid" style="display:grid; grid-template-columns: repeat(7, 1fr); gap:8px">
+          <!-- Dynamically populated 35-42 day cells -->
+        </div>
+      </div>
+
+      <div class="modal-ftr" style="padding:10px 20px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center">
+        <span style="font-size:11px; color:var(--mu)">💡 Click on any day to customize shift assignment or mark holiday / weekly off.</span>
+        <button type="button" class="btn bsm" onclick="closeShiftCalendarModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SHIFT DAY OVERRIDE MODAL ── -->
+  <div id="shift-day-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:440px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br)">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438)">
+        <span class="modal-title" id="sd-modal-title" style="font-size:13.5px; font-weight:700">Edit Calendar Day</span>
+        <button class="modal-close-x" onclick="closeShiftDayModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <form id="sd-form" onsubmit="saveShiftDayOverride(event)">
+          <input type="hidden" id="sd-date" />
+          <div class="fg" style="margin-bottom:12px">
+            <label class="fl">Date</label>
+            <input class="fi" id="sd-date-display" readonly style="background:var(--s2); font-weight:600; color:var(--ac)" />
+          </div>
+          <div class="fg" style="margin-bottom:12px">
+            <label class="fl">Day Classification *</label>
+            <select class="fs" id="sd-day-type" onchange="onShiftDayTypeChange()" required>
+              <option value="WORK">Regular Workday (Working)</option>
+              <option value="WEEKLY_OFF">Weekly Off (Off Day)</option>
+              <option value="HOLIDAY">Public Holiday (Off Day)</option>
+              <option value="HALF_DAY">Half Day Working</option>
+            </select>
+          </div>
+          <div class="fg" id="sd-shift-group" style="margin-bottom:12px">
+            <label class="fl">Default Work Shift</label>
+            <select class="fs" id="sd-shift-select">
+              <!-- Dynamically populated from shifts -->
+            </select>
+          </div>
+          <div class="fg" style="margin-bottom:12px">
+            <label class="fl">Title / Description</label>
+            <input class="fi" id="sd-title" placeholder="e.g. Regular Workday, Diwali, Foundation Day" maxlength="100" />
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px">
+            <button type="button" class="btn bsm" onclick="closeShiftDayModal()">Cancel</button>
+            <button type="submit" class="btn btnp bsm">💾 Save Override</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SHIFT CALENDAR PATTERN APPLY MODAL ── -->
+  <div id="shift-pattern-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:460px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br)">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438)">
+        <span class="modal-title" style="font-size:13.5px; font-weight:700">Apply Weekly Off Pattern</span>
+        <button class="modal-close-x" onclick="closeShiftPatternModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <form id="sp-form" onsubmit="applyCalendarPatternSubmit(event)">
+          <div class="fg" style="margin-bottom:12px">
+            <label class="fl">Target Month & Year</label>
+            <div style="display:flex; gap:8px">
+              <select id="sp-month" class="fs" style="flex:1"></select>
+              <select id="sp-year" class="fs" style="flex:1"></select>
+            </div>
+          </div>
+          <div class="fg" style="margin-bottom:12px">
+            <label class="fl">Weekly Off Rule</label>
+            <select id="sp-pattern-type" class="fs">
+              <option value="SUN_AND_ALT_SAT">Sundays & Alternate Saturdays (2nd & 4th) Off</option>
+              <option value="SUN_ONLY">All Sundays Only Off</option>
+              <option value="SUN_AND_ALL_SAT">All Saturdays & Sundays Off (5-Day Week)</option>
+            </select>
+          </div>
+          <div class="fg" style="margin-bottom:14px">
+            <label class="fl">Default Working Shift for Workdays</label>
+            <select id="sp-default-shift" class="fs"></select>
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:8px">
+            <button type="button" class="btn bsm" onclick="closeShiftPatternModal()">Cancel</button>
+            <button type="submit" class="btn btnp bsm">⚡ Apply Pattern</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SHIFT GROUP MASTER MODAL ── -->
+  <div id="shift-group-modal" class="modal-overlay" style="display:none; z-index:9998;">
+    <div class="modal-box animate-zoom" style="max-width:960px; width:96%; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.85); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:14px 20px; background:linear-gradient(135deg, #161b27, #1a2234); display:flex; justify-content:space-between; align-items:center">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:22px">👥</span>
+          <div>
+            <span class="modal-title" style="font-size:15px; font-weight:700; color:var(--tx)">Shift Group Master</span>
+            <div style="font-size:11px; color:var(--mu)">Organize employee cohorts and configure automatic shift rotation cycles</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px">
+          <button type="button" class="btn btnp bsm" onclick="openAddShiftGroupModal()">+ Add Shift Group</button>
+          <button class="modal-close-x" onclick="closeShiftGroupModal()">✕</button>
+        </div>
+      </div>
+
+      <div class="modal-body" style="padding:16px 20px; overflow-y:auto; flex:1">
+        <div id="shift-groups-container" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:14px">
+          <!-- Dynamically populated group cards -->
+        </div>
+      </div>
+
+      <div class="modal-ftr" style="padding:10px 20px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center">
+        <span id="shift-groups-count-label" style="font-size:11px; color:var(--mu)">Loading shift groups...</span>
+        <button type="button" class="btn bsm" onclick="closeShiftGroupModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ADD / EDIT SHIFT GROUP FORM MODAL ── -->
+  <div id="shift-group-form-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:540px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438)">
+        <span class="modal-title" id="sg-form-title" style="font-size:14px; font-weight:700">Add Shift Group</span>
+        <button class="modal-close-x" onclick="closeShiftGroupFormModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <form id="sg-form" onsubmit="saveShiftGroupForm(event)">
+          <input type="hidden" id="sg-id" />
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr; gap:12px">
+            <div class="fg">
+              <label class="fl">Group Code *</label>
+              <input class="fi" id="sg-code" placeholder="OPS_A" required maxlength="20" style="text-transform:uppercase" />
+            </div>
+            <div class="fg">
+              <label class="fl">Color Tag</label>
+              <div style="display:flex; align-items:center; gap:8px">
+                <input type="color" id="sg-color" value="#4f8ef7" style="height:32px; width:44px; padding:2px; background:transparent; border:1px solid var(--br); border-radius:4px; cursor:pointer" />
+                <span id="sg-color-preview" style="font-size:11px; font-family:var(--mo); color:var(--mu)">#4f8ef7</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="fg" style="margin-top:10px">
+            <label class="fl">Group Name *</label>
+            <input class="fi" id="sg-name" placeholder="24x7 Operations Cohort Alpha" required maxlength="100" />
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr; gap:10px; margin-top:10px">
+            <div class="fg">
+              <label class="fl">Rotation Frequency *</label>
+              <select class="fs" id="sg-rotation-type" required>
+                <option value="FIXED">Fixed (No Rotation)</option>
+                <option value="WEEKLY">Weekly Rotation (Rotates every 7 days)</option>
+                <option value="BI_WEEKLY">Bi-Weekly Rotation (Rotates every 14 days)</option>
+                <option value="MONTHLY">Monthly Rotation (Rotates each month)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="fg" style="margin-top:10px">
+            <label class="fl">Shift Rotation Sequence (In Order) *</label>
+            <div id="sg-sequence-selector" style="display:flex; flex-wrap:wrap; gap:8px; background:var(--s2); padding:10px; border-radius:6px; border:1px solid var(--br)">
+              <!-- Dynamically populated shift checkboxes/chips -->
+            </div>
+          </div>
+
+          <div class="fg" style="margin-top:10px">
+            <label class="fl">Description</label>
+            <input class="fi" id="sg-desc" placeholder="Operational coverage schedule notes" maxlength="255" />
+          </div>
+
+          <div class="ms-toggle-card" style="margin-top:12px; padding:8px 12px">
+            <div>
+              <div style="font-weight:600; font-size:12px; color:var(--tx)">Active Status</div>
+              <div style="font-size:10px; color:var(--mu)">Active groups appear in Roster and assignment selectors.</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="sg-active" checked />
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px">
+            <button type="button" class="btn bsm" onclick="closeShiftGroupFormModal()">Cancel</button>
+            <button type="submit" class="btn btnp bsm">💾 Save Group</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SHIFT GROUP MEMBERS MANAGER MODAL ── -->
+  <div id="shift-group-members-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:760px; width:94%; max-height:88vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br)">
+      <div class="modal-hdr" style="padding:14px 20px; background:linear-gradient(135deg, #161b27, #1e2438); display:flex; justify-content:space-between; align-items:center">
+        <div>
+          <span class="modal-title" id="sgm-title" style="font-size:14px; font-weight:700">Manage Group Members</span>
+          <div id="sgm-subtitle" style="font-size:11px; color:var(--mu)">Assign employees to this shift group</div>
+        </div>
+        <button class="modal-close-x" onclick="closeShiftGroupMembersModal()">✕</button>
+      </div>
+
+      <!-- Filter Controls -->
+      <div style="padding:10px 18px; background:var(--s2); border-bottom:1px solid var(--br); display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+        <input type="text" id="sgm-search" class="fi" placeholder="🔍 Search employee name or ID..." style="flex:1; min-width:180px; padding:6px 10px; font-size:11.5px" oninput="filterGroupMembersList()" />
+        <select id="sgm-dept-filter" class="fs" style="padding:6px 10px; font-size:11.5px" onchange="filterGroupMembersList()">
+          <option value="">All Departments</option>
+        </select>
+        <button type="button" class="btn bsm" onclick="selectAllGroupMembers(true)">Select All</button>
+        <button type="button" class="btn bsm" onclick="selectAllGroupMembers(false)">Clear</button>
+      </div>
+
+      <div class="modal-body" style="padding:14px 18px; overflow-y:auto; flex:1">
+        <table class="gt" style="width:100%; border-collapse:collapse; font-size:11.5px">
+          <thead>
+            <tr style="border-bottom:1px solid var(--br); color:var(--mu)">
+              <th style="padding:6px; width:36px; text-align:center">Select</th>
+              <th style="padding:6px; text-align:left">Emp ID</th>
+              <th style="padding:6px; text-align:left">Employee Name</th>
+              <th style="padding:6px; text-align:left">Department</th>
+              <th style="padding:6px; text-align:left">Role</th>
+            </tr>
+          </thead>
+          <tbody id="sgm-tbody">
+            <!-- Dynamically populated employee checklist -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-ftr" style="padding:12px 18px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center">
+        <span id="sgm-selected-count" style="font-size:11px; font-weight:600; color:var(--ac)">0 employees selected</span>
+        <div style="display:flex; gap:8px">
+          <button type="button" class="btn bsm" onclick="closeShiftGroupMembersModal()">Cancel</button>
+          <button type="button" class="btn btnp bsm" onclick="saveShiftGroupMembers()">💾 Save Member Assignments</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SHIFT ROSTER MASTER MATRIX MODAL ── -->
+  <div id="shift-roster-modal" class="modal-overlay" style="display:none; z-index:9998;">
+    <div class="modal-box animate-zoom" style="max-width:98vw; width:98%; max-height:94vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1a2234); display:flex; justify-content:space-between; align-items:center">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:22px">📋</span>
+          <div>
+            <span class="modal-title" style="font-size:15px; font-weight:700; color:var(--tx)">Shift Roster Matrix</span>
+            <div style="font-size:11px; color:var(--mu)">Interactive employee shift assignment schedule & monthly rotation grid</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px">
+          <button type="button" class="btn bsm" style="border-color:var(--ac); color:var(--ac)" onclick="openShiftRosterAutoModal()">⚡ Auto-Generate Roster</button>
+          <button type="button" class="btn btnp bsm" onclick="openShiftRosterAssignModal()">➕ Bulk Assign Shift</button>
+          <button class="modal-close-x" onclick="closeShiftRosterModal()">✕</button>
+        </div>
+      </div>
+
+      <!-- Filters & Month Selection Toolbar -->
+      <div style="padding:8px 16px; background:var(--s2); border-bottom:1px solid var(--br); display:flex; gap:10px; align-items:center; flex-wrap:wrap; font-size:11.5px">
+        <div style="display:flex; align-items:center; gap:6px">
+          <label style="font-weight:600; color:var(--mu)">Month:</label>
+          <input type="month" id="roster-month-picker" class="fi" style="padding:4px 8px; font-size:11.5px" onchange="loadShiftRosterMatrix()" />
+        </div>
+        <div style="display:flex; align-items:center; gap:6px">
+          <label style="font-weight:600; color:var(--mu)">Department:</label>
+          <select id="roster-dept-filter" class="fs" style="padding:4px 8px; font-size:11.5px" onchange="loadShiftRosterMatrix()">
+            <option value="">All Departments</option>
+          </select>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px">
+          <label style="font-weight:600; color:var(--mu)">Shift Group:</label>
+          <select id="roster-group-filter" class="fs" style="padding:4px 8px; font-size:11.5px" onchange="loadShiftRosterMatrix()">
+            <option value="">All Groups</option>
+          </select>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px; flex:1; min-width:180px">
+          <input type="text" id="roster-search-input" class="fi" placeholder="🔍 Search employee..." style="padding:4px 8px; font-size:11.5px; width:100%" oninput="debounceRosterSearch()" />
+        </div>
+        <button class="btn bsm" onclick="loadShiftRosterMatrix()">🔄 Refresh</button>
+      </div>
+
+      <!-- Roster Matrix Table View -->
+      <div class="modal-body" style="padding:0; overflow:auto; flex:1; background:var(--bg)">
+        <table id="roster-matrix-table" class="gt" style="width:100%; border-collapse:separate; border-spacing:0; font-size:11px">
+          <thead id="roster-table-thead" style="position:sticky; top:0; z-index:10; background:var(--s2)">
+            <!-- Dynamically populated header days -->
+          </thead>
+          <tbody id="roster-table-tbody">
+            <!-- Dynamically populated employee matrix rows -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-ftr" style="padding:8px 16px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center">
+        <div style="display:flex; gap:14px; font-size:10.5px; align-items:center">
+          <span style="color:var(--mu)">Legend:</span>
+          <span><span style="display:inline-block; width:10px; height:10px; background:#00d4aa; border-radius:2px; vertical-align:middle"></span> GEN (General)</span>
+          <span><span style="display:inline-block; width:10px; height:10px; background:#4f8ef7; border-radius:2px; vertical-align:middle"></span> MOR (Morning)</span>
+          <span><span style="display:inline-block; width:10px; height:10px; background:#f59e0b; border-radius:2px; vertical-align:middle"></span> EVE (Evening)</span>
+          <span><span style="display:inline-block; width:10px; height:10px; background:#a855f7; border-radius:2px; vertical-align:middle"></span> NIT (Night)</span>
+          <span><span style="display:inline-block; width:10px; height:10px; background:#64748b; border-radius:2px; vertical-align:middle"></span> WO (Weekly Off)</span>
+          <span><span style="display:inline-block; width:10px; height:10px; background:#ef4444; border-radius:2px; vertical-align:middle"></span> HOL (Holiday)</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px">
+          <span id="roster-footer-stats" style="font-size:11px; color:var(--mu)">Loading roster...</span>
+          <button type="button" class="btn bsm" onclick="closeShiftRosterModal()">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SHIFT ROSTER AUTO-GENERATE MODAL ── -->
+  <div id="shift-roster-auto-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:440px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br)">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438)">
+        <span class="modal-title" style="font-size:13.5px; font-weight:700">Auto-Generate Monthly Roster</span>
+        <button class="modal-close-x" onclick="closeShiftRosterAutoModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <form id="sra-form" onsubmit="executeAutoGenerateRoster(event)">
+          <div class="fg" style="margin-bottom:12px">
+            <label class="fl">Target Month</label>
+            <input type="month" id="sra-month" class="fi" required />
+          </div>
+          <div class="fg" style="margin-bottom:12px">
+            <label class="fl">Department Filter (Optional)</label>
+            <select id="sra-dept" class="fs">
+              <option value="">All Departments</option>
+            </select>
+          </div>
+          <div class="fg" style="margin-bottom:12px">
+            <label class="fl">Shift Group Filter (Optional)</label>
+            <select id="sra-group" class="fs">
+              <option value="">All Groups</option>
+            </select>
+          </div>
+          <div class="ms-toggle-card" style="margin-top:12px; padding:8px 12px">
+            <div>
+              <div style="font-weight:600; font-size:12px; color:var(--tx)">Overwrite Existing Schedules</div>
+              <div style="font-size:10px; color:var(--mu)">Recalculate and replace any manual entries for the target month.</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="sra-overwrite" checked />
+              <span class="slider round"></span>
+            </label>
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px">
+            <button type="button" class="btn bsm" onclick="closeShiftRosterAutoModal()">Cancel</button>
+            <button type="submit" class="btn btnp bsm">⚡ Generate Schedule</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SHIFT ROSTER BULK ASSIGN MODAL ── -->
+  <div id="shift-roster-assign-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:480px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br)">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438)">
+        <span class="modal-title" style="font-size:13.5px; font-weight:700">Bulk Assign Shift</span>
+        <button class="modal-close-x" onclick="closeShiftRosterAssignModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <form id="sras-form" onsubmit="executeBulkAssignRoster(event)">
+          <div class="fg" style="margin-bottom:10px">
+            <label class="fl">Target Employees *</label>
+            <select id="sras-emp-select" class="fs" multiple style="height:100px; padding:4px" required>
+              <!-- Populated dynamically -->
+            </select>
+            <div style="font-size:10px; color:var(--mu); margin-top:2px">Hold Ctrl / Cmd to select multiple employees</div>
+          </div>
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Start Date *</label>
+              <input type="date" id="sras-start-date" class="fi" required />
+            </div>
+            <div class="fg">
+              <label class="fl">End Date *</label>
+              <input type="date" id="sras-end-date" class="fi" required />
+            </div>
+          </div>
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Day Type *</label>
+              <select id="sras-day-type" class="fs" onchange="onRosterBulkDayTypeChange()">
+                <option value="WORK">Workday (Assign Shift)</option>
+                <option value="WEEKLY_OFF">Weekly Off</option>
+                <option value="HOLIDAY">Holiday</option>
+                <option value="LEAVE">Leave</option>
+                <option value="OUTDOOR">Outdoor Duty</option>
+              </select>
+            </div>
+            <div class="fg" id="sras-shift-wrap">
+              <label class="fl">Target Shift *</label>
+              <select id="sras-shift-id" class="fs">
+                <!-- Dynamically populated -->
+              </select>
+            </div>
+          </div>
+          <div class="fg" style="margin-bottom:14px">
+            <label class="fl">Note / Assignment Reason</label>
+            <input type="text" id="sras-note" class="fi" placeholder="e.g. Critical Release Night Coverage" maxlength="255" />
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:8px">
+            <button type="button" class="btn bsm" onclick="closeShiftRosterAssignModal()">Cancel</button>
+            <button type="submit" class="btn btnp bsm">💾 Apply Shift Assignment</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+
   <!-- ── AUTHENTICATION LOGIN MODAL ── -->
   <div id="login-modal" class="modal-overlay" style="display:none; z-index:9999;">
     <div class="modal-box animate-zoom" style="max-width:440px; box-shadow:0 24px 64px rgba(0,0,0,0.85); border:1px solid var(--br);">

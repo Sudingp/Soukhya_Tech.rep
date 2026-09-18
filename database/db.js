@@ -199,8 +199,51 @@ const stmts = {
   },
   deleteShift: {
     run: (id) => mysqlAdapter.deleteShift(id)
+  },
+
+  // ── Shift Calendar ──
+  getShiftCalendarMonth: {
+    get: (year, month) => mysqlAdapter.getShiftCalendarMonth(year, month)
+  },
+  upsertShiftCalendarDay: {
+    run: (data) => mysqlAdapter.upsertShiftCalendarDay(data)
+  },
+  applyShiftCalendarPattern: {
+    run: (data) => mysqlAdapter.applyShiftCalendarPattern(data)
+  },
+
+  // ── Shift Groups ──
+  getAllShiftGroups: {
+    all: () => mysqlAdapter.getAllShiftGroups()
+  },
+  getShiftGroupById: {
+    get: (id) => mysqlAdapter.getShiftGroupById(id)
+  },
+  insertShiftGroup: {
+    run: (group) => mysqlAdapter.insertShiftGroup(group)
+  },
+  updateShiftGroup: {
+    run: (group) => mysqlAdapter.updateShiftGroup(group)
+  },
+  deleteShiftGroup: {
+    run: (id) => mysqlAdapter.deleteShiftGroup(id)
+  },
+  setShiftGroupMembers: {
+    run: (groupId, empIds, startDate) => mysqlAdapter.setShiftGroupMembers(groupId, empIds, startDate)
+  },
+
+  // ── Shift Roster ──
+  getShiftRosterMatrix: {
+    get: (filter) => mysqlAdapter.getShiftRosterMatrix(filter)
+  },
+  assignShiftRoster: {
+    run: (data) => mysqlAdapter.assignShiftRoster(data)
+  },
+  autoGenerateMonthlyRoster: {
+    run: (data) => mysqlAdapter.autoGenerateMonthlyRoster(data)
   }
 };
+
 
 module.exports = {
   stmts,

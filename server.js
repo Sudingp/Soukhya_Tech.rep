@@ -1342,6 +1342,357 @@ app.delete('/api/shifts/:id', authenticate, requireRoles('ADMIN'), async (req, r
 });
 
 // ══════════════════════════════════════════════
+// SHIFT CALENDAR APIS
+// ══════════════════════════════════════════════
+const shiftCalendarDaySchema = Joi.object({
+  cal_date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+  day_type: Joi.string().valid('WORK', 'WEEKLY_OFF', 'HOLIDAY', 'HALF_DAY').required(),
+  default_shift_id: Joi.string().allow(null, '').optional(),
+  title: Joi.string().allow('', null).max(100).optional(),
+  is_recurring: Joi.boolean().optional()
+});
+
+const shiftCalendarPatternSchema = Joi.object({
+  year: Joi.number().integer().min(2020).max(2100).required(),
+  month: Joi.number().integer().min(1).max(12).required(),
+  pattern_type: Joi.string().valid('SUN_ONLY', 'SUN_AND_ALT_SAT', 'SUN_AND_ALL_SAT').required(),
+  default_shift_id: Joi.string().allow(null, '').optional()
+});
+
+app.get('/api/shift-calendar', authenticate, async (req, res) => {
+  try {
+    const now = new Date();
+    const monthParam = req.query.month; // e.g. '2026-09'
+    let year = now.getFullYear();
+    let month = now.getMonth() + 1;
+
+    if (monthParam && /^\d{4}-\d{2}$/.test(monthParam)) {
+      const parts = monthParam.split('-');
+      year = parseInt(parts[0], 10);
+      month = parseInt(parts[1], 10);
+    }
+
+    const calendarData = await stmts.getShiftCalendarMonth.get(year, month);
+    ok(res, calendarData);
+  } catch (e) {
+    console.error('[GET /api/shift-calendar]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch shift calendar: ' + e.message, 500);
+  }
+});
+
+app.put('/api/shift-calendar/day', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { error, value } = shiftCalendarDaySchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    await stmts.upsertShiftCalendarDay.run({
+      ...value,
+      updated_by: req.user?.username || 'admin'
+    });
+
+    await auditLog({
+      table: 'shift_calendar_days',
+      recordId: value.cal_date,
+      action: 'UPDATE',
+      newValues: value,
+      req
+    });
+
+    notifyDbChange('shift_calendar', { action: 'upsert_day', cal_date: value.cal_date });
+    ok(res, { message: 'Calendar day updated successfully', day: value });
+  } catch (e) {
+    console.error('[PUT /api/shift-calendar/day]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to update calendar day: ' + e.message, 500);
+  }
+});
+
+app.post('/api/shift-calendar/apply-pattern', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { error, value } = shiftCalendarPatternSchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const result = await stmts.applyShiftCalendarPattern.run({
+      ...value,
+      updated_by: req.user?.username || 'admin'
+    });
+
+    await auditLog({
+      table: 'shift_calendar_days',
+      recordId: `${value.year}-${value.month}`,
+      action: 'UPDATE',
+      newValues: value,
+      req
+    });
+
+    notifyDbChange('shift_calendar', { action: 'apply_pattern', year: value.year, month: value.month });
+    ok(res, { message: 'Weekly off pattern applied successfully', result });
+  } catch (e) {
+    console.error('[POST /api/shift-calendar/apply-pattern]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to apply calendar pattern: ' + e.message, 500);
+  }
+});
+
+// ══════════════════════════════════════════════
+// SHIFT GROUPS APIS
+// ══════════════════════════════════════════════
+const shiftGroupSchema = Joi.object({
+  name: Joi.string().min(2).max(100).required(),
+  code: Joi.string().min(2).max(20).required(),
+  rotation_type: Joi.string().valid('FIXED', 'WEEKLY', 'BI_WEEKLY', 'MONTHLY').default('FIXED'),
+  description: Joi.string().allow('', null).max(255).optional(),
+  color: Joi.string().pattern(/^#[0-9a-fA-F]{6}$/).default('#4f8ef7'),
+  shifts_sequence: Joi.array().items(Joi.string()).min(1).required(),
+  active: Joi.boolean().default(true)
+});
+
+app.get('/api/shift-groups', authenticate, async (req, res) => {
+  try {
+    const groups = await stmts.getAllShiftGroups.all();
+    ok(res, { groups, total: groups.length });
+  } catch (e) {
+    console.error('[GET /api/shift-groups]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch shift groups: ' + e.message, 500);
+  }
+});
+
+app.get('/api/shift-groups/:id', authenticate, async (req, res) => {
+  try {
+    const group = await stmts.getShiftGroupById.get(req.params.id);
+    if (!group) return err(res, 'NOT_FOUND', 'Shift group not found', 404);
+    ok(res, { group });
+  } catch (e) {
+    console.error('[GET /api/shift-groups/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch shift group: ' + e.message, 500);
+  }
+});
+
+app.post('/api/shift-groups', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { error, value } = shiftGroupSchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const groupId = 'GRP_' + (value.code.toUpperCase().replace(/[^A-Z0-9]/g, '') || uuidv4().slice(0, 6).toUpperCase());
+    const groupData = { id: groupId, ...value, code: value.code.toUpperCase() };
+
+    await stmts.insertShiftGroup.run(groupData);
+
+    await auditLog({
+      table: 'shift_groups',
+      recordId: groupId,
+      action: 'INSERT',
+      newValues: groupData,
+      req
+    });
+
+    notifyDbChange('shift_groups', { action: 'insert', groupId });
+    ok(res, { message: 'Shift group created successfully', group: groupData }, 201);
+  } catch (e) {
+    if (e.message && e.message.includes('Duplicate')) {
+      return err(res, 'DUPLICATE_CODE', 'A shift group with this code already exists', 409);
+    }
+    console.error('[POST /api/shift-groups]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to create shift group: ' + e.message, 500);
+  }
+});
+
+app.put('/api/shift-groups/:id', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await stmts.getShiftGroupById.get(id);
+    if (!existing) return err(res, 'NOT_FOUND', 'Shift group not found', 404);
+
+    const { error, value } = shiftGroupSchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const updateData = { id, ...value, code: value.code.toUpperCase() };
+    await stmts.updateShiftGroup.run(updateData);
+
+    await auditLog({
+      table: 'shift_groups',
+      recordId: id,
+      action: 'UPDATE',
+      oldValues: existing,
+      newValues: updateData,
+      req
+    });
+
+    notifyDbChange('shift_groups', { action: 'update', groupId: id });
+    ok(res, { message: 'Shift group updated successfully', group: updateData });
+  } catch (e) {
+    console.error('[PUT /api/shift-groups/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to update shift group: ' + e.message, 500);
+  }
+});
+
+app.delete('/api/shift-groups/:id', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await stmts.getShiftGroupById.get(id);
+    if (!existing) return err(res, 'NOT_FOUND', 'Shift group not found', 404);
+
+    await stmts.deleteShiftGroup.run(id);
+
+    await auditLog({
+      table: 'shift_groups',
+      recordId: id,
+      action: 'DELETE',
+      oldValues: existing,
+      req
+    });
+
+    notifyDbChange('shift_groups', { action: 'delete', groupId: id });
+    ok(res, { message: 'Shift group deleted successfully' });
+  } catch (e) {
+    console.error('[DELETE /api/shift-groups/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to delete shift group: ' + e.message, 500);
+  }
+});
+
+app.get('/api/shift-groups/:id/members', authenticate, async (req, res) => {
+  try {
+    const group = await stmts.getShiftGroupById.get(req.params.id);
+    if (!group) return err(res, 'NOT_FOUND', 'Shift group not found', 404);
+    ok(res, { members: group.members || [], total: group.members?.length || 0 });
+  } catch (e) {
+    console.error('[GET /api/shift-groups/:id/members]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch shift group members: ' + e.message, 500);
+  }
+});
+
+app.post('/api/shift-groups/:id/members', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await stmts.getShiftGroupById.get(id);
+    if (!existing) return err(res, 'NOT_FOUND', 'Shift group not found', 404);
+
+    const empIds = Array.isArray(req.body.emp_ids) ? req.body.emp_ids : [];
+    const startDate = req.body.start_date || new Date().toISOString().slice(0, 10);
+
+    const result = await stmts.setShiftGroupMembers.run(id, empIds, startDate);
+
+    await auditLog({
+      table: 'shift_group_members',
+      recordId: id,
+      action: 'UPDATE',
+      newValues: { group_id: id, emp_ids: empIds, count: result.count },
+      req
+    });
+
+    notifyDbChange('shift_group_members', { action: 'set_members', groupId: id });
+    ok(res, { message: 'Group members updated successfully', ...result });
+  } catch (e) {
+    console.error('[POST /api/shift-groups/:id/members]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to assign group members: ' + e.message, 500);
+  }
+});
+
+// ══════════════════════════════════════════════
+// SHIFT ROSTER APIS
+// ══════════════════════════════════════════════
+const shiftRosterAssignSchema = Joi.object({
+  emp_ids: Joi.alternatives().try(
+    Joi.array().items(Joi.string()).min(1),
+    Joi.string()
+  ).required(),
+  start_date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+  end_date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  shift_id: Joi.string().default('SHIFT_GEN'),
+  day_type: Joi.string().valid('WORK', 'WEEKLY_OFF', 'HOLIDAY', 'LEAVE', 'OUTDOOR').default('WORK'),
+  source: Joi.string().valid('DEFAULT', 'GROUP_ROTATION', 'MANUAL_OVERRIDE').default('MANUAL_OVERRIDE'),
+  note: Joi.string().allow('', null).max(255).optional()
+});
+
+const shiftRosterAutoGenerateSchema = Joi.object({
+  year: Joi.number().integer().min(2020).max(2100).required(),
+  month: Joi.number().integer().min(1).max(12).required(),
+  dept: Joi.string().allow('', null).optional(),
+  groupId: Joi.string().allow('', null).optional(),
+  overwrite: Joi.boolean().default(true)
+});
+
+app.get('/api/shift-roster', authenticate, async (req, res) => {
+  try {
+    const now = new Date();
+    const monthParam = req.query.month; // e.g. '2026-09'
+    let year = now.getFullYear();
+    let month = now.getMonth() + 1;
+
+    if (monthParam && /^\d{4}-\d{2}$/.test(monthParam)) {
+      const parts = monthParam.split('-');
+      year = parseInt(parts[0], 10);
+      month = parseInt(parts[1], 10);
+    }
+
+    const { dept, groupId, search } = req.query;
+    const rosterData = await stmts.getShiftRosterMatrix.get({
+      year,
+      month,
+      dept,
+      groupId,
+      search
+    });
+
+    ok(res, rosterData);
+  } catch (e) {
+    console.error('[GET /api/shift-roster]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch shift roster: ' + e.message, 500);
+  }
+});
+
+app.post('/api/shift-roster/assign', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { error, value } = shiftRosterAssignSchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const result = await stmts.assignShiftRoster.run({
+      ...value,
+      assigned_by: req.user?.username || 'admin'
+    });
+
+    await auditLog({
+      table: 'shift_roster',
+      recordId: Array.isArray(value.emp_ids) ? value.emp_ids.join(',') : value.emp_ids,
+      action: 'UPDATE',
+      newValues: value,
+      req
+    });
+
+    notifyDbChange('shift_roster', { action: 'assign' });
+    ok(res, { message: 'Shift roster updated successfully', result });
+  } catch (e) {
+    console.error('[POST /api/shift-roster/assign]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to assign shift roster: ' + e.message, 500);
+  }
+});
+
+app.post('/api/shift-roster/auto-generate', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { error, value } = shiftRosterAutoGenerateSchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const result = await stmts.autoGenerateMonthlyRoster.run({
+      ...value,
+      assigned_by: req.user?.username || 'admin'
+    });
+
+    await auditLog({
+      table: 'shift_roster',
+      recordId: `${value.year}-${value.month}`,
+      action: 'UPDATE',
+      newValues: value,
+      req
+    });
+
+    notifyDbChange('shift_roster', { action: 'auto_generate', year: value.year, month: value.month });
+    ok(res, { message: 'Monthly shift roster auto-generated successfully', ...result });
+  } catch (e) {
+    console.error('[POST /api/shift-roster/auto-generate]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to auto-generate shift roster: ' + e.message, 500);
+  }
+});
+
+
+// ══════════════════════════════════════════════
 // HEALTH CHECK
 // ══════════════════════════════════════════════
 app.get('/api/health', (req, res) => {
