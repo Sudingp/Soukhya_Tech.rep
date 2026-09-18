@@ -2155,6 +2155,325 @@ class MySQLAdapter {
   }
 
   // ──────────────────────────────────────────────
+  // 23. Leave Types (Organization Master)
+  // ──────────────────────────────────────────────
+  async getAllLeaveTypes() {
+    const pool = await this.getPool();
+    const [rows] = await pool.execute('SELECT * FROM leave_types ORDER BY paid DESC, name ASC');
+    return rows;
+  }
+
+  async getLeaveTypeById(id) {
+    const pool = await this.getPool();
+    const [rows] = await pool.execute('SELECT * FROM leave_types WHERE id = ?', [id]);
+    return rows[0] || null;
+  }
+
+  async insertLeaveType(data) {
+    const pool = await this.getPool();
+    const id = data.id || `LT_${data.code.toUpperCase()}`;
+    await pool.execute(
+      `INSERT INTO leave_types (id, code, name, category, description, paid, annual_quota_days, carry_forward_max, encashable, color, active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        data.code.toUpperCase(),
+        data.name,
+        data.category || 'CASUAL',
+        data.description || null,
+        data.paid !== undefined ? (data.paid ? 1 : 0) : 1,
+        parseFloat(data.annual_quota_days || 12.0),
+        parseFloat(data.carry_forward_max || 0.0),
+        data.encashable ? 1 : 0,
+        data.color || '#4f8ef7',
+        data.active !== undefined ? (data.active ? 1 : 0) : 1
+      ]
+    );
+    return this.getLeaveTypeById(id);
+  }
+
+  async updateLeaveType(id, data) {
+    const pool = await this.getPool();
+    await pool.execute(
+      `UPDATE leave_types SET
+        code = ?,
+        name = ?,
+        category = ?,
+        description = ?,
+        paid = ?,
+        annual_quota_days = ?,
+        carry_forward_max = ?,
+        encashable = ?,
+        color = ?,
+        active = ?,
+        updated_at = NOW()
+       WHERE id = ?`,
+      [
+        data.code.toUpperCase(),
+        data.name,
+        data.category || 'CASUAL',
+        data.description || null,
+        data.paid !== undefined ? (data.paid ? 1 : 0) : 1,
+        parseFloat(data.annual_quota_days || 12.0),
+        parseFloat(data.carry_forward_max || 0.0),
+        data.encashable ? 1 : 0,
+        data.color || '#4f8ef7',
+        data.active !== undefined ? (data.active ? 1 : 0) : 1,
+        id
+      ]
+    );
+    return this.getLeaveTypeById(id);
+  }
+
+  async deleteLeaveType(id) {
+    const pool = await this.getPool();
+    await pool.execute('DELETE FROM leave_types WHERE id = ?', [id]);
+    return { id, deleted: true };
+  }
+
+  // ──────────────────────────────────────────────
+  // 24. Employee Leave Entries (Applications & Balances)
+  // ──────────────────────────────────────────────
+  async getLeaveEntries({ emp_id, leave_type_id, status, start_date, end_date, limit = 50, offset = 0 } = {}) {
+    const pool = await this.getPool();
+    let whereClauses = [];
+    let params = [];
+
+    if (emp_id) {
+      whereClauses.push('l.emp_id = ?');
+      params.push(emp_id);
+    }
+    if (leave_type_id) {
+      whereClauses.push('l.leave_type_id = ?');
+      params.push(leave_type_id);
+    }
+    if (status) {
+      whereClauses.push('l.status = ?');
+      params.push(status);
+    }
+    if (start_date) {
+      whereClauses.push('l.end_date >= ?');
+      params.push(start_date);
+    }
+    if (end_date) {
+      whereClauses.push('l.start_date <= ?');
+      params.push(end_date);
+    }
+
+    const whereStr = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+    const countSql = `SELECT COUNT(*) as total FROM employee_leave_entries l ${whereStr}`;
+    const [countRows] = await pool.execute(countSql, params);
+    const total = countRows[0]?.total || 0;
+
+    const dataSql = `
+      SELECT l.*, e.name as employee_name, e.department, e.role as employee_role, lt.name as leave_type_name, lt.code as leave_type_code, lt.color as leave_type_color, lt.paid as leave_type_paid
+      FROM employee_leave_entries l
+      LEFT JOIN employees e ON l.emp_id = e.id
+      LEFT JOIN leave_types lt ON l.leave_type_id = lt.id
+      ${whereStr}
+      ORDER BY l.start_date DESC, l.id DESC
+      LIMIT ? OFFSET ?
+    `;
+    const queryParams = [...params, String(limit), String(offset)];
+    const [rows] = await pool.execute(dataSql, queryParams);
+
+    return { total, rows };
+  }
+
+  async getLeaveEntryById(id) {
+    const pool = await this.getPool();
+    const [rows] = await pool.execute(
+      `SELECT l.*, e.name as employee_name, e.department, e.role as employee_role, lt.name as leave_type_name, lt.code as leave_type_code, lt.color as leave_type_color, lt.paid as leave_type_paid
+       FROM employee_leave_entries l
+       LEFT JOIN employees e ON l.emp_id = e.id
+       LEFT JOIN leave_types lt ON l.leave_type_id = lt.id
+       WHERE l.id = ?`,
+      [id]
+    );
+    return rows[0] || null;
+  }
+
+  async insertLeaveEntry(data) {
+    const pool = await this.getPool();
+    const [result] = await pool.execute(
+      `INSERT INTO employee_leave_entries (emp_id, leave_type_id, start_date, end_date, total_days, reason, status, approved_by, approved_at, comments)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        data.emp_id,
+        data.leave_type_id,
+        data.start_date,
+        data.end_date,
+        parseFloat(data.total_days || 1.0),
+        data.reason,
+        data.status || 'PENDING',
+        data.approved_by || null,
+        data.approved_at || null,
+        data.comments || null
+      ]
+    );
+    return this.getLeaveEntryById(result.insertId);
+  }
+
+  async updateLeaveEntryStatus(id, { status, approved_by, comments }) {
+    const pool = await this.getPool();
+    const approvedAt = (status === 'APPROVED') ? new Date().toISOString().slice(0, 19).replace('T', ' ') : null;
+    await pool.execute(
+      `UPDATE employee_leave_entries SET
+        status = ?,
+        approved_by = ?,
+        approved_at = ?,
+        comments = COALESCE(?, comments),
+        updated_at = NOW()
+       WHERE id = ?`,
+      [status, approved_by || null, approvedAt, comments || null, id]
+    );
+    return this.getLeaveEntryById(id);
+  }
+
+  async deleteLeaveEntry(id) {
+    const pool = await this.getPool();
+    await pool.execute('DELETE FROM employee_leave_entries WHERE id = ?', [id]);
+    return { id, deleted: true };
+  }
+
+  async getEmployeeLeaveBalances(empId, year) {
+    const pool = await this.getPool();
+    const targetYear = year || new Date().getFullYear();
+    const leaveTypes = await this.getAllLeaveTypes();
+
+    const [usedRows] = await pool.execute(
+      `SELECT leave_type_id, SUM(total_days) as used_days
+       FROM employee_leave_entries
+       WHERE emp_id = ? AND status = 'APPROVED' AND YEAR(start_date) = ?
+       GROUP BY leave_type_id`,
+      [empId, targetYear]
+    );
+
+    const usedMap = {};
+    for (const u of usedRows) {
+      usedMap[u.leave_type_id] = parseFloat(u.used_days || 0);
+    }
+
+    return leaveTypes.map(lt => {
+      const quota = parseFloat(lt.annual_quota_days || 0);
+      const used = usedMap[lt.id] || 0;
+      const available = Math.max(0, quota - used);
+      return {
+        leave_type_id: lt.id,
+        code: lt.code,
+        name: lt.name,
+        color: lt.color,
+        paid: !!lt.paid,
+        annual_quota: quota,
+        used_days: used,
+        available_days: available
+      };
+    });
+  }
+
+  // ──────────────────────────────────────────────
+  // 25. Employee Outdoor / On-Duty Entries
+  // ──────────────────────────────────────────────
+  async getOutdoorEntries({ emp_id, status, start_date, end_date, limit = 50, offset = 0 } = {}) {
+    const pool = await this.getPool();
+    let whereClauses = [];
+    let params = [];
+
+    if (emp_id) {
+      whereClauses.push('o.emp_id = ?');
+      params.push(emp_id);
+    }
+    if (status) {
+      whereClauses.push('o.status = ?');
+      params.push(status);
+    }
+    if (start_date) {
+      whereClauses.push('o.od_date >= ?');
+      params.push(start_date);
+    }
+    if (end_date) {
+      whereClauses.push('o.od_date <= ?');
+      params.push(end_date);
+    }
+
+    const whereStr = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+    const countSql = `SELECT COUNT(*) as total FROM employee_outdoor_entries o ${whereStr}`;
+    const [countRows] = await pool.execute(countSql, params);
+    const total = countRows[0]?.total || 0;
+
+    const dataSql = `
+      SELECT o.*, e.name as employee_name, e.department, e.role as employee_role
+      FROM employee_outdoor_entries o
+      LEFT JOIN employees e ON o.emp_id = e.id
+      ${whereStr}
+      ORDER BY o.od_date DESC, o.id DESC
+      LIMIT ? OFFSET ?
+    `;
+    const queryParams = [...params, String(limit), String(offset)];
+    const [rows] = await pool.execute(dataSql, queryParams);
+
+    return { total, rows };
+  }
+
+  async getOutdoorEntryById(id) {
+    const pool = await this.getPool();
+    const [rows] = await pool.execute(
+      `SELECT o.*, e.name as employee_name, e.department, e.role as employee_role
+       FROM employee_outdoor_entries o
+       LEFT JOIN employees e ON o.emp_id = e.id
+       WHERE o.id = ?`,
+      [id]
+    );
+    return rows[0] || null;
+  }
+
+  async insertOutdoorEntry(data) {
+    const pool = await this.getPool();
+    const [result] = await pool.execute(
+      `INSERT INTO employee_outdoor_entries (emp_id, od_date, start_time, end_time, destination_client, purpose, travel_allowance_eligible, status, approved_by, approved_at, comments)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        data.emp_id,
+        data.od_date,
+        data.start_time || '09:00:00',
+        data.end_time || '18:00:00',
+        data.destination_client,
+        data.purpose,
+        data.travel_allowance_eligible !== undefined ? (data.travel_allowance_eligible ? 1 : 0) : 1,
+        data.status || 'PENDING',
+        data.approved_by || null,
+        data.approved_at || null,
+        data.comments || null
+      ]
+    );
+    return this.getOutdoorEntryById(result.insertId);
+  }
+
+  async updateOutdoorEntryStatus(id, { status, approved_by, comments }) {
+    const pool = await this.getPool();
+    const approvedAt = (status === 'APPROVED') ? new Date().toISOString().slice(0, 19).replace('T', ' ') : null;
+    await pool.execute(
+      `UPDATE employee_outdoor_entries SET
+        status = ?,
+        approved_by = ?,
+        approved_at = ?,
+        comments = COALESCE(?, comments),
+        updated_at = NOW()
+       WHERE id = ?`,
+      [status, approved_by || null, approvedAt, comments || null, id]
+    );
+    return this.getOutdoorEntryById(id);
+  }
+
+  async deleteOutdoorEntry(id) {
+    const pool = await this.getPool();
+    await pool.execute('DELETE FROM employee_outdoor_entries WHERE id = ?', [id]);
+    return { id, deleted: true };
+  }
+
+  // ──────────────────────────────────────────────
   // Reset & Clear
   // ──────────────────────────────────────────────
   async clearAll() {

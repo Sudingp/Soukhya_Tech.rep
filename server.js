@@ -2915,6 +2915,377 @@ app.post('/api/attendance-log/regularize', authenticate, requireRoles('ADMIN'), 
 });
 
 // ══════════════════════════════════════════════
+// LEAVE TYPES (Organization Master)
+// ══════════════════════════════════════════════
+const leaveTypeSchema = Joi.object({
+  code: Joi.string().trim().max(20).required(),
+  name: Joi.string().trim().max(100).required(),
+  category: Joi.string().valid('CASUAL', 'SICK', 'EARNED', 'MATERNITY', 'PATERNITY', 'COMP_OFF', 'UNPAID', 'SPECIAL', 'OTHER').default('CASUAL'),
+  description: Joi.string().trim().max(255).allow('', null),
+  paid: Joi.boolean().default(true),
+  annual_quota_days: Joi.number().min(0).max(365).default(12.0),
+  carry_forward_max: Joi.number().min(0).max(365).default(0.0),
+  encashable: Joi.boolean().default(false),
+  color: Joi.string().trim().max(20).default('#4f8ef7'),
+  active: Joi.boolean().default(true)
+});
+
+app.get('/api/leave-types', authenticate, async (req, res) => {
+  try {
+    const leaveTypes = await stmts.getAllLeaveTypes.all();
+    ok(res, { leaveTypes, total: leaveTypes.length });
+  } catch (e) {
+    console.error('[GET /api/leave-types]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch leave types: ' + e.message, 500);
+  }
+});
+
+app.get('/api/leave-types/:id', authenticate, async (req, res) => {
+  try {
+    const leaveType = await stmts.getLeaveTypeById.get(req.params.id);
+    if (!leaveType) return err(res, 'NOT_FOUND', 'Leave type not found', 404);
+    ok(res, { leaveType });
+  } catch (e) {
+    console.error('[GET /api/leave-types/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch leave type: ' + e.message, 500);
+  }
+});
+
+app.post('/api/leave-types', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { error, value } = leaveTypeSchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const ltId = 'LT_' + (value.code.toUpperCase().replace(/[^A-Z0-9]/g, '') || uuidv4().slice(0, 6).toUpperCase());
+    const ltData = { id: ltId, ...value, code: value.code.toUpperCase() };
+
+    const created = await stmts.insertLeaveType.run(ltData);
+
+    await auditLog({
+      table: 'leave_types',
+      recordId: ltId,
+      action: 'INSERT',
+      newValues: ltData,
+      req
+    });
+
+    notifyDbChange('leave_types', { action: 'insert', ltId });
+    ok(res, { message: 'Leave type created successfully', leaveType: created }, 201);
+  } catch (e) {
+    if (e.message && e.message.includes('Duplicate')) {
+      return err(res, 'DUPLICATE_CODE', 'A leave type with this code already exists', 409);
+    }
+    console.error('[POST /api/leave-types]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to create leave type: ' + e.message, 500);
+  }
+});
+
+app.put('/api/leave-types/:id', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await stmts.getLeaveTypeById.get(id);
+    if (!existing) return err(res, 'NOT_FOUND', 'Leave type not found', 404);
+
+    const { error, value } = leaveTypeSchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const updateData = { ...value, code: value.code.toUpperCase() };
+    const updated = await stmts.updateLeaveType.run(id, updateData);
+
+    await auditLog({
+      table: 'leave_types',
+      recordId: id,
+      action: 'UPDATE',
+      oldValues: existing,
+      newValues: updateData,
+      req
+    });
+
+    notifyDbChange('leave_types', { action: 'update', ltId: id });
+    ok(res, { message: 'Leave type updated successfully', leaveType: updated });
+  } catch (e) {
+    console.error('[PUT /api/leave-types/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to update leave type: ' + e.message, 500);
+  }
+});
+
+app.delete('/api/leave-types/:id', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await stmts.getLeaveTypeById.get(id);
+    if (!existing) return err(res, 'NOT_FOUND', 'Leave type not found', 404);
+
+    await stmts.deleteLeaveType.run(id);
+
+    await auditLog({
+      table: 'leave_types',
+      recordId: id,
+      action: 'DELETE',
+      oldValues: existing,
+      req
+    });
+
+    notifyDbChange('leave_types', { action: 'delete', ltId: id });
+    ok(res, { message: 'Leave type deleted successfully' });
+  } catch (e) {
+    console.error('[DELETE /api/leave-types/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to delete leave type: ' + e.message, 500);
+  }
+});
+
+// ══════════════════════════════════════════════
+// EMPLOYEE LEAVE ENTRIES & BALANCES
+// ══════════════════════════════════════════════
+const leaveEntrySchema = Joi.object({
+  emp_id: Joi.string().trim().required(),
+  leave_type_id: Joi.string().trim().required(),
+  start_date: Joi.string().regex(/^\d{4}-\d{2}-\d{2}$/).required(),
+  end_date: Joi.string().regex(/^\d{4}-\d{2}-\d{2}$/).required(),
+  total_days: Joi.number().min(0.5).max(365).default(1.0),
+  reason: Joi.string().trim().max(255).required(),
+  status: Joi.string().valid('PENDING', 'APPROVED', 'REJECTED', 'CANCELLED').default('PENDING'),
+  comments: Joi.string().trim().max(255).allow('', null)
+});
+
+app.get('/api/leave-entries', authenticate, async (req, res) => {
+  try {
+    const { emp_id, leave_type_id, status, start_date, end_date, page = 1, limit = 50 } = req.query;
+    const offset = (Math.max(1, parseInt(page, 10)) - 1) * parseInt(limit, 10);
+    const result = await stmts.getLeaveEntries.all({
+      emp_id,
+      leave_type_id,
+      status,
+      start_date,
+      end_date,
+      limit: parseInt(limit, 10),
+      offset
+    });
+    ok(res, { ...result, page: parseInt(page, 10), limit: parseInt(limit, 10) });
+  } catch (e) {
+    console.error('[GET /api/leave-entries]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch leave entries: ' + e.message, 500);
+  }
+});
+
+app.get('/api/leave-entries/:id', authenticate, async (req, res) => {
+  try {
+    const entry = await stmts.getLeaveEntryById.get(req.params.id);
+    if (!entry) return err(res, 'NOT_FOUND', 'Leave entry not found', 404);
+    ok(res, { entry });
+  } catch (e) {
+    console.error('[GET /api/leave-entries/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch leave entry: ' + e.message, 500);
+  }
+});
+
+app.post('/api/leave-entries', authenticate, async (req, res) => {
+  try {
+    const { error, value } = leaveEntrySchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const created = await stmts.insertLeaveEntry.run(value);
+
+    await auditLog({
+      table: 'employee_leave_entries',
+      recordId: String(created.id),
+      action: 'INSERT',
+      newValues: value,
+      req
+    });
+
+    notifyDbChange('employee_leave_entries', { action: 'insert', leaveId: created.id });
+    ok(res, { message: 'Leave application submitted successfully', entry: created }, 201);
+  } catch (e) {
+    console.error('[POST /api/leave-entries]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to submit leave application: ' + e.message, 500);
+  }
+});
+
+app.put('/api/leave-entries/:id/status', authenticate, requireRoles('ADMIN', 'HR'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, comments } = req.body;
+    if (!['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED'].includes(status)) {
+      return err(res, 'VALIDATION_ERROR', 'Invalid leave status', 400);
+    }
+
+    const updated = await stmts.updateLeaveEntryStatus.run(id, {
+      status,
+      approved_by: req.user?.username || 'admin',
+      comments
+    });
+
+    if (!updated) return err(res, 'NOT_FOUND', 'Leave entry not found', 404);
+
+    await auditLog({
+      table: 'employee_leave_entries',
+      recordId: String(id),
+      action: 'UPDATE',
+      newValues: { status, approved_by: req.user?.username, comments },
+      req
+    });
+
+    notifyDbChange('employee_leave_entries', { action: 'update_status', leaveId: id, status });
+    ok(res, { message: `Leave application status updated to ${status}`, entry: updated });
+  } catch (e) {
+    console.error('[PUT /api/leave-entries/:id/status]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to update leave status: ' + e.message, 500);
+  }
+});
+
+app.delete('/api/leave-entries/:id', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    await stmts.deleteLeaveEntry.run(id);
+
+    await auditLog({
+      table: 'employee_leave_entries',
+      recordId: String(id),
+      action: 'DELETE',
+      req
+    });
+
+    notifyDbChange('employee_leave_entries', { action: 'delete', leaveId: id });
+    ok(res, { message: 'Leave entry deleted successfully' });
+  } catch (e) {
+    console.error('[DELETE /api/leave-entries/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to delete leave entry: ' + e.message, 500);
+  }
+});
+
+app.get('/api/leave-entries/balances/:emp_id', authenticate, async (req, res) => {
+  try {
+    const { emp_id } = req.params;
+    const { year } = req.query;
+    const balances = await stmts.getEmployeeLeaveBalances.all(emp_id, year ? parseInt(year, 10) : new Date().getFullYear());
+    ok(res, { emp_id, year: year || new Date().getFullYear(), balances });
+  } catch (e) {
+    console.error('[GET /api/leave-entries/balances/:emp_id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch leave balances: ' + e.message, 500);
+  }
+});
+
+// ══════════════════════════════════════════════
+// EMPLOYEE OUTDOOR / ON-DUTY (OD) ENTRIES
+// ══════════════════════════════════════════════
+const outdoorEntrySchema = Joi.object({
+  emp_id: Joi.string().trim().required(),
+  od_date: Joi.string().regex(/^\d{4}-\d{2}-\d{2}$/).required(),
+  start_time: Joi.string().regex(/^\d{2}:\d{2}(:\d{2})?$/).default('09:00:00'),
+  end_time: Joi.string().regex(/^\d{2}:\d{2}(:\d{2})?$/).default('18:00:00'),
+  destination_client: Joi.string().trim().max(150).required(),
+  purpose: Joi.string().trim().max(255).required(),
+  travel_allowance_eligible: Joi.boolean().default(true),
+  status: Joi.string().valid('PENDING', 'APPROVED', 'REJECTED').default('PENDING'),
+  comments: Joi.string().trim().max(255).allow('', null)
+});
+
+app.get('/api/outdoor-entries', authenticate, async (req, res) => {
+  try {
+    const { emp_id, status, start_date, end_date, page = 1, limit = 50 } = req.query;
+    const offset = (Math.max(1, parseInt(page, 10)) - 1) * parseInt(limit, 10);
+    const result = await stmts.getOutdoorEntries.all({
+      emp_id,
+      status,
+      start_date,
+      end_date,
+      limit: parseInt(limit, 10),
+      offset
+    });
+    ok(res, { ...result, page: parseInt(page, 10), limit: parseInt(limit, 10) });
+  } catch (e) {
+    console.error('[GET /api/outdoor-entries]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch outdoor entries: ' + e.message, 500);
+  }
+});
+
+app.get('/api/outdoor-entries/:id', authenticate, async (req, res) => {
+  try {
+    const entry = await stmts.getOutdoorEntryById.get(req.params.id);
+    if (!entry) return err(res, 'NOT_FOUND', 'Outdoor entry not found', 404);
+    ok(res, { entry });
+  } catch (e) {
+    console.error('[GET /api/outdoor-entries/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch outdoor entry: ' + e.message, 500);
+  }
+});
+
+app.post('/api/outdoor-entries', authenticate, async (req, res) => {
+  try {
+    const { error, value } = outdoorEntrySchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const created = await stmts.insertOutdoorEntry.run(value);
+
+    await auditLog({
+      table: 'employee_outdoor_entries',
+      recordId: String(created.id),
+      action: 'INSERT',
+      newValues: value,
+      req
+    });
+
+    notifyDbChange('employee_outdoor_entries', { action: 'insert', odId: created.id });
+    ok(res, { message: 'Outdoor duty entry submitted successfully', entry: created }, 201);
+  } catch (e) {
+    console.error('[POST /api/outdoor-entries]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to submit outdoor entry: ' + e.message, 500);
+  }
+});
+
+app.put('/api/outdoor-entries/:id/status', authenticate, requireRoles('ADMIN', 'HR'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, comments } = req.body;
+    if (!['PENDING', 'APPROVED', 'REJECTED'].includes(status)) {
+      return err(res, 'VALIDATION_ERROR', 'Invalid outdoor entry status', 400);
+    }
+
+    const updated = await stmts.updateOutdoorEntryStatus.run(id, {
+      status,
+      approved_by: req.user?.username || 'admin',
+      comments
+    });
+
+    if (!updated) return err(res, 'NOT_FOUND', 'Outdoor entry not found', 404);
+
+    await auditLog({
+      table: 'employee_outdoor_entries',
+      recordId: String(id),
+      action: 'UPDATE',
+      newValues: { status, approved_by: req.user?.username, comments },
+      req
+    });
+
+    notifyDbChange('employee_outdoor_entries', { action: 'update_status', odId: id, status });
+    ok(res, { message: `Outdoor entry status updated to ${status}`, entry: updated });
+  } catch (e) {
+    console.error('[PUT /api/outdoor-entries/:id/status]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to update outdoor entry status: ' + e.message, 500);
+  }
+});
+
+app.delete('/api/outdoor-entries/:id', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    await stmts.deleteOutdoorEntry.run(id);
+
+    await auditLog({
+      table: 'employee_outdoor_entries',
+      recordId: String(id),
+      action: 'DELETE',
+      req
+    });
+
+    notifyDbChange('employee_outdoor_entries', { action: 'delete', odId: id });
+    ok(res, { message: 'Outdoor entry deleted successfully' });
+  } catch (e) {
+    console.error('[DELETE /api/outdoor-entries/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to delete outdoor entry: ' + e.message, 500);
+  }
+});
+
+// ══════════════════════════════════════════════
 // HEALTH CHECK
 // ══════════════════════════════════════════════
 app.get('/api/health', (req, res) => {

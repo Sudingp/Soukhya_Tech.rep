@@ -3097,6 +3097,441 @@
     </div>
   </div>
 
+  <!-- ── 🏥 1. LEAVE TYPES MASTER MODAL (ORGANIZATION) ── -->
+  <div id="leave-types-modal" class="modal-overlay" style="display:none; z-index:9998;">
+    <div class="modal-box animate-zoom" style="max-width:1050px; width:96%; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.85); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:14px 20px; background:linear-gradient(135deg, #161b27, #1a2234); display:flex; justify-content:space-between; align-items:center">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:22px">🏥</span>
+          <div>
+            <span class="modal-title" style="font-size:15px; font-weight:700; color:var(--tx)">Statutory Leave Types Master</span>
+            <div style="font-size:11px; color:var(--mu)">Karnataka Shops & Commercial Establishments Act & Factories Act Statutory Leave Entitlements</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px">
+          <button type="button" class="btn btnp bsm" onclick="openAddLeaveTypeModal()">+ Add Leave Type</button>
+          <button class="modal-close-x" onclick="closeLeaveTypesModal()">✕</button>
+        </div>
+      </div>
+
+      <!-- Statutory Policy Bar -->
+      <div style="padding:8px 20px; background:var(--s1); border-bottom:1px solid var(--br); display:flex; gap:12px; align-items:center; flex-wrap:wrap; font-size:11px">
+        <span style="font-weight:700; color:var(--tx)">Statutory Standard:</span>
+        <span style="padding:2px 6px; border-radius:4px; background:rgba(0,212,170,0.12); color:var(--ac)">Casual (12d)</span>
+        <span style="padding:2px 6px; border-radius:4px; background:rgba(239,68,68,0.12); color:#ef4444">Sick (12d)</span>
+        <span style="padding:2px 6px; border-radius:4px; background:rgba(59,130,246,0.12); color:#60a5fa">Earned / Privilege (18d, Encashable)</span>
+        <span style="padding:2px 6px; border-radius:4px; background:rgba(236,72,153,0.12); color:#ec4899">Maternity (182d / 26 wks)</span>
+        <span style="padding:2px 6px; border-radius:4px; background:rgba(124,58,237,0.12); color:#a78bfa">Comp Off (Credited OT)</span>
+      </div>
+
+      <!-- Table Body -->
+      <div class="modal-body" style="padding:0; overflow-y:auto; flex:1">
+        <table class="gt" style="width:100%; border-collapse:collapse; font-size:12px">
+          <thead>
+            <tr style="border-bottom:1px solid var(--br); color:var(--mu); background:var(--s1); position:sticky; top:0; z-index:2">
+              <th style="padding:8px 10px; text-align:left">Code</th>
+              <th style="padding:8px 10px; text-align:left">Leave Type Name</th>
+              <th style="padding:8px 10px; text-align:left">Category</th>
+              <th style="padding:8px 10px; text-align:center">Pay Status</th>
+              <th style="padding:8px 10px; text-align:center">Annual Quota</th>
+              <th style="padding:8px 10px; text-align:center">Carry Forward</th>
+              <th style="padding:8px 10px; text-align:center">Encashable</th>
+              <th style="padding:8px 10px; text-align:right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="leave-types-tbody">
+            <!-- Populated dynamically -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-ftr" style="padding:10px 20px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center">
+        <span id="lt-count-label" style="font-size:11px; color:var(--mu)">Total Leave Types: 0</span>
+        <button class="btn bsm" onclick="closeLeaveTypesModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ADD / EDIT LEAVE TYPE FORM MODAL ── -->
+  <div id="leave-type-form-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:540px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438); display:flex; justify-content:space-between; align-items:center">
+        <span class="modal-title" id="lt-form-title" style="font-size:14px; font-weight:700">Add Statutory Leave Type</span>
+        <button class="modal-close-x" onclick="closeLeaveTypeFormModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <form id="leave-type-form" onsubmit="saveLeaveTypeForm(event)">
+          <div class="ms-grid" style="grid-template-columns: 1fr 2fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Code *</label>
+              <input type="text" class="fi" id="lt-code" placeholder="e.g. LT_CL" maxlength="30" required style="text-transform:uppercase" />
+            </div>
+            <div class="fg">
+              <label class="fl">Leave Type Name *</label>
+              <input type="text" class="fi" id="lt-name" placeholder="e.g. Casual Leave" maxlength="100" required />
+            </div>
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Category *</label>
+              <select class="fs" id="lt-category" required>
+                <option value="CASUAL">CASUAL (Casual Leave)</option>
+                <option value="SICK">SICK (Medical/Sick)</option>
+                <option value="EARNED">EARNED (Earned/Privilege)</option>
+                <option value="MATERNITY">MATERNITY (Maternity Benefit)</option>
+                <option value="PATERNITY">PATERNITY (Paternity Leave)</option>
+                <option value="COMP_OFF">COMP_OFF (Compensatory Off)</option>
+                <option value="UNPAID">UNPAID (Leave Without Pay)</option>
+                <option value="OTHER">OTHER (Special / Custom)</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="fl">Badge Theme Color</label>
+              <input type="color" class="fi" id="lt-color" value="#00d4aa" style="padding:2px; height:34px; cursor:pointer" />
+            </div>
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Annual Quota (Days) *</label>
+              <input type="number" step="0.5" min="0" max="365" class="fi" id="lt-annual-quota" value="12" required />
+            </div>
+            <div class="fg">
+              <label class="fl">Carry Forward Max (Days)</label>
+              <input type="number" step="0.5" min="0" max="100" class="fi" id="lt-carry-forward" value="0" />
+            </div>
+          </div>
+
+          <div class="fg" style="margin-bottom:12px">
+            <label class="fl">Description / Statutory Rule</label>
+            <input type="text" class="fi" id="lt-description" placeholder="e.g. 12 days per year for unforeseen personal circumstances" maxlength="255" />
+          </div>
+
+          <!-- Policy Toggles -->
+          <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:16px; background:var(--s1); padding:10px; border-radius:6px; border:1px solid var(--br)">
+            <label style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--tx); cursor:pointer">
+              <input type="checkbox" id="lt-paid" checked />
+              <span>Paid Leave</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--tx); cursor:pointer">
+              <input type="checkbox" id="lt-encashable" />
+              <span>Encashable</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--tx); cursor:pointer">
+              <input type="checkbox" id="lt-active" checked />
+              <span>Active</span>
+            </label>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:8px">
+            <button type="button" class="btn bsm" onclick="closeLeaveTypeFormModal()">Cancel</button>
+            <button type="submit" class="btn btnp bsm">💾 Save Leave Type</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 📝 2. EMPLOYEE LEAVE ENTRIES & APPLICATIONS MODAL ── -->
+  <div id="leave-entries-modal" class="modal-overlay" style="display:none; z-index:9998;">
+    <div class="modal-box animate-zoom" style="max-width:1150px; width:96%; max-height:92vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.85); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:14px 20px; background:linear-gradient(135deg, #161b27, #1a2234); display:flex; justify-content:space-between; align-items:center">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:22px">📝</span>
+          <div>
+            <span class="modal-title" style="font-size:15px; font-weight:700; color:var(--tx)">Employee Leave Entries & Applications</span>
+            <div style="font-size:11px; color:var(--mu)">Manage leave requests, statutory quota consumption, and HR manager approvals</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px">
+          <button type="button" class="btn btnp bsm" onclick="openApplyLeaveModal()">+ Apply Leave</button>
+          <button type="button" class="btn bsm" onclick="openLeaveBalancesModal()">📊 View Balances</button>
+          <button class="modal-close-x" onclick="closeLeaveEntriesModal()">✕</button>
+        </div>
+      </div>
+
+      <!-- Filter Bar -->
+      <div style="padding:10px 20px; background:var(--s2); border-bottom:1px solid var(--br); display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+        <select id="le-emp-filter" class="fs" style="padding:6px 8px; font-size:12px; min-width:160px" onchange="loadLeaveEntriesGrid(1)">
+          <option value="">All Employees</option>
+        </select>
+        <select id="le-type-filter" class="fs" style="padding:6px 8px; font-size:12px" onchange="loadLeaveEntriesGrid(1)">
+          <option value="">All Leave Types</option>
+        </select>
+        <select id="le-status-filter" class="fs" style="padding:6px 8px; font-size:12px" onchange="loadLeaveEntriesGrid(1)">
+          <option value="">All Statuses</option>
+          <option value="PENDING">PENDING (Awaiting Approval)</option>
+          <option value="APPROVED">APPROVED (Authorized)</option>
+          <option value="REJECTED">REJECTED</option>
+          <option value="CANCELLED">CANCELLED</option>
+        </select>
+        <div style="display:flex; align-items:center; gap:6px">
+          <span style="font-size:11px; color:var(--mu)">From:</span>
+          <input type="date" id="le-start-date" class="fi" style="padding:4px 8px; font-size:11.5px" onchange="loadLeaveEntriesGrid(1)" />
+          <span style="font-size:11px; color:var(--mu)">To:</span>
+          <input type="date" id="le-end-date" class="fi" style="padding:4px 8px; font-size:11.5px" onchange="loadLeaveEntriesGrid(1)" />
+        </div>
+        <button type="button" class="btn bsm" onclick="resetLeaveFilters()">Reset</button>
+        <button type="button" class="btn bsm" onclick="loadLeaveEntriesGrid(1)">🔄 Refresh</button>
+      </div>
+
+      <!-- Table Body -->
+      <div class="modal-body" style="padding:0; overflow-y:auto; flex:1">
+        <table class="gt" style="width:100%; border-collapse:collapse; font-size:12px">
+          <thead>
+            <tr style="border-bottom:1px solid var(--br); color:var(--mu); background:var(--s1); position:sticky; top:0; z-index:2">
+              <th style="padding:8px 10px; text-align:left">Leave Type</th>
+              <th style="padding:8px 10px; text-align:left">Employee</th>
+              <th style="padding:8px 10px; text-align:left">Duration / Period</th>
+              <th style="padding:8px 10px; text-align:center">Total Days</th>
+              <th style="padding:8px 10px; text-align:left">Reason</th>
+              <th style="padding:8px 10px; text-align:center">Status</th>
+              <th style="padding:8px 10px; text-align:left">Approver / Comments</th>
+              <th style="padding:8px 10px; text-align:right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="leave-entries-tbody">
+            <!-- Populated dynamically -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-ftr" style="padding:10px 20px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center">
+        <span id="le-pagination-label" style="font-size:11px; color:var(--mu)">Showing 0 leave applications</span>
+        <div id="le-pagination-controls" style="display:flex; gap:6px; align-items:center">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── APPLY LEAVE APPLICATION FORM MODAL ── -->
+  <div id="leave-entry-form-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:520px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438); display:flex; justify-content:space-between; align-items:center">
+        <span class="modal-title" style="font-size:14px; font-weight:700">Submit Leave Application</span>
+        <button class="modal-close-x" onclick="closeApplyLeaveModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <form id="leave-entry-form" onsubmit="saveLeaveApplication(event)">
+          <div class="fg" style="margin-bottom:10px">
+            <label class="fl">Employee *</label>
+            <select class="fs" id="la-emp-id" required>
+              <option value="">Select Employee...</option>
+            </select>
+          </div>
+
+          <div class="fg" style="margin-bottom:10px">
+            <label class="fl">Leave Type *</label>
+            <select class="fs" id="la-type-id" required>
+              <option value="">Select Leave Type...</option>
+            </select>
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Start Date *</label>
+              <input type="date" class="fi" id="la-start-date" required onchange="autoCalcLeaveDays()" />
+            </div>
+            <div class="fg">
+              <label class="fl">End Date *</label>
+              <input type="date" class="fi" id="la-end-date" required onchange="autoCalcLeaveDays()" />
+            </div>
+            <div class="fg">
+              <label class="fl">Total Days *</label>
+              <input type="number" step="0.5" min="0.5" max="365" class="fi" id="la-total-days" value="1.0" required />
+            </div>
+          </div>
+
+          <div class="fg" style="margin-bottom:10px">
+            <label class="fl">Reason for Leave *</label>
+            <input type="text" class="fi" id="la-reason" placeholder="e.g. Family medical emergency / Personal travel" maxlength="255" required />
+          </div>
+
+          <div class="fg" style="margin-bottom:14px">
+            <label class="fl">Additional Comments / Contact During Absence</label>
+            <input type="text" class="fi" id="la-comments" placeholder="e.g. Accessible via mobile phone and email" maxlength="255" />
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:8px">
+            <button type="button" class="btn bsm" onclick="closeApplyLeaveModal()">Cancel</button>
+            <button type="submit" class="btn btnp bsm">💾 Submit Leave Application</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 📊 EMPLOYEE LEAVE BALANCES MODAL ── -->
+  <div id="leave-balance-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:850px; width:94%; max-height:88vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:14px 20px; background:linear-gradient(135deg, #161b27, #1e2438); display:flex; justify-content:space-between; align-items:center">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:22px">📊</span>
+          <div>
+            <span class="modal-title" style="font-size:15px; font-weight:700; color:var(--tx)">Employee Leave Entitlement & Balance Ledger</span>
+            <div style="font-size:11px; color:var(--mu)">Live quota consumption, approved leaves, and remaining balance tracking</div>
+          </div>
+        </div>
+        <button class="modal-close-x" onclick="closeLeaveBalancesModal()">✕</button>
+      </div>
+
+      <div style="padding:10px 20px; background:var(--s2); border-bottom:1px solid var(--br); display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+        <div style="flex:1; min-width:200px">
+          <select id="lb-emp-id" class="fs" style="width:100%; padding:6px 10px; font-size:12px" onchange="loadEmployeeLeaveBalances()">
+            <option value="">Select Employee...</option>
+          </select>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px">
+          <span style="font-size:11px; color:var(--mu)">Year:</span>
+          <select id="lb-year" class="fs" style="padding:6px 10px; font-size:12px" onchange="loadEmployeeLeaveBalances()">
+            <!-- Populated dynamically -->
+          </select>
+        </div>
+        <button type="button" class="btn bsm" onclick="loadEmployeeLeaveBalances()">🔄 Refresh</button>
+      </div>
+
+      <div class="modal-body" style="padding:16px 20px; overflow-y:auto; flex:1" id="lb-cards-container">
+        <!-- Balance cards populated dynamically -->
+      </div>
+
+      <div class="modal-ftr" style="padding:10px 20px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:flex-end">
+        <button class="btn bsm" onclick="closeLeaveBalancesModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 🚶 3. EMPLOYEE OUTDOOR / ON-DUTY (OD) ENTRIES MODAL ── -->
+  <div id="outdoor-entries-modal" class="modal-overlay" style="display:none; z-index:9998;">
+    <div class="modal-box animate-zoom" style="max-width:1150px; width:96%; max-height:92vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.85); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:14px 20px; background:linear-gradient(135deg, #161b27, #1a2234); display:flex; justify-content:space-between; align-items:center">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:22px">🚶</span>
+          <div>
+            <span class="modal-title" style="font-size:15px; font-weight:700; color:var(--tx)">Employee Outdoor Duty (OD) & Client Visit Register</span>
+            <div style="font-size:11px; color:var(--mu)">Field work, client visits, and on-duty attendance credit tracking</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px">
+          <button type="button" class="btn btnp bsm" onclick="openApplyOutdoorModal()">+ Apply Outdoor Duty</button>
+          <button class="modal-close-x" onclick="closeOutdoorEntriesModal()">✕</button>
+        </div>
+      </div>
+
+      <!-- Filter Bar -->
+      <div style="padding:10px 20px; background:var(--s2); border-bottom:1px solid var(--br); display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+        <select id="od-emp-filter" class="fs" style="padding:6px 8px; font-size:12px; min-width:160px" onchange="loadOutdoorEntriesGrid(1)">
+          <option value="">All Employees</option>
+        </select>
+        <select id="od-status-filter" class="fs" style="padding:6px 8px; font-size:12px" onchange="loadOutdoorEntriesGrid(1)">
+          <option value="">All Statuses</option>
+          <option value="PENDING">PENDING (Awaiting Approval)</option>
+          <option value="APPROVED">APPROVED (Present on OD)</option>
+          <option value="REJECTED">REJECTED</option>
+        </select>
+        <div style="display:flex; align-items:center; gap:6px">
+          <span style="font-size:11px; color:var(--mu)">From:</span>
+          <input type="date" id="od-start-date" class="fi" style="padding:4px 8px; font-size:11.5px" onchange="loadOutdoorEntriesGrid(1)" />
+          <span style="font-size:11px; color:var(--mu)">To:</span>
+          <input type="date" id="od-end-date" class="fi" style="padding:4px 8px; font-size:11.5px" onchange="loadOutdoorEntriesGrid(1)" />
+        </div>
+        <button type="button" class="btn bsm" onclick="resetOutdoorFilters()">Reset</button>
+        <button type="button" class="btn bsm" onclick="loadOutdoorEntriesGrid(1)">🔄 Refresh</button>
+      </div>
+
+      <!-- Table Body -->
+      <div class="modal-body" style="padding:0; overflow-y:auto; flex:1">
+        <table class="gt" style="width:100%; border-collapse:collapse; font-size:12px">
+          <thead>
+            <tr style="border-bottom:1px solid var(--br); color:var(--mu); background:var(--s1); position:sticky; top:0; z-index:2">
+              <th style="padding:8px 10px; text-align:left">OD Date</th>
+              <th style="padding:8px 10px; text-align:left">Employee</th>
+              <th style="padding:8px 10px; text-align:left">Time Span</th>
+              <th style="padding:8px 10px; text-align:left">Destination / Client</th>
+              <th style="padding:8px 10px; text-align:left">Purpose of Visit</th>
+              <th style="padding:8px 10px; text-align:center">Allowance</th>
+              <th style="padding:8px 10px; text-align:center">Status</th>
+              <th style="padding:8px 10px; text-align:right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="outdoor-entries-tbody">
+            <!-- Populated dynamically -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-ftr" style="padding:10px 20px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center">
+        <span id="od-pagination-label" style="font-size:11px; color:var(--mu)">Showing 0 outdoor duty entries</span>
+        <div id="od-pagination-controls" style="display:flex; gap:6px; align-items:center">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── APPLY OUTDOOR DUTY FORM MODAL ── -->
+  <div id="outdoor-entry-form-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:520px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438); display:flex; justify-content:space-between; align-items:center">
+        <span class="modal-title" style="font-size:14px; font-weight:700">Submit Outdoor / On-Duty Entry</span>
+        <button class="modal-close-x" onclick="closeApplyOutdoorModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <form id="outdoor-entry-form" onsubmit="saveOutdoorEntry(event)">
+          <div class="fg" style="margin-bottom:10px">
+            <label class="fl">Employee *</label>
+            <select class="fs" id="oda-emp-id" required>
+              <option value="">Select Employee...</option>
+            </select>
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">OD Date *</label>
+              <input type="date" class="fi" id="oda-date" required />
+            </div>
+            <div class="fg">
+              <label class="fl">Start Time *</label>
+              <input type="time" class="fi" id="oda-start-time" value="09:00" required />
+            </div>
+            <div class="fg">
+              <label class="fl">End Time *</label>
+              <input type="time" class="fi" id="oda-end-time" value="18:00" required />
+            </div>
+          </div>
+
+          <div class="fg" style="margin-bottom:10px">
+            <label class="fl">Destination / Client Site *</label>
+            <input type="text" class="fi" id="oda-destination" placeholder="e.g. Infosys Campus / Client Site Whitefield" maxlength="150" required />
+          </div>
+
+          <div class="fg" style="margin-bottom:10px">
+            <label class="fl">Purpose of Visit *</label>
+            <input type="text" class="fi" id="oda-purpose" placeholder="e.g. Face Recognition hardware maintenance and calibration" maxlength="255" required />
+          </div>
+
+          <div class="fg" style="margin-bottom:12px">
+            <label class="fl">Additional Comments / Remarks</label>
+            <input type="text" class="fi" id="oda-comments" placeholder="e.g. Taxi bill will be submitted for travel reimbursement" maxlength="255" />
+          </div>
+
+          <div style="margin-bottom:14px; background:var(--s1); padding:8px 12px; border-radius:6px; border:1px solid var(--br)">
+            <label style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--tx); cursor:pointer">
+              <input type="checkbox" id="oda-ta" checked />
+              <span>Eligible for Travel Allowance / Reimbursement (TA)</span>
+            </label>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:8px">
+            <button type="button" class="btn bsm" onclick="closeApplyOutdoorModal()">Cancel</button>
+            <button type="submit" class="btn btnp bsm">💾 Submit OD Entry</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- ── AUTHENTICATION LOGIN MODAL ── -->
   <div id="login-modal" class="modal-overlay" style="display:none; z-index:9999;">
     <div class="modal-box animate-zoom" style="max-width:440px; box-shadow:0 24px 64px rgba(0,0,0,0.85); border:1px solid var(--br);">

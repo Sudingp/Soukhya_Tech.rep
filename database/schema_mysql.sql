@@ -514,6 +514,83 @@ CREATE TABLE IF NOT EXISTS `ot_records` (
     ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- ── 22. Leave Types Master Table ──
+CREATE TABLE IF NOT EXISTS `leave_types` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `code` VARCHAR(20) NOT NULL,
+  `name` VARCHAR(100) NOT NULL,
+  `category` VARCHAR(30) NOT NULL DEFAULT 'CASUAL',
+  `description` VARCHAR(255) NULL,
+  `paid` TINYINT(1) NOT NULL DEFAULT 1,
+  `annual_quota_days` DECIMAL(4,1) NOT NULL DEFAULT 12.0,
+  `carry_forward_max` DECIMAL(4,1) NOT NULL DEFAULT 0.0,
+  `encashable` TINYINT(1) NOT NULL DEFAULT 0,
+  `color` VARCHAR(20) NOT NULL DEFAULT '#4f8ef7',
+  `active` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_leave_type_code` (`code`),
+  KEY `idx_leave_type_active` (`active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Pre-seeded Statutory & Standard Leave Types
+INSERT IGNORE INTO `leave_types` (`id`, `code`, `name`, `category`, `description`, `paid`, `annual_quota_days`, `carry_forward_max`, `encashable`, `color`, `active`) VALUES
+  ('LT_CL', 'CL', 'Casual Leave (CL)', 'CASUAL', 'Short-notice personal leave for urgent private affairs', 1, 12.0, 0.0, 0, '#4f8ef7', 1),
+  ('LT_SL', 'SL', 'Sick / Medical Leave (SL)', 'SICK', 'Medical illness or health recovery leave', 1, 12.0, 6.0, 0, '#ef4444', 1),
+  ('LT_EL', 'EL', 'Earned / Privilege Leave (EL)', 'EARNED', 'Annual accrued vacation and privilege leave', 1, 18.0, 30.0, 1, '#10b981', 1),
+  ('LT_ML', 'ML', 'Maternity Leave (Statutory)', 'MATERNITY', 'Statutory 26-week paid maternity benefit under Indian Maternity Act', 1, 182.0, 0.0, 0, '#ec4899', 1),
+  ('LT_PL', 'PL', 'Paternity Leave', 'PATERNITY', 'Parental support leave for male employees on child birth', 1, 15.0, 0.0, 0, '#8b5cf6', 1),
+  ('LT_CO', 'COMP_OFF', 'Compensatory Off (Comp-Off)', 'COMP_OFF', 'Credit granted for approved overtime or weekend shifts worked', 1, 0.0, 10.0, 0, '#f59e0b', 1),
+  ('LT_LWP', 'LWP', 'Leave Without Pay / Loss of Pay', 'UNPAID', 'Authorized absence when all paid leave balances are exhausted', 0, 0.0, 0.0, 0, '#64748b', 1);
+
+-- ── 23. Employee Leave Applications & Entries Table ──
+CREATE TABLE IF NOT EXISTS `employee_leave_entries` (
+  `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `emp_id` VARCHAR(50) NOT NULL,
+  `leave_type_id` VARCHAR(50) NOT NULL,
+  `start_date` DATE NOT NULL,
+  `end_date` DATE NOT NULL,
+  `total_days` DECIMAL(4,1) NOT NULL DEFAULT 1.0,
+  `reason` VARCHAR(255) NOT NULL,
+  `status` ENUM('PENDING', 'APPROVED', 'REJECTED', 'CANCELLED') NOT NULL DEFAULT 'PENDING',
+  `approved_by` VARCHAR(100) NULL,
+  `approved_at` DATETIME NULL,
+  `comments` VARCHAR(255) NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY `idx_leave_emp_dates` (`emp_id`, `start_date`, `end_date`),
+  KEY `idx_leave_status` (`status`),
+  CONSTRAINT `fk_leave_emp`
+    FOREIGN KEY (`emp_id`) REFERENCES `employees` (`id`)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_leave_type`
+    FOREIGN KEY (`leave_type_id`) REFERENCES `leave_types` (`id`)
+    ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ── 24. Employee Outdoor / On-Duty (OD) Entries Table ──
+CREATE TABLE IF NOT EXISTS `employee_outdoor_entries` (
+  `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `emp_id` VARCHAR(50) NOT NULL,
+  `od_date` DATE NOT NULL,
+  `start_time` TIME NOT NULL DEFAULT '09:00:00',
+  `end_time` TIME NOT NULL DEFAULT '18:00:00',
+  `destination_client` VARCHAR(150) NOT NULL,
+  `purpose` VARCHAR(255) NOT NULL,
+  `travel_allowance_eligible` TINYINT(1) NOT NULL DEFAULT 1,
+  `status` ENUM('PENDING', 'APPROVED', 'REJECTED') NOT NULL DEFAULT 'PENDING',
+  `approved_by` VARCHAR(100) NULL,
+  `approved_at` DATETIME NULL,
+  `comments` VARCHAR(255) NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY `idx_od_emp_date` (`emp_id`, `od_date`),
+  KEY `idx_od_status` (`status`),
+  CONSTRAINT `fk_od_emp`
+    FOREIGN KEY (`emp_id`) REFERENCES `employees` (`id`)
+    ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 -- Default Administrator: admin / admin123 (SHA-256 username hash, Bcrypt password hash)
 
 INSERT IGNORE INTO `users` (`username`, `username_hash`, `username_display`, `password_hash`, `role`, `active`)

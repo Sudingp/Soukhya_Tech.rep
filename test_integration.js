@@ -580,26 +580,135 @@ async function runTests() {
       if (otDelete.status !== 200) throw new Error('Delete OT Record failed: ' + JSON.stringify(otDelete));
       console.log('   [PASS] Cleaned up test OT record:', testOtId);
 
-      // 23. Token Refresh
-      console.log('23. Testing /api/auth/refresh...');
+      // 23. Leave Types Master CRUD
+      console.log('23. Testing /api/leave-types CRUD...');
+      const ltGet = await request('/api/leave-types', 'GET', authHeaders);
+      if (ltGet.status !== 200 || !Array.isArray(ltGet.body.leaveTypes)) throw new Error('Get Leave Types failed: ' + JSON.stringify(ltGet));
+      console.log(`   [PASS] Retrieved ${ltGet.body.leaveTypes.length} statutory leave types (e.g. CL, SL, EL, ML)`);
+
+      const testLtCode = 'LT_TST' + Date.now().toString().slice(-3);
+      const ltCreate = await request('/api/leave-types', 'POST', authHeaders, {
+        code: testLtCode,
+        name: 'Special Sabbatical Leave',
+        category: 'OTHER',
+        description: 'Test statutory sabbatical policy',
+        paid: false,
+        annual_quota_days: 30.0,
+        carry_forward_max: 10.0,
+        encashable: false,
+        color: '#8b5cf6'
+      });
+      if (ltCreate.status !== 201 || !ltCreate.body.leaveType) throw new Error('Create Leave Type failed: ' + JSON.stringify(ltCreate));
+      const testLtId = ltCreate.body.leaveType.id;
+      console.log('   [PASS] Created custom leave type:', testLtId);
+
+      const ltUpdate = await request(`/api/leave-types/${testLtId}`, 'PUT', authHeaders, {
+        code: testLtCode,
+        name: 'Special Sabbatical Leave (Updated)',
+        category: 'OTHER',
+        description: 'Updated sabbatical policy',
+        paid: true,
+        annual_quota_days: 35.0,
+        carry_forward_max: 15.0,
+        encashable: true,
+        color: '#6366f1'
+      });
+      if (ltUpdate.status !== 200 || ltUpdate.body.leaveType.name !== 'Special Sabbatical Leave (Updated)') {
+        throw new Error('Update Leave Type failed: ' + JSON.stringify(ltUpdate));
+      }
+      console.log('   [PASS] Updated leave type:', testLtId);
+
+      // 24. Employee Leave Entries & Balances
+      console.log('24. Testing /api/leave-entries & /balances...');
+      const leaveApp = await request('/api/leave-entries', 'POST', authHeaders, {
+        emp_id: 'EMP001',
+        leave_type_id: testLtId,
+        start_date: '2026-10-01',
+        end_date: '2026-10-05',
+        total_days: 5.0,
+        reason: 'Personal academic research project',
+        comments: 'Will be back on Oct 6'
+      });
+      if (leaveApp.status !== 201 || !leaveApp.body.entry) throw new Error('Submit Leave Application failed: ' + JSON.stringify(leaveApp));
+      const testLeaveId = leaveApp.body.entry.id;
+      console.log('   [PASS] Submitted leave application ID:', testLeaveId);
+
+      const leaveApprove = await request(`/api/leave-entries/${testLeaveId}/status`, 'PUT', authHeaders, {
+        status: 'APPROVED',
+        comments: 'Approved by HR Lead'
+      });
+      if (leaveApprove.status !== 200 || leaveApprove.body.entry.status !== 'APPROVED') {
+        throw new Error('Approve Leave Application failed: ' + JSON.stringify(leaveApprove));
+      }
+      console.log('   [PASS] Leave application approved');
+
+      // Check Balances API
+      const balances = await request('/api/leave-entries/balances/EMP001?year=2026', 'GET', authHeaders);
+      if (balances.status !== 200 || !Array.isArray(balances.body.balances)) {
+        throw new Error('Get Leave Balances failed: ' + JSON.stringify(balances));
+      }
+      const testBalance = balances.body.balances.find(b => b.leave_type_id === testLtId);
+      if (!testBalance || testBalance.used_days !== 5.0 || testBalance.available_days !== 30.0) {
+        throw new Error('Leave balance ledger mismatch: ' + JSON.stringify(balances));
+      }
+      console.log(`   [PASS] Balance ledger verified for EMP001 (Quota: ${testBalance.annual_quota}d, Used: ${testBalance.used_days}d, Available: ${testBalance.available_days}d)`);
+
+      // Clean up leave entry & leave type
+      const leaveDelete = await request(`/api/leave-entries/${testLeaveId}`, 'DELETE', authHeaders);
+      if (leaveDelete.status !== 200) throw new Error('Delete Leave Entry failed: ' + JSON.stringify(leaveDelete));
+      const ltDelete = await request(`/api/leave-types/${testLtId}`, 'DELETE', authHeaders);
+      if (ltDelete.status !== 200) throw new Error('Delete Leave Type failed: ' + JSON.stringify(ltDelete));
+      console.log('   [PASS] Cleaned up test leave entry and leave type');
+
+      // 25. Employee Outdoor / On-Duty Entries
+      console.log('25. Testing /api/outdoor-entries CRUD & status update...');
+      const odCreate = await request('/api/outdoor-entries', 'POST', authHeaders, {
+        emp_id: 'EMP001',
+        od_date: '2026-09-22',
+        start_time: '09:30:00',
+        end_time: '17:30:00',
+        destination_client: 'Wipro Electronic City Campus, Bangalore',
+        purpose: 'Biometric Face Recognition terminal deployment and pilot validation',
+        travel_allowance_eligible: true,
+        comments: 'Cab receipts attached'
+      });
+      if (odCreate.status !== 201 || !odCreate.body.entry) throw new Error('Create Outdoor Entry failed: ' + JSON.stringify(odCreate));
+      const testOdId = odCreate.body.entry.id;
+      console.log('   [PASS] Created outdoor duty entry ID:', testOdId);
+
+      const odStatus = await request(`/api/outdoor-entries/${testOdId}/status`, 'PUT', authHeaders, {
+        status: 'APPROVED',
+        comments: 'Approved by Operations Manager'
+      });
+      if (odStatus.status !== 200 || odStatus.body.entry.status !== 'APPROVED') {
+        throw new Error('Update Outdoor Status failed: ' + JSON.stringify(odStatus));
+      }
+      console.log('   [PASS] Outdoor entry approved');
+
+      const odDelete = await request(`/api/outdoor-entries/${testOdId}`, 'DELETE', authHeaders);
+      if (odDelete.status !== 200) throw new Error('Delete Outdoor Entry failed: ' + JSON.stringify(odDelete));
+      console.log('   [PASS] Cleaned up test outdoor entry');
+
+      // 26. Token Refresh
+      console.log('26. Testing /api/auth/refresh...');
       const ref = await request('/api/auth/refresh', 'POST', {}, { refresh_token: refreshToken });
       if (ref.status !== 200 || !ref.body.access_token) throw new Error('Token refresh failed: ' + JSON.stringify(ref));
       console.log('   [PASS] Refresh token issued new access token');
 
-      // 24. Logout & Blacklist
-      console.log('24. Testing /api/auth/logout...');
+      // 27. Logout & Blacklist
+      console.log('27. Testing /api/auth/logout...');
       const logout = await request('/api/auth/logout', 'POST', authHeaders);
       if (logout.status !== 200) throw new Error('Logout failed: ' + JSON.stringify(logout));
       console.log('   [PASS] Logged out successfully');
 
-      // 25. Blacklisted token rejected
-      console.log('25. Testing blacklisted token rejection...');
+      // 28. Blacklisted token rejected
+      console.log('28. Testing blacklisted token rejection...');
       const rejected = await request('/api/auth/me', 'GET', authHeaders);
       if (rejected.status !== 401) throw new Error('Blacklisted token was not rejected: ' + JSON.stringify(rejected));
       console.log('   [PASS] Blacklisted token rejected with HTTP 401:', rejected.body.error.code);
 
       console.log('\n=============================================');
-      console.log('  ALL 25 INTEGRATION TESTS PASSED 100%!     ');
+      console.log('  ALL 28 INTEGRATION TESTS PASSED 100%!     ');
       console.log('=============================================\n');
 
       server.close();

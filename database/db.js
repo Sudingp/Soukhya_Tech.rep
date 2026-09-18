@@ -400,6 +400,60 @@ const stmts = {
   },
   regularizeAttendance: {
     run: (data) => mysqlAdapter.regularizeAttendance(data)
+  },
+
+  // ── 🏥 Leave Types (Organization) ──
+  getAllLeaveTypes: {
+    all: () => mysqlAdapter.getAllLeaveTypes()
+  },
+  getLeaveTypeById: {
+    get: (id) => mysqlAdapter.getLeaveTypeById(id)
+  },
+  insertLeaveType: {
+    run: (data) => mysqlAdapter.insertLeaveType(data)
+  },
+  updateLeaveType: {
+    run: (id, data) => mysqlAdapter.updateLeaveType(id, data)
+  },
+  deleteLeaveType: {
+    run: (id) => mysqlAdapter.deleteLeaveType(id)
+  },
+
+  // ── 📝 Employee Leave Entries ──
+  getLeaveEntries: {
+    all: (filter) => mysqlAdapter.getLeaveEntries(filter)
+  },
+  getLeaveEntryById: {
+    get: (id) => mysqlAdapter.getLeaveEntryById(id)
+  },
+  insertLeaveEntry: {
+    run: (data) => mysqlAdapter.insertLeaveEntry(data)
+  },
+  updateLeaveEntryStatus: {
+    run: (id, data) => mysqlAdapter.updateLeaveEntryStatus(id, data)
+  },
+  deleteLeaveEntry: {
+    run: (id) => mysqlAdapter.deleteLeaveEntry(id)
+  },
+  getEmployeeLeaveBalances: {
+    all: (empId, year) => mysqlAdapter.getEmployeeLeaveBalances(empId, year)
+  },
+
+  // ── 🚶 Employee Outdoor Entries (On-Duty / OD) ──
+  getOutdoorEntries: {
+    all: (filter) => mysqlAdapter.getOutdoorEntries(filter)
+  },
+  getOutdoorEntryById: {
+    get: (id) => mysqlAdapter.getOutdoorEntryById(id)
+  },
+  insertOutdoorEntry: {
+    run: (data) => mysqlAdapter.insertOutdoorEntry(data)
+  },
+  updateOutdoorEntryStatus: {
+    run: (id, data) => mysqlAdapter.updateOutdoorEntryStatus(id, data)
+  },
+  deleteOutdoorEntry: {
+    run: (id) => mysqlAdapter.deleteOutdoorEntry(id)
   }
 };
 
