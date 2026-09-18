@@ -108,26 +108,42 @@ async function runTests() {
       if (audit.status !== 200 || !audit.body.logs || audit.body.logs.length === 0) throw new Error('Audit logs failed: ' + JSON.stringify(audit));
       console.log('   [PASS] Retrieved audit logs count:', audit.body.logs.length);
 
-      // 9. Token Refresh
-      console.log('9. Testing /api/auth/refresh...');
+      // 9. Master Settings GET & PUT
+      console.log('9. Testing /api/settings/master GET & PUT...');
+      const settingsGet = await request('/api/settings/master', 'GET', authHeaders);
+      if (settingsGet.status !== 200 || !settingsGet.body.settings) throw new Error('Get Master Settings failed: ' + JSON.stringify(settingsGet));
+      console.log('   [PASS] Master Settings retrieved (company_name:', settingsGet.body.settings.company_name, ')');
+
+      const settingsPut = await request('/api/settings/master', 'PUT', authHeaders, {
+        company_name: 'Soukhya Tech Enterprise HQ',
+        late_grace_mins: 20,
+        face_match_threshold: 0.52
+      });
+      if (settingsPut.status !== 200 || settingsPut.body.settings.company_name !== 'Soukhya Tech Enterprise HQ') {
+        throw new Error('Update Master Settings failed: ' + JSON.stringify(settingsPut));
+      }
+      console.log('   [PASS] Master Settings updated and persisted to MySQL');
+
+      // 10. Token Refresh
+      console.log('10. Testing /api/auth/refresh...');
       const ref = await request('/api/auth/refresh', 'POST', {}, { refresh_token: refreshToken });
       if (ref.status !== 200 || !ref.body.access_token) throw new Error('Token refresh failed: ' + JSON.stringify(ref));
       console.log('   [PASS] Refresh token issued new access token');
 
-      // 10. Logout & Blacklist
-      console.log('10. Testing /api/auth/logout...');
+      // 11. Logout & Blacklist
+      console.log('11. Testing /api/auth/logout...');
       const logout = await request('/api/auth/logout', 'POST', authHeaders);
       if (logout.status !== 200) throw new Error('Logout failed: ' + JSON.stringify(logout));
       console.log('   [PASS] Logged out successfully');
 
-      // 11. Blacklisted token rejected
-      console.log('11. Testing blacklisted token rejection...');
+      // 12. Blacklisted token rejected
+      console.log('12. Testing blacklisted token rejection...');
       const rejected = await request('/api/auth/me', 'GET', authHeaders);
       if (rejected.status !== 401) throw new Error('Blacklisted token was not rejected: ' + JSON.stringify(rejected));
       console.log('   [PASS] Blacklisted token rejected with HTTP 401:', rejected.body.error.code);
 
       console.log('\n=============================================');
-      console.log('  ALL 11 INTEGRATION TESTS PASSED 100%!     ');
+      console.log('  ALL 12 INTEGRATION TESTS PASSED 100%!     ');
       console.log('=============================================\n');
       server.close();
       process.exit(0);

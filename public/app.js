@@ -2425,7 +2425,7 @@ function openMenuDrawer(section) {
               <span id="sub-settings-arrow" style="font-size:10px; color:var(--mu); transition:transform 0.2s">▶</span>
             </div>
             <div id="sub-settings" class="menu-submenu" style="display:none; padding-left:14px; margin-left:12px; border-left:2px solid var(--ac); margin-top:2px; margin-bottom:4px">
-              <div class="menu-list-item" onclick="notify('Master Settings config loaded.', 'ok')">
+              <div class="menu-list-item" onclick="closeInfoDrawer(); openMasterSettingsModal()">
                 <span class="menu-icon">⚙️</span> <span class="menu-text">Master Settings</span>
               </div>
               <div class="menu-list-item" onclick="notify('Mail Settings config loaded.', 'ok')">
@@ -3877,6 +3877,169 @@ window.openChangelogModal = openChangelogModal;
 window.closeChangelogModal = closeChangelogModal;
 window.switchChangelogTab = switchChangelogTab;
 window.toggleChangelogPref = toggleChangelogPref;
+
+// Master Settings Modal Helpers
+window.openMasterSettingsModal = openMasterSettingsModal;
+window.closeMasterSettingsModal = closeMasterSettingsModal;
+window.switchMasterSettingsTab = switchMasterSettingsTab;
+window.saveMasterSettings = saveMasterSettings;
+window.resetMasterSettingsDefaults = resetMasterSettingsDefaults;
+
+// ══════════════════════════════════════════════
+// ⚙️ MASTER CONFIGURATION SETTINGS CONTROLLER
+// ══════════════════════════════════════════════
+let currentMasterSettings = {};
+
+const MASTER_SETTINGS_DEFAULTS = {
+  company_name: 'Soukhya Tech Solutions Ltd.',
+  hq_location: 'Bangalore Headquarters, India',
+  timezone: 'Asia/Kolkata',
+  date_format: 'DD/MM/YYYY',
+  currency: 'INR (₹)',
+  late_grace_mins: 15,
+  punch_cooldown_mins: 5,
+  full_day_hrs: 8.0,
+  half_day_hrs: 4.0,
+  ot_threshold_mins: 30,
+  face_match_threshold: 0.55,
+  liveness_detection_enabled: true,
+  multi_factor_required: false,
+  session_timeout_mins: 30,
+  audit_retention_days: 180,
+  pii_masking_enabled: true
+};
+
+async function openMasterSettingsModal() {
+  const modal = document.getElementById('master-settings-modal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  switchMasterSettingsTab('general');
+
+  try {
+    const res = await api('/settings/master');
+    if (res && res.success && res.data && res.data.settings) {
+      currentMasterSettings = res.data.settings;
+      populateMasterSettingsForm(currentMasterSettings);
+    } else {
+      populateMasterSettingsForm(MASTER_SETTINGS_DEFAULTS);
+    }
+  } catch (e) {
+    console.warn('[SETTINGS] Could not fetch remote master settings, using defaults:', e);
+    populateMasterSettingsForm(MASTER_SETTINGS_DEFAULTS);
+  }
+}
+
+function closeMasterSettingsModal() {
+  const modal = document.getElementById('master-settings-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function switchMasterSettingsTab(tabName) {
+  const tabs = ['general', 'attendance', 'biometrics', 'security'];
+  tabs.forEach(t => {
+    const btn = document.getElementById('ms-tab-btn-' + t);
+    const content = document.getElementById('ms-tab-' + t);
+    if (btn) btn.classList.toggle('active', t === tabName);
+    if (content) content.style.display = (t === tabName) ? 'block' : 'none';
+  });
+}
+
+function populateMasterSettingsForm(data) {
+  const getVal = (k, def) => (typeof data[k] !== 'undefined' ? data[k] : def);
+
+  const setInput = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.value = val;
+  };
+  const setCheck = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.checked = (val === true || val === 'true' || val === 1 || val === '1');
+  };
+
+  setInput('ms-company_name', getVal('company_name', MASTER_SETTINGS_DEFAULTS.company_name));
+  setInput('ms-hq_location', getVal('hq_location', MASTER_SETTINGS_DEFAULTS.hq_location));
+  setInput('ms-timezone', getVal('timezone', MASTER_SETTINGS_DEFAULTS.timezone));
+  setInput('ms-date_format', getVal('date_format', MASTER_SETTINGS_DEFAULTS.date_format));
+  setInput('ms-currency', getVal('currency', MASTER_SETTINGS_DEFAULTS.currency));
+
+  setInput('ms-late_grace_mins', getVal('late_grace_mins', MASTER_SETTINGS_DEFAULTS.late_grace_mins));
+  setInput('ms-punch_cooldown_mins', getVal('punch_cooldown_mins', MASTER_SETTINGS_DEFAULTS.punch_cooldown_mins));
+  setInput('ms-full_day_hrs', getVal('full_day_hrs', MASTER_SETTINGS_DEFAULTS.full_day_hrs));
+  setInput('ms-half_day_hrs', getVal('half_day_hrs', MASTER_SETTINGS_DEFAULTS.half_day_hrs));
+  setInput('ms-ot_threshold_mins', getVal('ot_threshold_mins', MASTER_SETTINGS_DEFAULTS.ot_threshold_mins));
+
+  const faceThresh = parseFloat(getVal('face_match_threshold', MASTER_SETTINGS_DEFAULTS.face_match_threshold)) || 0.55;
+  setInput('ms-face_match_threshold', faceThresh);
+  const faceValEl = document.getElementById('ms-face_match_val');
+  if (faceValEl) faceValEl.textContent = faceThresh.toFixed(2);
+
+  setCheck('ms-liveness_detection_enabled', getVal('liveness_detection_enabled', MASTER_SETTINGS_DEFAULTS.liveness_detection_enabled));
+  setCheck('ms-multi_factor_required', getVal('multi_factor_required', MASTER_SETTINGS_DEFAULTS.multi_factor_required));
+
+  setInput('ms-session_timeout_mins', getVal('session_timeout_mins', MASTER_SETTINGS_DEFAULTS.session_timeout_mins));
+  setInput('ms-audit_retention_days', getVal('audit_retention_days', MASTER_SETTINGS_DEFAULTS.audit_retention_days));
+  setCheck('ms-pii_masking_enabled', getVal('pii_masking_enabled', MASTER_SETTINGS_DEFAULTS.pii_masking_enabled));
+}
+
+function resetMasterSettingsDefaults() {
+  populateMasterSettingsForm(MASTER_SETTINGS_DEFAULTS);
+  notify('Restored default master settings values. Click Save to apply.', 'ok');
+}
+
+async function saveMasterSettings(event) {
+  if (event) event.preventDefault();
+
+  const payload = {
+    company_name: document.getElementById('ms-company_name')?.value?.trim() || '',
+    hq_location: document.getElementById('ms-hq_location')?.value?.trim() || '',
+    timezone: document.getElementById('ms-timezone')?.value || 'Asia/Kolkata',
+    date_format: document.getElementById('ms-date_format')?.value || 'DD/MM/YYYY',
+    currency: document.getElementById('ms-currency')?.value?.trim() || 'INR (₹)',
+
+    late_grace_mins: parseInt(document.getElementById('ms-late_grace_mins')?.value, 10) || 15,
+    punch_cooldown_mins: parseInt(document.getElementById('ms-punch_cooldown_mins')?.value, 10) || 5,
+    full_day_hrs: parseFloat(document.getElementById('ms-full_day_hrs')?.value) || 8.0,
+    half_day_hrs: parseFloat(document.getElementById('ms-half_day_hrs')?.value) || 4.0,
+    ot_threshold_mins: parseInt(document.getElementById('ms-ot_threshold_mins')?.value, 10) || 30,
+
+    face_match_threshold: parseFloat(document.getElementById('ms-face_match_threshold')?.value) || 0.55,
+    liveness_detection_enabled: !!document.getElementById('ms-liveness_detection_enabled')?.checked,
+    multi_factor_required: !!document.getElementById('ms-multi_factor_required')?.checked,
+
+    session_timeout_mins: parseInt(document.getElementById('ms-session_timeout_mins')?.value, 10) || 30,
+    audit_retention_days: parseInt(document.getElementById('ms-audit_retention_days')?.value, 10) || 180,
+    pii_masking_enabled: !!document.getElementById('ms-pii_masking_enabled')?.checked
+  };
+
+  const saveBtn = document.getElementById('ms-save-btn');
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
+  }
+
+  try {
+    const res = await api('/settings/master', {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    });
+
+    if (res && res.success) {
+      currentMasterSettings = res.data?.settings || payload;
+      notify('Master Settings updated and persisted to database successfully!', 'ok');
+      closeMasterSettingsModal();
+    } else {
+      const errMsg = res?.error?.message || 'Failed to update settings';
+      notify(`Settings update error: ${errMsg}`, 'er');
+    }
+  } catch (err) {
+    notify(`Failed to save settings: ${err.message}`, 'er');
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = '💾 Save Changes';
+    }
+  }
+}
 
 // ══════════════════════════════════════════════
 // Boot

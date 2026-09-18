@@ -1440,6 +1440,127 @@ tr:hover td      { background: var(--s2); }
 }
 
 /* ══════════════════════════════════════════════ */
+/* ⚙️ MASTER SETTINGS MODAL STYLES                */
+/* ══════════════════════════════════════════════ */
+.ms-tabs-bar {
+  display: flex;
+  gap: 6px;
+}
+
+.ms-tab-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--mu);
+  font-family: var(--sa);
+  font-size: 11.5px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.ms-tab-btn:hover {
+  color: var(--tx);
+  background: var(--s3);
+}
+
+.ms-tab-btn.active {
+  color: var(--ac);
+  background: var(--s3);
+  border-color: var(--ac);
+  font-weight: 600;
+}
+
+.ms-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.ms-hint {
+  display: block;
+  font-size: 10px;
+  color: var(--mu);
+  margin-top: 4px;
+  line-height: 1.3;
+}
+
+.ms-toggle-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  background: var(--s2);
+  border: 1px solid var(--br);
+  border-radius: 6px;
+  gap: 16px;
+}
+
+.fi-range {
+  width: 100%;
+  accent-color: var(--ac);
+  cursor: pointer;
+}
+
+/* Toggle Switch */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 38px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--s3);
+  border: 1px solid var(--br);
+  transition: .2s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 2px;
+  bottom: 2px;
+  background-color: #fff;
+  transition: .2s;
+}
+
+input:checked + .slider {
+  background-color: var(--ac);
+  border-color: var(--ac);
+}
+
+input:checked + .slider:before {
+  transform: translateX(18px);
+  background-color: #0b0f19;
+}
+
+.slider.round {
+  border-radius: 20px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}
+
+/* ══════════════════════════════════════════════ */
 /* ✨ CHANGELOG v2.0 UI STYLES                   */
 /* ══════════════════════════════════════════════ */
 .btn-hdr-changelog {

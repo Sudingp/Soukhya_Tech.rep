@@ -132,9 +132,39 @@ CREATE TABLE IF NOT EXISTS `token_blacklist` (
   KEY `idx_blacklist_expires` (`expires_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- ── 8. Seed Initial Schema Version & Default Users ──
+-- ── 8. Master Configuration Settings Table ──
+CREATE TABLE IF NOT EXISTS `master_settings` (
+  `setting_key` VARCHAR(100) NOT NULL PRIMARY KEY,
+  `setting_value` TEXT NOT NULL,
+  `category` ENUM('GENERAL', 'ATTENDANCE', 'BIOMETRICS', 'SECURITY') NOT NULL DEFAULT 'GENERAL',
+  `description` VARCHAR(255) NULL,
+  `updated_by` VARCHAR(100) NULL,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY `idx_settings_category` (`category`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ── 9. Seed Initial Schema Version, Master Settings & Default Users ──
 INSERT IGNORE INTO `_schema_version` (`version`, `description`)
-VALUES (7, 'Initial MySQL 8.4 LTS Schema with Hashed Usernames and Face JSON vectors');
+VALUES (8, 'Add master_settings table for enterprise business rules');
+
+-- Default Master Settings
+INSERT IGNORE INTO `master_settings` (`setting_key`, `setting_value`, `category`, `description`) VALUES
+  ('company_name', 'Soukhya Tech Solutions Ltd.', 'GENERAL', 'Global enterprise display name'),
+  ('hq_location', 'Bangalore Headquarters, India', 'GENERAL', 'Primary corporate headquarters location'),
+  ('timezone', 'Asia/Kolkata', 'GENERAL', 'Default system timezone'),
+  ('date_format', 'DD/MM/YYYY', 'GENERAL', 'Default date format across UI and exports'),
+  ('currency', 'INR (₹)', 'GENERAL', 'Corporate currency identifier'),
+  ('late_grace_mins', '15', 'ATTENDANCE', 'Permissible punch-in delay in minutes before marking Late'),
+  ('half_day_hrs', '4.0', 'ATTENDANCE', 'Minimum hours worked required for Half-Day presence'),
+  ('full_day_hrs', '8.0', 'ATTENDANCE', 'Standard hours worked required for Full-Day presence'),
+  ('punch_cooldown_mins', '5', 'ATTENDANCE', 'Cooldown buffer between consecutive punches to prevent duplicates'),
+  ('ot_threshold_mins', '30', 'ATTENDANCE', 'Minimum minutes worked past shift end before Overtime starts counting'),
+  ('face_match_threshold', '0.55', 'BIOMETRICS', 'AI Face Recognition Euclidean distance matching threshold (lower is stricter)'),
+  ('liveness_detection_enabled', 'true', 'BIOMETRICS', 'Enforce anti-spoofing liveness check during facial scan'),
+  ('multi_factor_required', 'false', 'BIOMETRICS', 'Require dual verification (Card/PIN + Face Scan)'),
+  ('session_timeout_mins', '30', 'SECURITY', 'Automatic administrator and user session inactivity timeout in minutes'),
+  ('pii_masking_enabled', 'true', 'SECURITY', 'Mask sensitive Aadhaar, PAN, and phone numbers in non-admin views'),
+  ('audit_retention_days', '180', 'SECURITY', 'Number of days before audit logs are eligible for archival');
 
 -- Default Administrator: admin / admin123 (SHA-256 username hash, Bcrypt password hash)
 INSERT IGNORE INTO `users` (`username`, `username_hash`, `username_display`, `password_hash`, `role`, `active`)

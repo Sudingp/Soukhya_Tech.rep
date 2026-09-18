@@ -174,6 +174,14 @@ const stmts = {
   },
   purgeExpiredTokens: {
     run: (now) => mysqlAdapter.purgeExpiredTokens(now)
+  },
+
+  // ── Master Settings ──
+  getMasterSettings: {
+    get: () => mysqlAdapter.getMasterSettings()
+  },
+  updateMasterSettings: {
+    run: (settingsMap, updatedBy) => mysqlAdapter.updateMasterSettings(settingsMap, updatedBy)
   }
 };
 

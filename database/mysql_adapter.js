@@ -507,6 +507,39 @@ class MySQLAdapter {
   }
 
   // ──────────────────────────────────────────────
+  // Master Settings
+  // ──────────────────────────────────────────────
+  async getMasterSettings() {
+    const pool = await this.getPool();
+    const [rows] = await pool.execute('SELECT setting_key, setting_value, category, description, updated_by, updated_at FROM master_settings');
+    const settingsMap = {};
+    for (const row of rows) {
+      settingsMap[row.setting_key] = row.setting_value;
+    }
+    return {
+      settings: settingsMap,
+      details: rows
+    };
+  }
+
+  async updateMasterSettings(settingsMap, updatedBy = 'system') {
+    const pool = await this.getPool();
+    let updatedCount = 0;
+    for (const [key, value] of Object.entries(settingsMap)) {
+      if (typeof value === 'undefined' || value === null) continue;
+      const strVal = typeof value === 'object' ? JSON.stringify(value) : String(value);
+      const [result] = await pool.execute(
+        `INSERT INTO master_settings (setting_key, setting_value, updated_by, updated_at)
+         VALUES (?, ?, ?, NOW())
+         ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_by = VALUES(updated_by), updated_at = NOW()`,
+        [key, strVal, updatedBy]
+      );
+      if (result.affectedRows > 0) updatedCount++;
+    }
+    return { updatedCount };
+  }
+
+  // ──────────────────────────────────────────────
   // Reset & Clear
   // ──────────────────────────────────────────────
   async clearAll() {

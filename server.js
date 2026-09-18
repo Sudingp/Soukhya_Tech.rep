@@ -1157,6 +1157,71 @@ app.get('/api/audit-logs', authenticate, requireRoles('ADMIN'), async (req, res)
 });
 
 // ══════════════════════════════════════════════
+// MASTER SETTINGS API
+// ══════════════════════════════════════════════
+app.get('/api/settings/master', authenticate, async (req, res) => {
+  try {
+    const data = await stmts.getMasterSettings.get();
+    ok(res, data);
+  } catch (e) {
+    console.error('[GET /api/settings/master]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch master settings', 500);
+  }
+});
+
+const masterSettingsSchema = Joi.object({
+  company_name: Joi.string().max(150).optional().allow(''),
+  hq_location: Joi.string().max(150).optional().allow(''),
+  timezone: Joi.string().max(50).optional(),
+  date_format: Joi.string().max(20).optional(),
+  currency: Joi.string().max(20).optional(),
+  late_grace_mins: Joi.number().integer().min(0).max(180).optional(),
+  half_day_hrs: Joi.number().min(1).max(12).optional(),
+  full_day_hrs: Joi.number().min(1).max(24).optional(),
+  punch_cooldown_mins: Joi.number().integer().min(0).max(60).optional(),
+  ot_threshold_mins: Joi.number().integer().min(0).max(300).optional(),
+  face_match_threshold: Joi.number().min(0.2).max(0.9).optional(),
+  liveness_detection_enabled: Joi.boolean().truthy('true').falsy('false').optional(),
+  multi_factor_required: Joi.boolean().truthy('true').falsy('false').optional(),
+  session_timeout_mins: Joi.number().integer().min(5).max(1440).optional(),
+  pii_masking_enabled: Joi.boolean().truthy('true').falsy('false').optional(),
+  audit_retention_days: Joi.number().integer().min(30).max(3650).optional()
+}).unknown(true);
+
+app.put('/api/settings/master', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { error, value } = masterSettingsSchema.validate(req.body);
+    if (error) {
+      return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+    }
+
+    const oldData = await stmts.getMasterSettings.get();
+    const result = await stmts.updateMasterSettings.run(value, req.user.username);
+
+    await auditLog({
+      table: 'master_settings',
+      recordId: 'GLOBAL',
+      action: 'UPDATE',
+      oldValues: oldData.settings,
+      newValues: value,
+      req
+    });
+
+    notifyDbChange('settings', { action: 'update', keys: Object.keys(value) });
+
+    const updatedData = await stmts.getMasterSettings.get();
+    ok(res, {
+      message: 'Master settings updated successfully',
+      updatedCount: result.updatedCount,
+      ...updatedData
+    });
+  } catch (e) {
+    console.error('[PUT /api/settings/master]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to update master settings', 500);
+  }
+});
+
+// ══════════════════════════════════════════════
 // HEALTH CHECK
 // ══════════════════════════════════════════════
 app.get('/api/health', (req, res) => {
