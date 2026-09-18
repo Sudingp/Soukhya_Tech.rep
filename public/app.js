@@ -2431,9 +2431,6 @@ function openMenuDrawer(section) {
               <div class="menu-list-item" onclick="notify('Mail Settings config loaded.', 'ok')">
                 <span class="menu-icon">✉️</span> <span class="menu-text">Mail Settings</span>
               </div>
-              <div class="menu-list-item" onclick="notify('SMS Settings config loaded.', 'ok')">
-                <span class="menu-icon">💬</span> <span class="menu-text">SMS Settings</span>
-              </div>
             </div>
 
             <!-- Shift Dropdown / Submenu Option -->
