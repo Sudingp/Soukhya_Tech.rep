@@ -2327,6 +2327,594 @@ app.post('/api/employee-groups/:id/members', authenticate, requireRoles('ADMIN')
 });
 
 // ══════════════════════════════════════════════
+// GEOFENCES (GPS & Boundaries)
+// ══════════════════════════════════════════════
+const geofenceSchema = Joi.object({
+  code: Joi.string().trim().max(20).required(),
+  name: Joi.string().trim().max(100).required(),
+  latitude: Joi.number().min(-90).max(90).required(),
+  longitude: Joi.number().min(-180).max(180).required(),
+  radius_meters: Joi.number().integer().min(10).max(50000).default(150),
+  enforcement_mode: Joi.string().valid('STRICT', 'WARNING').default('STRICT'),
+  allowed_depts: Joi.array().items(Joi.string().trim()).allow(null),
+  ip_range: Joi.string().trim().max(100).allow('', null),
+  wifi_bssid: Joi.string().trim().max(100).allow('', null),
+  active: Joi.boolean().default(true)
+});
+
+function haversineDistanceMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371e3;
+  const phi1 = lat1 * Math.PI / 180;
+  const phi2 = lat2 * Math.PI / 180;
+  const deltaPhi = (lat2 - lat1) * Math.PI / 180;
+  const deltaLambda = (lon2 - lon1) * Math.PI / 180;
+
+  const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+            Math.cos(phi1) * Math.cos(phi2) *
+            Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+app.get('/api/geofences', authenticate, async (req, res) => {
+  try {
+    const geofences = await stmts.getAllGeofences.all();
+    ok(res, { geofences, total: geofences.length });
+  } catch (e) {
+    console.error('[GET /api/geofences]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch geofences: ' + e.message, 500);
+  }
+});
+
+app.get('/api/geofences/:id', authenticate, async (req, res) => {
+  try {
+    const geofence = await stmts.getGeofenceById.get(req.params.id);
+    if (!geofence) return err(res, 'NOT_FOUND', 'Geofence not found', 404);
+    ok(res, { geofence });
+  } catch (e) {
+    console.error('[GET /api/geofences/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch geofence: ' + e.message, 500);
+  }
+});
+
+app.post('/api/geofences', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { error, value } = geofenceSchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const geoId = 'GEO_' + (value.code.toUpperCase().replace(/[^A-Z0-9]/g, '') || uuidv4().slice(0, 6).toUpperCase());
+    const geoData = { id: geoId, ...value, code: value.code.toUpperCase() };
+
+    const created = await stmts.insertGeofence.run(geoData);
+
+    await auditLog({
+      table: 'geofences',
+      recordId: geoId,
+      action: 'INSERT',
+      newValues: geoData,
+      req
+    });
+
+    notifyDbChange('geofences', { action: 'insert', geoId });
+    ok(res, { message: 'Geofence created successfully', geofence: created }, 201);
+  } catch (e) {
+    if (e.message && e.message.includes('Duplicate')) {
+      return err(res, 'DUPLICATE_CODE', 'A geofence with this code already exists', 409);
+    }
+    console.error('[POST /api/geofences]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to create geofence: ' + e.message, 500);
+  }
+});
+
+app.put('/api/geofences/:id', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await stmts.getGeofenceById.get(id);
+    if (!existing) return err(res, 'NOT_FOUND', 'Geofence not found', 404);
+
+    const { error, value } = geofenceSchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const updateData = { ...value, code: value.code.toUpperCase() };
+    const updated = await stmts.updateGeofence.run(id, updateData);
+
+    await auditLog({
+      table: 'geofences',
+      recordId: id,
+      action: 'UPDATE',
+      oldValues: existing,
+      newValues: updateData,
+      req
+    });
+
+    notifyDbChange('geofences', { action: 'update', geoId: id });
+    ok(res, { message: 'Geofence updated successfully', geofence: updated });
+  } catch (e) {
+    console.error('[PUT /api/geofences/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to update geofence: ' + e.message, 500);
+  }
+});
+
+app.delete('/api/geofences/:id', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await stmts.getGeofenceById.get(id);
+    if (!existing) return err(res, 'NOT_FOUND', 'Geofence not found', 404);
+
+    await stmts.deleteGeofence.run(id);
+
+    await auditLog({
+      table: 'geofences',
+      recordId: id,
+      action: 'DELETE',
+      oldValues: existing,
+      req
+    });
+
+    notifyDbChange('geofences', { action: 'delete', geoId: id });
+    ok(res, { message: 'Geofence deleted successfully' });
+  } catch (e) {
+    console.error('[DELETE /api/geofences/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to delete geofence: ' + e.message, 500);
+  }
+});
+
+app.post('/api/geofences/verify-coords', authenticate, async (req, res) => {
+  try {
+    const { latitude, longitude, dept } = req.body;
+    if (latitude === undefined || longitude === undefined) {
+      return err(res, 'VALIDATION_ERROR', 'Latitude and longitude are required', 400);
+    }
+    const userLat = parseFloat(latitude);
+    const userLon = parseFloat(longitude);
+
+    const geofences = await stmts.getAllGeofences.all();
+    const activeFences = geofences.filter(g => g.active);
+
+    const matches = [];
+    for (const g of activeFences) {
+      const dist = haversineDistanceMeters(userLat, userLon, Number(g.latitude), Number(g.longitude));
+      const inside = dist <= Number(g.radius_meters);
+      let deptAllowed = true;
+      if (dept && Array.isArray(g.allowed_depts) && g.allowed_depts.length > 0) {
+        deptAllowed = g.allowed_depts.includes(dept);
+      }
+      matches.push({
+        id: g.id,
+        code: g.code,
+        name: g.name,
+        distance_meters: Math.round(dist),
+        radius_meters: g.radius_meters,
+        inside: inside && deptAllowed,
+        enforcement_mode: g.enforcement_mode
+      });
+    }
+
+    const matchedZone = matches.find(m => m.inside);
+    ok(res, {
+      is_valid: !!matchedZone,
+      matched_geofence: matchedZone || null,
+      all_zones: matches
+    });
+  } catch (e) {
+    console.error('[POST /api/geofences/verify-coords]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to verify coordinates: ' + e.message, 500);
+  }
+});
+
+// ══════════════════════════════════════════════
+// WORK CODES (Project, Task & Cost Center)
+// ══════════════════════════════════════════════
+const workCodeSchema = Joi.object({
+  code: Joi.string().trim().max(20).required(),
+  name: Joi.string().trim().max(100).required(),
+  category: Joi.string().valid('BILLABLE_PROJECT', 'CLIENT_ONSITE', 'INTERNAL_OPS', 'TRAINING_LD', 'FACILITY_MAINT').default('BILLABLE_PROJECT'),
+  description: Joi.string().trim().max(255).allow('', null),
+  billing_rate_multiplier: Joi.number().min(0.5).max(10.0).default(1.00),
+  ot_eligible: Joi.boolean().default(true),
+  active: Joi.boolean().default(true)
+});
+
+app.get('/api/work-codes', authenticate, async (req, res) => {
+  try {
+    const workCodes = await stmts.getAllWorkCodes.all();
+    ok(res, { workCodes, total: workCodes.length });
+  } catch (e) {
+    console.error('[GET /api/work-codes]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch work codes: ' + e.message, 500);
+  }
+});
+
+app.get('/api/work-codes/:id', authenticate, async (req, res) => {
+  try {
+    const workCode = await stmts.getWorkCodeById.get(req.params.id);
+    if (!workCode) return err(res, 'NOT_FOUND', 'Work code not found', 404);
+    ok(res, { workCode });
+  } catch (e) {
+    console.error('[GET /api/work-codes/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch work code: ' + e.message, 500);
+  }
+});
+
+app.post('/api/work-codes', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { error, value } = workCodeSchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const wcId = 'WC_' + (value.code.toUpperCase().replace(/[^A-Z0-9]/g, '') || uuidv4().slice(0, 6).toUpperCase());
+    const wcData = { id: wcId, ...value, code: value.code.toUpperCase() };
+
+    const created = await stmts.insertWorkCode.run(wcData);
+
+    await auditLog({
+      table: 'work_codes',
+      recordId: wcId,
+      action: 'INSERT',
+      newValues: wcData,
+      req
+    });
+
+    notifyDbChange('work_codes', { action: 'insert', wcId });
+    ok(res, { message: 'Work code created successfully', workCode: created }, 201);
+  } catch (e) {
+    if (e.message && e.message.includes('Duplicate')) {
+      return err(res, 'DUPLICATE_CODE', 'A work code with this code already exists', 409);
+    }
+    console.error('[POST /api/work-codes]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to create work code: ' + e.message, 500);
+  }
+});
+
+app.put('/api/work-codes/:id', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await stmts.getWorkCodeById.get(id);
+    if (!existing) return err(res, 'NOT_FOUND', 'Work code not found', 404);
+
+    const { error, value } = workCodeSchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const updateData = { ...value, code: value.code.toUpperCase() };
+    const updated = await stmts.updateWorkCode.run(id, updateData);
+
+    await auditLog({
+      table: 'work_codes',
+      recordId: id,
+      action: 'UPDATE',
+      oldValues: existing,
+      newValues: updateData,
+      req
+    });
+
+    notifyDbChange('work_codes', { action: 'update', wcId: id });
+    ok(res, { message: 'Work code updated successfully', workCode: updated });
+  } catch (e) {
+    console.error('[PUT /api/work-codes/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to update work code: ' + e.message, 500);
+  }
+});
+
+app.delete('/api/work-codes/:id', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await stmts.getWorkCodeById.get(id);
+    if (!existing) return err(res, 'NOT_FOUND', 'Work code not found', 404);
+
+    await stmts.deleteWorkCode.run(id);
+
+    await auditLog({
+      table: 'work_codes',
+      recordId: id,
+      action: 'DELETE',
+      oldValues: existing,
+      req
+    });
+
+    notifyDbChange('work_codes', { action: 'delete', wcId: id });
+    ok(res, { message: 'Work code deleted successfully' });
+  } catch (e) {
+    console.error('[DELETE /api/work-codes/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to delete work code: ' + e.message, 500);
+  }
+});
+
+// ══════════════════════════════════════════════
+// OVERTIME REGISTER & APPROVALS
+// ══════════════════════════════════════════════
+const otManualRecordSchema = Joi.object({
+  emp_id: Joi.string().trim().required(),
+  ot_date: Joi.string().regex(/^\d{4}-\d{2}-\d{2}$/).required(),
+  shift_id: Joi.string().trim().default('SHIFT_GEN'),
+  scheduled_hours: Joi.number().min(0).max(24).default(8.0),
+  actual_hours: Joi.number().min(0).max(24).required(),
+  ot_hours: Joi.number().min(0).max(24).required(),
+  ot_multiplier: Joi.number().valid(1.0, 1.25, 1.5, 2.0, 2.5).default(1.5),
+  ot_rate_type: Joi.string().valid('STANDARD_DAY', 'WEEKLY_OFF', 'PUBLIC_HOLIDAY').default('STANDARD_DAY'),
+  status: Joi.string().valid('PENDING', 'APPROVED', 'REJECTED', 'COMP_OFF').default('PENDING'),
+  comments: Joi.string().trim().max(255).allow('', null)
+});
+
+app.get('/api/ot-register', authenticate, async (req, res) => {
+  try {
+    const { emp_id, start_date, end_date, status, page = 1, limit = 50 } = req.query;
+    const offset = (Math.max(1, parseInt(page, 10)) - 1) * parseInt(limit, 10);
+    const result = await stmts.getOtRegister.all({
+      emp_id,
+      start_date,
+      end_date,
+      status,
+      limit: parseInt(limit, 10),
+      offset
+    });
+    ok(res, { ...result, page: parseInt(page, 10), limit: parseInt(limit, 10) });
+  } catch (e) {
+    console.error('[GET /api/ot-register]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch OT register: ' + e.message, 500);
+  }
+});
+
+app.post('/api/ot-register', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { error, value } = otManualRecordSchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const record = await stmts.insertOtRecord.run(value);
+
+    await auditLog({
+      table: 'ot_records',
+      recordId: String(record.id),
+      action: 'INSERT',
+      newValues: value,
+      req
+    });
+
+    notifyDbChange('ot_records', { action: 'insert', otId: record.id });
+    ok(res, { message: 'OT record created successfully', record }, 201);
+  } catch (e) {
+    console.error('[POST /api/ot-register]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to create OT record: ' + e.message, 500);
+  }
+});
+
+app.post('/api/ot-register/calculate', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { date, threshold_hours = 8.0 } = req.body;
+    const targetDate = date || new Date().toISOString().slice(0, 10);
+    const year = parseInt(targetDate.slice(0, 4), 10);
+
+    const publicHolidays = await stmts.getAllPublicHolidays.all(year);
+    const isHoliday = (publicHolidays || []).some(h => h.holiday_date === targetDate);
+
+    const dayOfWeek = new Date(targetDate).getDay();
+    const isWeeklyOff = (dayOfWeek === 0);
+
+    let rateType = 'STANDARD_DAY';
+    let multiplier = 1.5;
+    if (isHoliday) {
+      rateType = 'PUBLIC_HOLIDAY';
+      multiplier = 2.5;
+    } else if (isWeeklyOff) {
+      rateType = 'WEEKLY_OFF';
+      multiplier = 2.0;
+    }
+
+    const dateLogs = await stmts.getDetailedAttendanceLog.all({
+      start_date: targetDate,
+      end_date: targetDate,
+      limit: 1000
+    });
+
+    const empPunches = {};
+    for (const punch of (dateLogs.rows || [])) {
+      if (!empPunches[punch.emp_id]) {
+        empPunches[punch.emp_id] = [];
+      }
+      empPunches[punch.emp_id].push(new Date(punch.timestamp).getTime());
+    }
+
+    const calculatedRecords = [];
+    for (const [empId, times] of Object.entries(empPunches)) {
+      times.sort((a, b) => a - b);
+      let actualHrs = 8.0;
+      if (times.length >= 2) {
+        const spanMs = times[times.length - 1] - times[0];
+        actualHrs = Math.round((spanMs / (1000 * 60 * 60)) * 100) / 100;
+      }
+
+      const scheduledHrs = parseFloat(threshold_hours);
+      let otHrs = 0.0;
+      if (isHoliday || isWeeklyOff) {
+        otHrs = actualHrs;
+      } else if (actualHrs > scheduledHrs) {
+        otHrs = Math.round((actualHrs - scheduledHrs) * 100) / 100;
+      }
+
+      if (otHrs > 0) {
+        const record = await stmts.insertOtRecord.run({
+          emp_id: empId,
+          ot_date: targetDate,
+          shift_id: 'SHIFT_GEN',
+          scheduled_hours: scheduledHrs,
+          actual_hours: actualHrs,
+          ot_hours: otHrs,
+          ot_multiplier: multiplier,
+          ot_rate_type: rateType,
+          status: 'PENDING',
+          comments: `Auto-calculated for ${targetDate} (${rateType} - ${multiplier}x)`
+        });
+        calculatedRecords.push(record);
+      }
+    }
+
+    ok(res, {
+      message: `Overtime calculated for ${targetDate}: ${calculatedRecords.length} records generated`,
+      date: targetDate,
+      rate_type: rateType,
+      multiplier,
+      generated_count: calculatedRecords.length,
+      records: calculatedRecords
+    });
+  } catch (e) {
+    console.error('[POST /api/ot-register/calculate]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to calculate OT: ' + e.message, 500);
+  }
+});
+
+app.put('/api/ot-register/:id/status', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, comments } = req.body;
+    if (!['PENDING', 'APPROVED', 'REJECTED', 'COMP_OFF'].includes(status)) {
+      return err(res, 'VALIDATION_ERROR', 'Invalid OT status', 400);
+    }
+
+    const updated = await stmts.updateOtStatus.run(id, {
+      status,
+      approved_by: req.user?.username || 'admin',
+      comments
+    });
+
+    if (!updated) return err(res, 'NOT_FOUND', 'OT record not found', 404);
+
+    await auditLog({
+      table: 'ot_records',
+      recordId: String(id),
+      action: 'UPDATE',
+      newValues: { status, approved_by: req.user?.username, comments },
+      req
+    });
+
+    notifyDbChange('ot_records', { action: 'update_status', otId: id, status });
+    ok(res, { message: `OT record status updated to ${status}`, record: updated });
+  } catch (e) {
+    console.error('[PUT /api/ot-register/:id/status]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to update OT status: ' + e.message, 500);
+  }
+});
+
+app.post('/api/ot-register/bulk-status', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { ids, status, comments } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return err(res, 'VALIDATION_ERROR', 'ids array is required', 400);
+    }
+    if (!['PENDING', 'APPROVED', 'REJECTED', 'COMP_OFF'].includes(status)) {
+      return err(res, 'VALIDATION_ERROR', 'Invalid OT status', 400);
+    }
+
+    const result = await stmts.bulkUpdateOtStatus.run(ids, {
+      status,
+      approved_by: req.user?.username || 'admin',
+      comments
+    });
+
+    await auditLog({
+      table: 'ot_records',
+      recordId: ids.join(','),
+      action: 'UPDATE',
+      newValues: { bulk_action: status, count: result.updated },
+      req
+    });
+
+    notifyDbChange('ot_records', { action: 'bulk_update_status', count: result.updated, status });
+    ok(res, { message: `Updated ${result.updated} OT records to ${status}`, updated: result.updated });
+  } catch (e) {
+    console.error('[POST /api/ot-register/bulk-status]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to update OT records: ' + e.message, 500);
+  }
+});
+
+app.delete('/api/ot-register/:id', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    await stmts.deleteOtRecord.run(id);
+
+    await auditLog({
+      table: 'ot_records',
+      recordId: String(id),
+      action: 'DELETE',
+      req
+    });
+
+    notifyDbChange('ot_records', { action: 'delete', otId: id });
+    ok(res, { message: 'OT record deleted successfully' });
+  } catch (e) {
+    console.error('[DELETE /api/ot-register/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to delete OT record: ' + e.message, 500);
+  }
+});
+
+// ══════════════════════════════════════════════
+// ADVANCED ATTENDANCE LOG & REGULARIZATION
+// ══════════════════════════════════════════════
+app.get('/api/attendance-log', authenticate, async (req, res) => {
+  try {
+    const { emp_id, dept, status, start_date, end_date, search, page = 1, limit = 20 } = req.query;
+    const offset = (Math.max(1, parseInt(page, 10)) - 1) * parseInt(limit, 10);
+    const result = await stmts.getDetailedAttendanceLog.all({
+      emp_id,
+      dept,
+      status,
+      start_date,
+      end_date,
+      search,
+      limit: parseInt(limit, 10),
+      offset
+    });
+    ok(res, { ...result, page: parseInt(page, 10), limit: parseInt(limit, 10) });
+  } catch (e) {
+    console.error('[GET /api/attendance-log]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch attendance log: ' + e.message, 500);
+  }
+});
+
+app.get('/api/attendance-log/stats', authenticate, async (req, res) => {
+  try {
+    const { date } = req.query;
+    const stats = await stmts.getAttendanceLogStats.get(date);
+    ok(res, { stats });
+  } catch (e) {
+    console.error('[GET /api/attendance-log/stats]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch attendance stats: ' + e.message, 500);
+  }
+});
+
+app.post('/api/attendance-log/regularize', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { att_id, emp_id, timestamp, status = 'Present', reason } = req.body;
+    if (!att_id && !emp_id) {
+      return err(res, 'VALIDATION_ERROR', 'att_id or emp_id is required', 400);
+    }
+    if (!reason) {
+      return err(res, 'VALIDATION_ERROR', 'Regularization reason is required', 400);
+    }
+
+    const regularized = await stmts.regularizeAttendance.run({
+      att_id,
+      emp_id,
+      timestamp: timestamp || new Date().toISOString(),
+      status,
+      reason,
+      regularized_by: req.user?.username || 'admin'
+    });
+
+    await auditLog({
+      table: 'attendance',
+      recordId: String(regularized.att_id),
+      action: att_id ? 'UPDATE' : 'INSERT',
+      newValues: { action: 'regularization', regularized, reason },
+      req
+    });
+
+    notifyDbChange('attendance', { action: 'regularize', attId: regularized.att_id });
+    ok(res, { message: 'Attendance regularized successfully', attendance: regularized });
+  } catch (e) {
+    console.error('[POST /api/attendance-log/regularize]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to regularize attendance: ' + e.message, 500);
+  }
+});
+
+// ══════════════════════════════════════════════
 // HEALTH CHECK
 // ══════════════════════════════════════════════
 app.get('/api/health', (req, res) => {

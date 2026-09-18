@@ -2510,6 +2510,593 @@
     </div>
   </div>
 
+  <!-- ── 📊 1. ATTENDANCE LOG MODAL & AUDIT LEDGER ── -->
+  <div id="attendance-log-modal" class="modal-overlay" style="display:none; z-index:9998;">
+    <div class="modal-box animate-zoom" style="max-width:1100px; width:96%; max-height:92vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.85); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:14px 20px; background:linear-gradient(135deg, #161b27, #1a2234); display:flex; justify-content:space-between; align-items:center">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:22px">📊</span>
+          <div>
+            <span class="modal-title" style="font-size:15px; font-weight:700; color:var(--tx)">Attendance Log & Audit Ledger</span>
+            <div style="font-size:11px; color:var(--mu)">Real-time punch verification ledger, biometric time logs, and manual regularization</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px">
+          <button type="button" class="btn btnp bsm" onclick="openRegularizeAttendanceModal()">+ Regularize Punch</button>
+          <button type="button" class="btn bsm" onclick="exportAttendanceLogCsv()">📥 Export CSV</button>
+          <button class="modal-close-x" onclick="closeAttendanceLogModal()">✕</button>
+        </div>
+      </div>
+
+      <!-- KPI Summary Cards -->
+      <div style="padding:12px 20px 6px 20px; background:var(--s1); border-bottom:1px solid var(--br); display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px">
+        <div style="background:var(--s2); border:1px solid var(--br); border-radius:6px; padding:10px; display:flex; flex-direction:column">
+          <span style="font-size:10.5px; color:var(--mu); font-weight:600; text-transform:uppercase">Total Punches Today</span>
+          <span id="attlog-stat-total" style="font-size:18px; font-weight:700; color:var(--tx); margin-top:2px">0</span>
+        </div>
+        <div style="background:var(--s2); border:1px solid var(--br); border-radius:6px; padding:10px; display:flex; flex-direction:column">
+          <span style="font-size:10.5px; color:var(--ok); font-weight:600; text-transform:uppercase">On-Time Punches</span>
+          <span id="attlog-stat-ontime" style="font-size:18px; font-weight:700; color:var(--ok); margin-top:2px">0</span>
+        </div>
+        <div style="background:var(--s2); border:1px solid var(--br); border-radius:6px; padding:10px; display:flex; flex-direction:column">
+          <span style="font-size:10.5px; color:var(--er); font-weight:600; text-transform:uppercase">Late Punches</span>
+          <span id="attlog-stat-late" style="font-size:18px; font-weight:700; color:var(--er); margin-top:2px">0</span>
+        </div>
+        <div style="background:var(--s2); border:1px solid var(--br); border-radius:6px; padding:10px; display:flex; flex-direction:column">
+          <span style="font-size:10.5px; color:var(--ac); font-weight:600; text-transform:uppercase">Unique Staff Present</span>
+          <span id="attlog-stat-unique" style="font-size:18px; font-weight:700; color:var(--ac); margin-top:2px">0</span>
+        </div>
+        <div style="background:var(--s2); border:1px solid var(--br); border-radius:6px; padding:10px; display:flex; flex-direction:column">
+          <span style="font-size:10.5px; color:var(--wn); font-weight:600; text-transform:uppercase">On-Time Compliance</span>
+          <span id="attlog-stat-rate" style="font-size:18px; font-weight:700; color:var(--wn); margin-top:2px">100%</span>
+        </div>
+      </div>
+
+      <!-- Filter Bar -->
+      <div style="padding:10px 20px; background:var(--s2); border-bottom:1px solid var(--br); display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+        <input type="text" id="attlog-search" class="fi" placeholder="🔍 Search employee name or ID..." style="flex:1; min-width:180px; padding:6px 10px; font-size:12px" oninput="loadAttendanceLogGrid(1)" />
+        <div style="display:flex; align-items:center; gap:6px">
+          <span style="font-size:11px; color:var(--mu)">From:</span>
+          <input type="date" id="attlog-start-date" class="fi" style="padding:4px 8px; font-size:11.5px" onchange="loadAttendanceLogGrid(1)" />
+          <span style="font-size:11px; color:var(--mu)">To:</span>
+          <input type="date" id="attlog-end-date" class="fi" style="padding:4px 8px; font-size:11.5px" onchange="loadAttendanceLogGrid(1)" />
+        </div>
+        <select id="attlog-dept-filter" class="fs" style="padding:6px 8px; font-size:12px" onchange="loadAttendanceLogGrid(1)">
+          <option value="">All Departments</option>
+        </select>
+        <select id="attlog-status-filter" class="fs" style="padding:6px 8px; font-size:12px" onchange="loadAttendanceLogGrid(1)">
+          <option value="">All Statuses</option>
+          <option value="Present">Present (On-Time)</option>
+          <option value="Late">Late</option>
+        </select>
+        <button type="button" class="btn bsm" onclick="resetAttendanceLogFilters()">Reset</button>
+        <button type="button" class="btn bsm" onclick="loadAttendanceLogGrid(1)">🔄 Refresh</button>
+      </div>
+
+      <!-- Table Body -->
+      <div class="modal-body" style="padding:0; overflow-y:auto; flex:1">
+        <table class="gt" style="width:100%; border-collapse:collapse; font-size:12px">
+          <thead>
+            <tr style="border-bottom:1px solid var(--br); color:var(--mu); background:var(--s1); position:sticky; top:0; z-index:2">
+              <th style="padding:8px 12px; text-align:left">Emp ID</th>
+              <th style="padding:8px 12px; text-align:left">Employee Name</th>
+              <th style="padding:8px 12px; text-align:left">Department & Role</th>
+              <th style="padding:8px 12px; text-align:left">Punch Timestamp</th>
+              <th style="padding:8px 12px; text-align:center">Status</th>
+              <th style="padding:8px 12px; text-align:left">Logged Via / Notes</th>
+              <th style="padding:8px 12px; text-align:center">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="attlog-tbody">
+            <!-- Populated dynamically -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-ftr" style="padding:10px 20px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center">
+        <span id="attlog-pagination-label" style="font-size:11px; color:var(--mu)">Showing 0 entries</span>
+        <div id="attlog-pagination-controls" style="display:flex; gap:6px; align-items:center">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── REGULARIZE ATTENDANCE MODAL ── -->
+  <div id="regularize-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:480px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438)">
+        <span class="modal-title" style="font-size:14px; font-weight:700">Attendance Regularization (HR / Admin)</span>
+        <button class="modal-close-x" onclick="closeRegularizeAttendanceModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <form id="regularize-form" onsubmit="saveRegularizeAttendance(event)">
+          <input type="hidden" id="reg-att-id" />
+          <div class="fg" style="margin-bottom:10px">
+            <label class="fl">Employee *</label>
+            <select class="fs" id="reg-emp-id" required>
+              <option value="">Select Employee...</option>
+            </select>
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1.5fr 1fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Punch Date & Time *</label>
+              <input type="datetime-local" class="fi" id="reg-timestamp" required />
+            </div>
+            <div class="fg">
+              <label class="fl">Attendance Status *</label>
+              <select class="fs" id="reg-status" required>
+                <option value="Present">Present (On-Time)</option>
+                <option value="Late">Late</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="fg" style="margin-bottom:14px">
+            <label class="fl">Regularization Reason / Approval Note *</label>
+            <textarea class="fi" id="reg-reason" placeholder="e.g., Biometric terminal network timeout; verified with manager" required rows="3" style="resize:vertical"></textarea>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:8px">
+            <button type="button" class="btn bsm" onclick="closeRegularizeAttendanceModal()">Cancel</button>
+            <button type="submit" class="btn btnp bsm">💾 Save & Regularize</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 📍 2. GEOFENCES MASTER MODAL ── -->
+  <div id="geofences-modal" class="modal-overlay" style="display:none; z-index:9998;">
+    <div class="modal-box animate-zoom" style="max-width:980px; width:96%; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.85); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:14px 20px; background:linear-gradient(135deg, #161b27, #1a2234); display:flex; justify-content:space-between; align-items:center">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:22px">📍</span>
+          <div>
+            <span class="modal-title" style="font-size:15px; font-weight:700; color:var(--tx)">Geofences Master (GPS Boundaries & Mobile Zones)</span>
+            <div style="font-size:11px; color:var(--mu)">Configure GPS coordinate perimeters, allowed radius, enforcement modes, and departmental rules</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px">
+          <button type="button" class="btn bsm" onclick="openTestCoordsModal()">📡 Test GPS Coordinates</button>
+          <button type="button" class="btn btnp bsm" onclick="openAddGeofenceModal()">+ Add Geofence</button>
+          <button class="modal-close-x" onclick="closeGeofencesModal()">✕</button>
+        </div>
+      </div>
+
+      <div class="modal-body" style="padding:16px 20px; overflow-y:auto; flex:1">
+        <div id="geofences-cards" class="ms-grid" style="grid-template-columns:repeat(auto-fill, minmax(290px, 1fr)); gap:14px">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <div class="modal-ftr" style="padding:10px 20px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center">
+        <span id="geofence-count-label" style="font-size:11px; color:var(--mu)">Loading geofences...</span>
+        <button type="button" class="btn bsm" onclick="closeGeofencesModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ADD / EDIT GEOFENCE FORM MODAL ── -->
+  <div id="geofence-form-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:540px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438)">
+        <span class="modal-title" id="geofence-form-title" style="font-size:14px; font-weight:700">Add Geofence Boundary</span>
+        <button class="modal-close-x" onclick="closeGeofenceFormModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <form id="geofence-form" onsubmit="saveGeofenceForm(event)">
+          <input type="hidden" id="geo-id" />
+          <div class="ms-grid" style="grid-template-columns: 1fr 2fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Zone Code *</label>
+              <input class="fi" id="geo-code" placeholder="BLR_HQ" required maxlength="20" style="text-transform:uppercase" />
+            </div>
+            <div class="fg">
+              <label class="fl">Zone Name *</label>
+              <input class="fi" id="geo-name" placeholder="Corporate HQ Campus" required maxlength="100" />
+            </div>
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Latitude *</label>
+              <input type="number" step="0.0000001" class="fi" id="geo-lat" placeholder="12.9716000" required />
+            </div>
+            <div class="fg">
+              <label class="fl">Longitude *</label>
+              <input type="number" step="0.0000001" class="fi" id="geo-lon" placeholder="77.5946000" required />
+            </div>
+            <div class="fg">
+              <label class="fl">Radius (m) *</label>
+              <input type="number" min="10" max="50000" class="fi" id="geo-radius" value="150" required />
+            </div>
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Enforcement Mode</label>
+              <select class="fs" id="geo-enforcement">
+                <option value="STRICT">STRICT (Reject Outside Punches)</option>
+                <option value="WARNING">WARNING (Allow & Flag Outside)</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="fl">Allowed Departments</label>
+              <select class="fs" id="geo-allowed-depts" multiple style="height:60px">
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Office IP Range (CIDR/Subnet)</label>
+              <input class="fi" id="geo-ip" placeholder="192.168.1.0/24" maxlength="100" />
+            </div>
+            <div class="fg">
+              <label class="fl">Campus WiFi BSSID (Optional)</label>
+              <input class="fi" id="geo-wifi" placeholder="e.g. 00:14:22:01:23:45" maxlength="100" />
+            </div>
+          </div>
+
+          <div class="ms-toggle-card" style="margin-bottom:14px; padding:8px 12px">
+            <div>
+              <div style="font-weight:600; font-size:12px; color:var(--tx)">Active Status</div>
+              <div style="font-size:10px; color:var(--mu)">Active zones enforce mobile GPS biometric validations.</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="geo-active" checked />
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:8px">
+            <button type="button" class="btn bsm" onclick="closeGeofenceFormModal()">Cancel</button>
+            <button type="submit" class="btn btnp bsm">💾 Save Geofence</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TEST GPS COORDS MODAL ── -->
+  <div id="geofence-test-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:500px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438)">
+        <span class="modal-title" style="font-size:14px; font-weight:700">📡 Test GPS Coordinates against Geofences</span>
+        <button class="modal-close-x" onclick="closeTestCoordsModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <div style="margin-bottom:12px">
+          <label class="fl">Quick Location Presets</label>
+          <div style="display:flex; gap:6px; flex-wrap:wrap">
+            <button type="button" class="btn bsm" onclick="setTestCoordPreset(12.9716000, 77.5946000)">🏢 Soukhya HQ (BLR)</button>
+            <button type="button" class="btn bsm" onclick="setTestCoordPreset(12.9698000, 77.7499000)">🏗️ Whitefield SEZ</button>
+            <button type="button" class="btn bsm" onclick="setTestCoordPreset(12.3051000, 76.6551000)">🌿 Mysore Plant</button>
+            <button type="button" class="btn bsm" onclick="setTestCoordPreset(13.0827, 80.2707)">❌ Remote Chennai (Outside)</button>
+          </div>
+        </div>
+
+        <div class="ms-grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px">
+          <div class="fg">
+            <label class="fl">Test Latitude</label>
+            <input type="number" step="0.0000001" class="fi" id="test-geo-lat" value="12.9716000" />
+          </div>
+          <div class="fg">
+            <label class="fl">Test Longitude</label>
+            <input type="number" step="0.0000001" class="fi" id="test-geo-lon" value="77.5946000" />
+          </div>
+        </div>
+
+        <button type="button" class="btn btnp bsm" style="width:100%; margin-bottom:14px" onclick="runGeofenceVerificationTest()">⚡ Verify Coordinates</button>
+
+        <div id="test-geo-result" style="display:none; padding:12px; border-radius:6px; border:1px solid var(--br); background:var(--s2); font-size:12px">
+          <!-- Result rendered here -->
+        </div>
+      </div>
+      <div class="modal-ftr" style="padding:10px 16px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:flex-end">
+        <button type="button" class="btn bsm" onclick="closeTestCoordsModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 🔢 3. MANAGE WORK CODES MODAL ── -->
+  <div id="work-codes-modal" class="modal-overlay" style="display:none; z-index:9998;">
+    <div class="modal-box animate-zoom" style="max-width:960px; width:96%; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.85); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:14px 20px; background:linear-gradient(135deg, #161b27, #1a2234); display:flex; justify-content:space-between; align-items:center">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:22px">🔢</span>
+          <div>
+            <span class="modal-title" style="font-size:15px; font-weight:700; color:var(--tx)">Work Codes Master (Projects & Cost Centers)</span>
+            <div style="font-size:11px; color:var(--mu)">Configure job activities, billing multipliers, and overtime eligibility for biometric punching</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px">
+          <button type="button" class="btn btnp bsm" onclick="openAddWorkCodeModal()">+ Add Work Code</button>
+          <button class="modal-close-x" onclick="closeWorkCodesModal()">✕</button>
+        </div>
+      </div>
+
+      <div class="modal-body" style="padding:16px 20px; overflow-y:auto; flex:1">
+        <div id="work-codes-cards" class="ms-grid" style="grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:14px">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <div class="modal-ftr" style="padding:10px 20px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center">
+        <span id="work-code-count-label" style="font-size:11px; color:var(--mu)">Loading work codes...</span>
+        <button type="button" class="btn bsm" onclick="closeWorkCodesModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ADD / EDIT WORK CODE FORM MODAL ── -->
+  <div id="work-code-form-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:480px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438)">
+        <span class="modal-title" id="wc-form-title" style="font-size:14px; font-weight:700">Add Work Code</span>
+        <button class="modal-close-x" onclick="closeWorkCodeFormModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <form id="wc-form" onsubmit="saveWorkCodeForm(event)">
+          <input type="hidden" id="wc-id" />
+          <div class="ms-grid" style="grid-template-columns: 1fr 2fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Work Code *</label>
+              <input class="fi" id="wc-code" placeholder="DEV_PROD" required maxlength="20" style="text-transform:uppercase" />
+            </div>
+            <div class="fg">
+              <label class="fl">Activity / Project Name *</label>
+              <input class="fi" id="wc-name" placeholder="Core Engineering Sprint" required maxlength="100" />
+            </div>
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1.5fr 1fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Category</label>
+              <select class="fs" id="wc-category">
+                <option value="BILLABLE_PROJECT">Billable Client Project</option>
+                <option value="CLIENT_ONSITE">Client Onsite / Field</option>
+                <option value="INTERNAL_OPS">Internal Operations & Support</option>
+                <option value="TRAINING_LD">Learning & Development</option>
+                <option value="FACILITY_MAINT">Facility & Hardware Maintenance</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="fl">Billing Multiplier</label>
+              <input type="number" step="0.05" min="0.5" max="10.0" class="fi" id="wc-multiplier" value="1.00" required />
+            </div>
+          </div>
+
+          <div class="fg" style="margin-bottom:12px">
+            <label class="fl">Description / Cost Center Notes</label>
+            <input class="fi" id="wc-desc" placeholder="Scope and invoicing criteria" maxlength="255" />
+          </div>
+
+          <div class="ms-toggle-card" style="margin-bottom:10px; padding:8px 12px">
+            <div>
+              <div style="font-weight:600; font-size:12px; color:var(--tx)">Overtime Eligible</div>
+              <div style="font-size:10px; color:var(--mu)">Punches under this code qualify for overtime register computation.</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="wc-ot-eligible" checked />
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div class="ms-toggle-card" style="margin-bottom:14px; padding:8px 12px">
+            <div>
+              <div style="font-weight:600; font-size:12px; color:var(--tx)">Active Status</div>
+              <div style="font-size:10px; color:var(--mu)">Active work codes are available for biometric check-in selection.</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="wc-active" checked />
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:8px">
+            <button type="button" class="btn bsm" onclick="closeWorkCodeFormModal()">Cancel</button>
+            <button type="submit" class="btn btnp bsm">💾 Save Work Code</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ⏱️ 4. EMPLOYEE OVERTIME REGISTER MODAL ── -->
+  <div id="ot-register-modal" class="modal-overlay" style="display:none; z-index:9998;">
+    <div class="modal-box animate-zoom" style="max-width:1150px; width:96%; max-height:92vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.85); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:14px 20px; background:linear-gradient(135deg, #161b27, #1a2234); display:flex; justify-content:space-between; align-items:center">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:22px">⏱️</span>
+          <div>
+            <span class="modal-title" style="font-size:15px; font-weight:700; color:var(--tx)">Employee Overtime (OT) Register & Policy Ledger</span>
+            <div style="font-size:11px; color:var(--mu)">Automated overtime rules: 1.5x standard day, 2.0x weekly off, 2.5x Karnataka Gazetted Holiday</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px">
+          <button type="button" class="btn btnp bsm" onclick="openOtAutoCalcModal()">⚡ Auto-Calculate OT</button>
+          <button type="button" class="btn bsm" onclick="openAddOtManualModal()">+ Manual OT Entry</button>
+          <button type="button" class="btn bsm" onclick="bulkApproveSelectedOt()">✓ Bulk Approve</button>
+          <button class="modal-close-x" onclick="closeOtRegisterModal()">✕</button>
+        </div>
+      </div>
+
+      <!-- OT Policy Highlights Bar -->
+      <div style="padding:8px 20px; background:var(--s1); border-bottom:1px solid var(--br); display:flex; gap:14px; align-items:center; flex-wrap:wrap; font-size:11.5px">
+        <span style="font-weight:700; color:var(--tx)">Karnataka Labor Act Rules:</span>
+        <span style="padding:3px 8px; border-radius:4px; background:rgba(79,142,247,0.15); border:1px solid rgba(79,142,247,0.3); color:#4f8ef7; font-weight:600">Standard Working Day: 1.5x</span>
+        <span style="padding:3px 8px; border-radius:4px; background:rgba(245,158,11,0.15); border:1px solid rgba(245,158,11,0.3); color:#f59e0b; font-weight:600">Weekly Off (Sunday/Sat): 2.0x</span>
+        <span style="padding:3px 8px; border-radius:4px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#ef4444; font-weight:600">Gazetted Public Holiday: 2.5x</span>
+      </div>
+
+      <!-- Filter Bar -->
+      <div style="padding:10px 20px; background:var(--s2); border-bottom:1px solid var(--br); display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+        <div style="display:flex; align-items:center; gap:6px">
+          <span style="font-size:11px; color:var(--mu)">Date Range:</span>
+          <input type="date" id="ot-start-date" class="fi" style="padding:4px 8px; font-size:11.5px" onchange="loadOtRegisterGrid(1)" />
+          <span style="font-size:11px; color:var(--mu)">To:</span>
+          <input type="date" id="ot-end-date" class="fi" style="padding:4px 8px; font-size:11.5px" onchange="loadOtRegisterGrid(1)" />
+        </div>
+        <select id="ot-status-filter" class="fs" style="padding:6px 8px; font-size:12px" onchange="loadOtRegisterGrid(1)">
+          <option value="">All Statuses</option>
+          <option value="PENDING">PENDING (Awaiting Approval)</option>
+          <option value="APPROVED">APPROVED (Ready for Payroll)</option>
+          <option value="COMP_OFF">COMP_OFF (Compensatory Off)</option>
+          <option value="REJECTED">REJECTED</option>
+        </select>
+        <button type="button" class="btn bsm" onclick="resetOtFilters()">Reset</button>
+        <button type="button" class="btn bsm" onclick="loadOtRegisterGrid(1)">🔄 Refresh</button>
+      </div>
+
+      <!-- Table Body -->
+      <div class="modal-body" style="padding:0; overflow-y:auto; flex:1">
+        <table class="gt" style="width:100%; border-collapse:collapse; font-size:12px">
+          <thead>
+            <tr style="border-bottom:1px solid var(--br); color:var(--mu); background:var(--s1); position:sticky; top:0; z-index:2">
+              <th style="padding:8px 10px; width:34px; text-align:center"><input type="checkbox" id="ot-select-all" onchange="toggleSelectAllOtRecords(this.checked)" /></th>
+              <th style="padding:8px 10px; text-align:left">OT Date</th>
+              <th style="padding:8px 10px; text-align:left">Employee</th>
+              <th style="padding:8px 10px; text-align:left">Department</th>
+              <th style="padding:8px 10px; text-align:center">Sched / Actual</th>
+              <th style="padding:8px 10px; text-align:center">OT Hours</th>
+              <th style="padding:8px 10px; text-align:center">Rate / Multiplier</th>
+              <th style="padding:8px 10px; text-align:center">Status</th>
+              <th style="padding:8px 10px; text-align:left">Approval / Notes</th>
+              <th style="padding:8px 10px; text-align:center">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="ot-tbody">
+            <!-- Populated dynamically -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-ftr" style="padding:10px 20px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center">
+        <span id="ot-pagination-label" style="font-size:11px; color:var(--mu)">Showing 0 OT records</span>
+        <div id="ot-pagination-controls" style="display:flex; gap:6px; align-items:center">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ADD MANUAL OT ENTRY FORM MODAL ── -->
+  <div id="ot-entry-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:500px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438)">
+        <span class="modal-title" style="font-size:14px; font-weight:700">Manual Overtime Record</span>
+        <button class="modal-close-x" onclick="closeAddOtManualModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <form id="ot-entry-form" onsubmit="saveOtManualEntry(event)">
+          <div class="fg" style="margin-bottom:10px">
+            <label class="fl">Employee *</label>
+            <select class="fs" id="otm-emp-id" required>
+              <option value="">Select Employee...</option>
+            </select>
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">OT Date *</label>
+              <input type="date" class="fi" id="otm-date" required />
+            </div>
+            <div class="fg">
+              <label class="fl">Shift</label>
+              <select class="fs" id="otm-shift">
+                <option value="SHIFT_GEN">General (09:00 - 18:00)</option>
+                <option value="SHIFT_MOR">Morning (06:00 - 14:30)</option>
+                <option value="SHIFT_EVE">Evening (14:00 - 22:30)</option>
+                <option value="SHIFT_NIT">Night (22:00 - 06:30)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Sched Hours</label>
+              <input type="number" step="0.5" min="0" max="24" class="fi" id="otm-sched-hrs" value="8.0" />
+            </div>
+            <div class="fg">
+              <label class="fl">Actual Hours *</label>
+              <input type="number" step="0.5" min="0" max="24" class="fi" id="otm-actual-hrs" value="10.5" required oninput="autoCalculateOtDiff()" />
+            </div>
+            <div class="fg">
+              <label class="fl">OT Hours *</label>
+              <input type="number" step="0.5" min="0" max="24" class="fi" id="otm-ot-hrs" value="2.5" required />
+            </div>
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">OT Rate Multiplier</label>
+              <select class="fs" id="otm-multiplier">
+                <option value="1.5">1.5x (Standard Working Day)</option>
+                <option value="2.0">2.0x (Weekly Off / Sunday)</option>
+                <option value="2.5">2.5x (Public Gazetted Holiday)</option>
+                <option value="1.0">1.0x (Straight Time)</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="fl">Rate Type</label>
+              <select class="fs" id="otm-rate-type">
+                <option value="STANDARD_DAY">Standard Day</option>
+                <option value="WEEKLY_OFF">Weekly Off</option>
+                <option value="PUBLIC_HOLIDAY">Public Holiday</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="fg" style="margin-bottom:14px">
+            <label class="fl">Comments / Task Description</label>
+            <input class="fi" id="otm-comments" placeholder="e.g. Critical release deployment and client data migration" maxlength="255" />
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:8px">
+            <button type="button" class="btn bsm" onclick="closeAddOtManualModal()">Cancel</button>
+            <button type="submit" class="btn btnp bsm">💾 Submit OT Record</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── AUTO-CALCULATE OT MODAL ── -->
+  <div id="ot-calc-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:440px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438)">
+        <span class="modal-title" style="font-size:14px; font-weight:700">⚡ Auto-Calculate Overtime from Punches</span>
+        <button class="modal-close-x" onclick="closeOtAutoCalcModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <p style="font-size:12px; color:var(--mu); margin-bottom:12px">
+          The engine compares daily biometric punch spans against standard shift hours (default 8.0h) and applies Karnataka state multiplier rules automatically.
+        </p>
+
+        <div class="fg" style="margin-bottom:10px">
+          <label class="fl">Select Calculation Date *</label>
+          <input type="date" class="fi" id="ot-calc-date" required />
+        </div>
+
+        <div class="fg" style="margin-bottom:14px">
+          <label class="fl">Standard Shift Hours Threshold</label>
+          <input type="number" step="0.5" class="fi" id="ot-calc-threshold" value="8.0" />
+        </div>
+
+        <div id="ot-calc-result-box" style="display:none; padding:10px; border-radius:6px; background:var(--s2); border:1px solid var(--br); margin-bottom:14px; font-size:12px"></div>
+
+        <div style="display:flex; justify-content:flex-end; gap:8px">
+          <button type="button" class="btn bsm" onclick="closeOtAutoCalcModal()">Cancel</button>
+          <button type="button" class="btn btnp bsm" onclick="runOtAutoCalculation()">⚡ Calculate & Populate Ledger</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ── AUTHENTICATION LOGIN MODAL ── -->
   <div id="login-modal" class="modal-overlay" style="display:none; z-index:9999;">
     <div class="modal-box animate-zoom" style="max-width:440px; box-shadow:0 24px 64px rgba(0,0,0,0.85); border:1px solid var(--br);">

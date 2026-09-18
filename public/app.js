@@ -2501,16 +2501,16 @@ function openMenuDrawer(section) {
               <span id="sub-att-arrow" style="font-size:10px; color:var(--mu); transition:transform 0.2s">▶</span>
             </div>
             <div id="sub-att" class="menu-submenu" style="display:none; padding-left:14px; margin-left:12px; border-left:2px solid var(--ac); margin-top:2px; margin-bottom:4px">
-              <div class="menu-list-item" onclick="closeInfoDrawer(); showTab('hr', null)">
+              <div class="menu-list-item" onclick="closeInfoDrawer(); openAttendanceLogModal()">
                 <span class="menu-icon">📊</span> <span class="menu-text">Attendance Log</span>
               </div>
-              <div class="menu-list-item" onclick="notify('Geofences config loaded.', 'ok')">
+              <div class="menu-list-item" onclick="closeInfoDrawer(); openGeofencesModal()">
                 <span class="menu-icon">📍</span> <span class="menu-text">Geofences</span>
               </div>
-              <div class="menu-list-item" onclick="notify('Manage Work Code config loaded.', 'ok')">
+              <div class="menu-list-item" onclick="closeInfoDrawer(); openWorkCodesModal()">
                 <span class="menu-icon">🔢</span> <span class="menu-text">Manage Work Code</span>
               </div>
-              <div class="menu-list-item" onclick="notify('Employee OT Register config loaded.', 'ok')">
+              <div class="menu-list-item" onclick="closeInfoDrawer(); openOtRegisterModal()">
                 <span class="menu-icon">⏱️</span> <span class="menu-text">Employee OT Register</span>
               </div>
             </div>
@@ -6519,6 +6519,1203 @@ window.selectAllEmployeeCohortMembers = selectAllEmployeeCohortMembers;
 window.updateEmployeeCohortSelectedCount = updateEmployeeCohortSelectedCount;
 window.saveEmployeeCohortGroupMembers = saveEmployeeCohortGroupMembers;
 
+// ══════════════════════════════════════════════
+// 📊 ATTENDANCE LOG & AUDIT LEDGER CONTROLLERS
+// ══════════════════════════════════════════════
+let currentAttLogPage = 1;
+const attLogLimit = 20;
+
+async function openAttendanceLogModal() {
+  const m = document.getElementById('attendance-log-modal');
+  if (!m) return;
+  m.style.display = 'flex';
+
+  populateAttendanceLogDeptFilter();
+  populateRegularizeEmployeeDropdown();
+  await loadAttendanceLogStats();
+  await loadAttendanceLogGrid(1);
+}
+
+function closeAttendanceLogModal() {
+  const m = document.getElementById('attendance-log-modal');
+  if (m) m.style.display = 'none';
+}
+
+function populateAttendanceLogDeptFilter() {
+  const sel = document.getElementById('attlog-dept-filter');
+  if (!sel) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">All Departments</option>';
+  const depts = state.departments || [];
+  depts.forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d.name;
+    opt.textContent = d.name;
+    sel.appendChild(opt);
+  });
+  if (current) sel.value = current;
+}
+
+function populateRegularizeEmployeeDropdown() {
+  const sel = document.getElementById('reg-emp-id');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Select Employee...</option>';
+  const emps = state.employees || [];
+  emps.forEach(e => {
+    const opt = document.createElement('option');
+    opt.value = e.id;
+    opt.textContent = `${e.name} (${e.id}) - ${e.department || 'Operations'}`;
+    sel.appendChild(opt);
+  });
+}
+
+async function loadAttendanceLogStats() {
+  try {
+    const res = await api('/attendance-log/stats');
+    if (res && res.success && res.data?.stats) {
+      const s = res.data.stats;
+      const setVal = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val;
+      };
+      setVal('attlog-stat-total', s.total_punches || 0);
+      setVal('attlog-stat-ontime', s.on_time_count || 0);
+      setVal('attlog-stat-late', s.late_count || 0);
+      setVal('attlog-stat-unique', s.unique_employees || 0);
+      setVal('attlog-stat-rate', `${s.on_time_rate || 100}%`);
+    }
+  } catch (err) {
+    console.warn('[loadAttendanceLogStats]', err);
+  }
+}
+
+async function loadAttendanceLogGrid(page = 1) {
+  currentAttLogPage = page;
+  const search = document.getElementById('attlog-search')?.value.trim() || '';
+  const startDate = document.getElementById('attlog-start-date')?.value || '';
+  const endDate = document.getElementById('attlog-end-date')?.value || '';
+  const dept = document.getElementById('attlog-dept-filter')?.value || '';
+  const status = document.getElementById('attlog-status-filter')?.value || '';
+
+  const tbody = document.getElementById('attlog-tbody');
+  if (tbody) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:var(--mu)">Loading attendance logs...</td></tr>';
+  }
+
+  const queryParams = new URLSearchParams({
+    page: String(page),
+    limit: String(attLogLimit)
+  });
+  if (search) queryParams.append('search', search);
+  if (startDate) queryParams.append('start_date', startDate);
+  if (endDate) queryParams.append('end_date', endDate);
+  if (dept) queryParams.append('dept', dept);
+  if (status) queryParams.append('status', status);
+
+  try {
+    const res = await api(`/attendance-log?${queryParams.toString()}`);
+    if (res && res.success) {
+      renderAttendanceLogRows(res.data?.rows || []);
+      renderAttendanceLogPagination(res.data?.total || 0, page, attLogLimit);
+    } else {
+      if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:20px; color:var(--er)">Failed to load attendance logs: ${res?.error?.message || 'Error'}</td></tr>`;
+    }
+  } catch (err) {
+    if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:20px; color:var(--er)">Network error: ${err.message}</td></tr>`;
+  }
+}
+
+function renderAttendanceLogRows(logs) {
+  const tbody = document.getElementById('attlog-tbody');
+  if (!tbody) return;
+
+  if (!logs || logs.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:24px; color:var(--mu)">No attendance punch records found matching current filters.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = logs.map(l => {
+    const isLate = l.status === 'Late';
+    const statusBadge = isLate
+      ? `<span class="mode-badge er" style="font-size:10px; padding:2px 8px">⏰ Late</span>`
+      : `<span class="mode-badge ok" style="font-size:10px; padding:2px 8px">✓ Present</span>`;
+
+    const tsDisplay = l.timestamp ? new Date(l.timestamp).toLocaleString('en-IN', {
+      year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit'
+    }) : '—';
+
+    const safeNotes = escapeHtml(l.logged_by || 'FACIAL_RECOGNITION');
+    const safeEmpId = escapeHtml(l.emp_id);
+    const safeName = escapeHtml(l.name);
+    const safeDept = escapeHtml(l.dept || '—');
+    const safeRole = escapeHtml(l.role || 'Staff');
+
+    return `
+      <tr style="border-bottom:1px solid var(--br); transition:background 0.15s" onmouseover="this.style.background='var(--s1)'" onmouseout="this.style.background=''">
+        <td style="padding:8px 12px; font-family:var(--mo); font-weight:600; color:var(--ac)">${safeEmpId}</td>
+        <td style="padding:8px 12px">
+          <div style="font-weight:600; color:var(--tx)">${safeName}</div>
+        </td>
+        <td style="padding:8px 12px">
+          <div style="color:var(--tx); font-size:11.5px">${safeDept}</div>
+          <div style="color:var(--mu); font-size:10.5px">${safeRole}</div>
+        </td>
+        <td style="padding:8px 12px; font-family:var(--mo); font-size:11.5px; color:var(--tx)">${tsDisplay}</td>
+        <td style="padding:8px 12px; text-align:center">${statusBadge}</td>
+        <td style="padding:8px 12px; font-size:11px; color:var(--mu); max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${safeNotes}">
+          ${safeNotes}
+        </td>
+        <td style="padding:8px 12px; text-align:center">
+          <button type="button" class="btn bsm" style="padding:2px 6px; font-size:10.5px" onclick="openRegularizeAttendanceModal(${l.att_id}, '${safeEmpId}', '${l.timestamp}', '${l.status}')">✏️ Regularize</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function renderAttendanceLogPagination(total, page, limit) {
+  const lbl = document.getElementById('attlog-pagination-label');
+  const ctrl = document.getElementById('attlog-pagination-controls');
+  if (lbl) {
+    const start = total === 0 ? 0 : (page - 1) * limit + 1;
+    const end = Math.min(total, page * limit);
+    lbl.textContent = `Showing ${start}-${end} of ${total} entries`;
+  }
+  if (!ctrl) return;
+
+  const totalPages = Math.ceil(total / limit) || 1;
+  let html = `
+    <button type="button" class="btn bsm" ${page <= 1 ? 'disabled' : ''} onclick="loadAttendanceLogGrid(${page - 1})">◀ Prev</button>
+    <span style="font-size:11px; color:var(--tx); padding:0 6px">Page ${page} of ${totalPages}</span>
+    <button type="button" class="btn bsm" ${page >= totalPages ? 'disabled' : ''} onclick="loadAttendanceLogGrid(${page + 1})">Next ▶</button>
+  `;
+  ctrl.innerHTML = html;
+}
+
+function resetAttendanceLogFilters() {
+  const s = document.getElementById('attlog-search');
+  const sd = document.getElementById('attlog-start-date');
+  const ed = document.getElementById('attlog-end-date');
+  const d = document.getElementById('attlog-dept-filter');
+  const st = document.getElementById('attlog-status-filter');
+  if (s) s.value = '';
+  if (sd) sd.value = '';
+  if (ed) ed.value = '';
+  if (d) d.value = '';
+  if (st) st.value = '';
+  loadAttendanceLogGrid(1);
+}
+
+function exportAttendanceLogCsv() {
+  const search = document.getElementById('attlog-search')?.value.trim() || '';
+  const startDate = document.getElementById('attlog-start-date')?.value || '';
+  const endDate = document.getElementById('attlog-end-date')?.value || '';
+  const dept = document.getElementById('attlog-dept-filter')?.value || '';
+  const status = document.getElementById('attlog-status-filter')?.value || '';
+
+  const queryParams = new URLSearchParams({ page: '1', limit: '5000' });
+  if (search) queryParams.append('search', search);
+  if (startDate) queryParams.append('start_date', startDate);
+  if (endDate) queryParams.append('end_date', endDate);
+  if (dept) queryParams.append('dept', dept);
+  if (status) queryParams.append('status', status);
+
+  api(`/attendance-log?${queryParams.toString()}`).then(res => {
+    if (!res || !res.success || !res.data?.rows?.length) {
+      notify('No attendance data to export', 'wn');
+      return;
+    }
+    const rows = res.data.rows;
+    let csv = 'Emp ID,Employee Name,Department,Role,Timestamp,Status,Notes\n';
+    rows.forEach(r => {
+      csv += `"${r.emp_id}","${(r.name || '').replace(/"/g, '""')}","${(r.dept || '').replace(/"/g, '""')}","${(r.role || '').replace(/"/g, '""')}","${r.timestamp}","${r.status}","${(r.logged_by || '').replace(/"/g, '""')}"\n`;
+    });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `soukhya_attendance_log_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    notify('Attendance log exported successfully', 'ok');
+  }).catch(err => {
+    notify(`Export failed: ${err.message}`, 'er');
+  });
+}
+
+function openRegularizeAttendanceModal(attId = null, empId = '', timestamp = '', status = 'Present') {
+  const m = document.getElementById('regularize-modal');
+  if (!m) return;
+  m.style.display = 'flex';
+
+  populateRegularizeEmployeeDropdown();
+
+  document.getElementById('reg-att-id').value = attId || '';
+  if (empId) document.getElementById('reg-emp-id').value = empId;
+  document.getElementById('reg-status').value = status || 'Present';
+  document.getElementById('reg-reason').value = '';
+
+  let dtVal = '';
+  if (timestamp) {
+    const d = new Date(timestamp);
+    dtVal = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  } else {
+    const now = new Date();
+    dtVal = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  }
+  document.getElementById('reg-timestamp').value = dtVal;
+}
+
+function closeRegularizeAttendanceModal() {
+  const m = document.getElementById('regularize-modal');
+  if (m) m.style.display = 'none';
+}
+
+async function saveRegularizeAttendance(event) {
+  if (event) event.preventDefault();
+  const attId = document.getElementById('reg-att-id')?.value || null;
+  const empId = document.getElementById('reg-emp-id')?.value;
+  const timestamp = document.getElementById('reg-timestamp')?.value;
+  const status = document.getElementById('reg-status')?.value;
+  const reason = document.getElementById('reg-reason')?.value.trim();
+
+  if (!empId) {
+    notify('Please select an employee', 'wn');
+    return;
+  }
+  if (!reason) {
+    notify('Please provide a regularization reason', 'wn');
+    return;
+  }
+
+  try {
+    const payload = {
+      emp_id: empId,
+      timestamp,
+      status,
+      reason
+    };
+    if (attId) payload.att_id = parseInt(attId, 10);
+
+    const res = await api('/attendance-log/regularize', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+
+    if (res && res.success) {
+      notify('Attendance punch regularized successfully!', 'ok');
+      closeRegularizeAttendanceModal();
+      await loadAttendanceLogStats();
+      await loadAttendanceLogGrid(currentAttLogPage);
+    } else {
+      notify(`Regularization failed: ${res?.error?.message || 'Server error'}`, 'er');
+    }
+  } catch (err) {
+    notify(`Error regularizing attendance: ${err.message}`, 'er');
+  }
+}
+
+// ══════════════════════════════════════════════
+// 📍 GEOFENCES CONTROLLERS
+// ══════════════════════════════════════════════
+let geofencesData = [];
+
+async function openGeofencesModal() {
+  const m = document.getElementById('geofences-modal');
+  if (!m) return;
+  m.style.display = 'flex';
+  await loadGeofencesList();
+}
+
+function closeGeofencesModal() {
+  const m = document.getElementById('geofences-modal');
+  if (m) m.style.display = 'none';
+}
+
+async function loadGeofencesList() {
+  const container = document.getElementById('geofences-cards');
+  const countLabel = document.getElementById('geofence-count-label');
+  if (container) container.innerHTML = '<div style="color:var(--mu); padding:20px">Loading geofences...</div>';
+
+  try {
+    const res = await api('/geofences');
+    if (res && res.success) {
+      geofencesData = res.data?.geofences || [];
+      if (countLabel) countLabel.textContent = `${geofencesData.length} Geofence boundary zone(s) configured`;
+      renderGeofencesCards(geofencesData);
+    } else {
+      if (container) container.innerHTML = `<div style="color:var(--er); padding:20px">Failed to load geofences: ${res?.error?.message}</div>`;
+    }
+  } catch (err) {
+    if (container) container.innerHTML = `<div style="color:var(--er); padding:20px">Error: ${err.message}</div>`;
+  }
+}
+
+function renderGeofencesCards(fences) {
+  const container = document.getElementById('geofences-cards');
+  if (!container) return;
+
+  if (!fences || fences.length === 0) {
+    container.innerHTML = '<div style="color:var(--mu); padding:20px; grid-column:1/-1">No geofences found. Click "+ Add Geofence" to create one.</div>';
+    return;
+  }
+
+  container.innerHTML = fences.map(g => {
+    const isActive = !!g.active;
+    const isStrict = g.enforcement_mode === 'STRICT';
+    const depts = Array.isArray(g.allowed_depts) ? g.allowed_depts : [];
+    const deptsBadges = depts.length > 0
+      ? depts.map(d => `<span style="font-size:10px; background:var(--s1); border:1px solid var(--br); padding:1px 6px; border-radius:4px">${escapeHtml(d)}</span>`).join(' ')
+      : `<span style="font-size:10px; color:var(--mu)">All Departments</span>`;
+
+    return `
+      <div style="background:var(--s2); border:1px solid var(--br); border-radius:8px; padding:14px; display:flex; flex-direction:column; justify-content:space-between; position:relative">
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px">
+            <div>
+              <span class="mode-badge" style="font-size:10px; font-weight:700; background:rgba(79,142,247,0.15); color:#4f8ef7; border:1px solid rgba(79,142,247,0.3)">
+                ${escapeHtml(g.code)}
+              </span>
+              <h4 style="margin:6px 0 2px 0; font-size:13.5px; font-weight:700; color:var(--tx)">${escapeHtml(g.name)}</h4>
+            </div>
+            <span class="mode-badge ${isActive ? 'ok' : 'er'}" style="font-size:9.5px">
+              ${isActive ? 'ACTIVE' : 'INACTIVE'}
+            </span>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; background:var(--s1); padding:8px; border-radius:6px; margin-bottom:8px; font-size:11px">
+            <div>
+              <span style="color:var(--mu)">Latitude:</span>
+              <div style="font-family:var(--mo); font-weight:600; color:var(--tx)">${Number(g.latitude).toFixed(5)}</div>
+            </div>
+            <div>
+              <span style="color:var(--mu)">Longitude:</span>
+              <div style="font-family:var(--mo); font-weight:600; color:var(--tx)">${Number(g.longitude).toFixed(5)}</div>
+            </div>
+            <div>
+              <span style="color:var(--mu)">Radius:</span>
+              <div style="font-weight:600; color:var(--ac)">${g.radius_meters} meters</div>
+            </div>
+            <div>
+              <span style="color:var(--mu)">Mode:</span>
+              <div style="font-weight:600; color:${isStrict ? 'var(--er)' : 'var(--wn)'}">${g.enforcement_mode}</div>
+            </div>
+          </div>
+
+          <div style="margin-bottom:8px">
+            <span style="font-size:10.5px; color:var(--mu); display:block; margin-bottom:3px">Allowed Departments:</span>
+            <div style="display:flex; flex-wrap:wrap; gap:4px">${deptsBadges}</div>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:6px; border-top:1px solid var(--br); padding-top:10px; margin-top:6px">
+          <button type="button" class="btn bsm" onclick="openEditGeofenceModal('${g.id}')">✏️ Edit</button>
+          <button type="button" class="btn bsm" style="color:var(--er); border-color:var(--er)" onclick="deleteGeofenceAction('${g.id}', '${escapeHtml(g.name)}')">🗑️ Delete</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function openAddGeofenceModal() {
+  const m = document.getElementById('geofence-form-modal');
+  if (!m) return;
+  document.getElementById('geofence-form-title').textContent = 'Add Geofence Boundary';
+  document.getElementById('geo-id').value = '';
+  document.getElementById('geo-code').value = '';
+  document.getElementById('geo-code').readOnly = false;
+  document.getElementById('geo-name').value = '';
+  document.getElementById('geo-lat').value = '12.9716000';
+  document.getElementById('geo-lon').value = '77.5946000';
+  document.getElementById('geo-radius').value = '150';
+  document.getElementById('geo-enforcement').value = 'STRICT';
+  document.getElementById('geo-ip').value = '';
+  document.getElementById('geo-wifi').value = '';
+  document.getElementById('geo-active').checked = true;
+
+  populateGeofenceAllowedDeptsSelect();
+  m.style.display = 'flex';
+}
+
+function populateGeofenceAllowedDeptsSelect(selected = []) {
+  const sel = document.getElementById('geo-allowed-depts');
+  if (!sel) return;
+  sel.innerHTML = '';
+  const depts = state.departments || [];
+  depts.forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d.name;
+    opt.textContent = d.name;
+    if (selected.includes(d.name)) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function openEditGeofenceModal(id) {
+  const g = geofencesData.find(x => x.id === id);
+  if (!g) return;
+
+  const m = document.getElementById('geofence-form-modal');
+  if (!m) return;
+  document.getElementById('geofence-form-title').textContent = 'Edit Geofence Boundary';
+  document.getElementById('geo-id').value = g.id;
+  document.getElementById('geo-code').value = g.code;
+  document.getElementById('geo-code').readOnly = true;
+  document.getElementById('geo-name').value = g.name;
+  document.getElementById('geo-lat').value = g.latitude;
+  document.getElementById('geo-lon').value = g.longitude;
+  document.getElementById('geo-radius').value = g.radius_meters;
+  document.getElementById('geo-enforcement').value = g.enforcement_mode || 'STRICT';
+  document.getElementById('geo-ip').value = g.ip_range || '';
+  document.getElementById('geo-wifi').value = g.wifi_bssid || '';
+  document.getElementById('geo-active').checked = !!g.active;
+
+  populateGeofenceAllowedDeptsSelect(Array.isArray(g.allowed_depts) ? g.allowed_depts : []);
+  m.style.display = 'flex';
+}
+
+function closeGeofenceFormModal() {
+  const m = document.getElementById('geofence-form-modal');
+  if (m) m.style.display = 'none';
+}
+
+async function saveGeofenceForm(event) {
+  if (event) event.preventDefault();
+  const id = document.getElementById('geo-id').value;
+  const code = document.getElementById('geo-code').value.trim();
+  const name = document.getElementById('geo-name').value.trim();
+  const latitude = parseFloat(document.getElementById('geo-lat').value);
+  const longitude = parseFloat(document.getElementById('geo-lon').value);
+  const radius_meters = parseInt(document.getElementById('geo-radius').value, 10);
+  const enforcement_mode = document.getElementById('geo-enforcement').value;
+  const ip_range = document.getElementById('geo-ip').value.trim() || null;
+  const wifi_bssid = document.getElementById('geo-wifi').value.trim() || null;
+  const active = document.getElementById('geo-active').checked;
+
+  const deptsSel = document.getElementById('geo-allowed-depts');
+  const allowed_depts = deptsSel ? Array.from(deptsSel.selectedOptions).map(o => o.value) : [];
+
+  const payload = {
+    code,
+    name,
+    latitude,
+    longitude,
+    radius_meters,
+    enforcement_mode,
+    allowed_depts,
+    ip_range,
+    wifi_bssid,
+    active
+  };
+
+  try {
+    const url = id ? `/geofences/${id}` : '/geofences';
+    const method = id ? 'PUT' : 'POST';
+    const res = await api(url, { method, body: JSON.stringify(payload) });
+
+    if (res && res.success) {
+      notify(`Geofence ${id ? 'updated' : 'created'} successfully!`, 'ok');
+      closeGeofenceFormModal();
+      await loadGeofencesList();
+    } else {
+      notify(`Failed to save geofence: ${res?.error?.message || 'Error'}`, 'er');
+    }
+  } catch (err) {
+    notify(`Error saving geofence: ${err.message}`, 'er');
+  }
+}
+
+async function deleteGeofenceAction(id, name) {
+  if (!confirm(`Are you sure you want to delete geofence "${name}"?`)) return;
+  try {
+    const res = await api(`/geofences/${id}`, { method: 'DELETE' });
+    if (res && res.success) {
+      notify('Geofence deleted successfully', 'ok');
+      await loadGeofencesList();
+    } else {
+      notify(`Failed to delete: ${res?.error?.message || 'Error'}`, 'er');
+    }
+  } catch (err) {
+    notify(`Error deleting geofence: ${err.message}`, 'er');
+  }
+}
+
+function openTestCoordsModal() {
+  const m = document.getElementById('geofence-test-modal');
+  if (m) m.style.display = 'flex';
+}
+
+function closeTestCoordsModal() {
+  const m = document.getElementById('geofence-test-modal');
+  if (m) m.style.display = 'none';
+}
+
+function setTestCoordPreset(lat, lon) {
+  document.getElementById('test-geo-lat').value = lat;
+  document.getElementById('test-geo-lon').value = lon;
+}
+
+async function runGeofenceVerificationTest() {
+  const lat = parseFloat(document.getElementById('test-geo-lat')?.value);
+  const lon = parseFloat(document.getElementById('test-geo-lon')?.value);
+  const resBox = document.getElementById('test-geo-result');
+  if (!resBox) return;
+
+  resBox.style.display = 'block';
+  resBox.innerHTML = 'Verifying with GPS boundary engine...';
+
+  try {
+    const res = await api('/geofences/verify-coords', {
+      method: 'POST',
+      body: JSON.stringify({ latitude: lat, longitude: lon })
+    });
+
+    if (res && res.success) {
+      const data = res.data;
+      if (data.is_valid && data.matched_geofence) {
+        const mg = data.matched_geofence;
+        resBox.innerHTML = `
+          <div style="color:var(--ok); font-weight:700; margin-bottom:4px">✓ INSIDE VALID GEOFENCE</div>
+          <div>Matched Zone: <strong>${escapeHtml(mg.name)}</strong> (${escapeHtml(mg.code)})</div>
+          <div>Distance from Zone Center: <strong>${mg.distance_meters}m</strong> (Allowed Radius: ${mg.radius_meters}m)</div>
+          <div>Enforcement: <strong>${mg.enforcement_mode}</strong></div>
+        `;
+      } else {
+        const nearest = (data.all_zones || []).sort((a, b) => a.distance_meters - b.distance_meters)[0];
+        resBox.innerHTML = `
+          <div style="color:var(--er); font-weight:700; margin-bottom:4px">❌ OUTSIDE ALL ACTIVE GEOFENCES</div>
+          <div>Nearest Zone: <strong>${escapeHtml(nearest?.name || 'None')}</strong></div>
+          <div>Distance: <strong>${nearest?.distance_meters || '—'}m</strong> away (Radius: ${nearest?.radius_meters || '—'}m)</div>
+          <div style="color:var(--wn); margin-top:4px">Punches from these coordinates will be flagged or rejected according to zone policy.</div>
+        `;
+      }
+    } else {
+      resBox.innerHTML = `<span style="color:var(--er)">Verification failed: ${res?.error?.message}</span>`;
+    }
+  } catch (err) {
+    resBox.innerHTML = `<span style="color:var(--er)">Error: ${err.message}</span>`;
+  }
+}
+
+// ══════════════════════════════════════════════
+// 🔢 WORK CODES CONTROLLERS
+// ══════════════════════════════════════════════
+let workCodesData = [];
+
+async function openWorkCodesModal() {
+  const m = document.getElementById('work-codes-modal');
+  if (!m) return;
+  m.style.display = 'flex';
+  await loadWorkCodesList();
+}
+
+function closeWorkCodesModal() {
+  const m = document.getElementById('work-codes-modal');
+  if (m) m.style.display = 'none';
+}
+
+async function loadWorkCodesList() {
+  const container = document.getElementById('work-codes-cards');
+  const countLabel = document.getElementById('work-code-count-label');
+  if (container) container.innerHTML = '<div style="color:var(--mu); padding:20px">Loading work codes...</div>';
+
+  try {
+    const res = await api('/work-codes');
+    if (res && res.success) {
+      workCodesData = res.data?.workCodes || [];
+      if (countLabel) countLabel.textContent = `${workCodesData.length} Work Code(s) configured`;
+      renderWorkCodesCards(workCodesData);
+    } else {
+      if (container) container.innerHTML = `<div style="color:var(--er); padding:20px">Failed to load work codes: ${res?.error?.message}</div>`;
+    }
+  } catch (err) {
+    if (container) container.innerHTML = `<div style="color:var(--er); padding:20px">Error: ${err.message}</div>`;
+  }
+}
+
+function renderWorkCodesCards(codes) {
+  const container = document.getElementById('work-codes-cards');
+  if (!container) return;
+
+  if (!codes || codes.length === 0) {
+    container.innerHTML = '<div style="color:var(--mu); padding:20px; grid-column:1/-1">No work codes found. Click "+ Add Work Code" to create one.</div>';
+    return;
+  }
+
+  container.innerHTML = codes.map(w => {
+    const isActive = !!w.active;
+    const isOtEligible = !!w.ot_eligible;
+
+    const catLabels = {
+      BILLABLE_PROJECT: 'Billable Client Project',
+      CLIENT_ONSITE: 'Client Onsite / Field',
+      INTERNAL_OPS: 'Internal Operations',
+      TRAINING_LD: 'Learning & Dev',
+      FACILITY_MAINT: 'Facility Maintenance'
+    };
+
+    return `
+      <div style="background:var(--s2); border:1px solid var(--br); border-radius:8px; padding:14px; display:flex; flex-direction:column; justify-content:space-between">
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px">
+            <div>
+              <span class="mode-badge" style="font-size:10px; font-weight:700; background:rgba(0,212,170,0.15); color:#00d4aa; border:1px solid rgba(0,212,170,0.3)">
+                ${escapeHtml(w.code)}
+              </span>
+              <h4 style="margin:6px 0 2px 0; font-size:13.5px; font-weight:700; color:var(--tx)">${escapeHtml(w.name)}</h4>
+            </div>
+            <span class="mode-badge ${isActive ? 'ok' : 'er'}" style="font-size:9.5px">
+              ${isActive ? 'ACTIVE' : 'INACTIVE'}
+            </span>
+          </div>
+
+          <div style="font-size:11px; color:var(--mu); margin-bottom:10px; min-height:30px">
+            ${escapeHtml(w.description || 'No description provided')}
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; background:var(--s1); padding:8px; border-radius:6px; margin-bottom:8px; font-size:11px">
+            <div>
+              <span style="color:var(--mu)">Category:</span>
+              <div style="font-weight:600; color:var(--tx)">${catLabels[w.category] || w.category}</div>
+            </div>
+            <div>
+              <span style="color:var(--mu)">Billing Multiplier:</span>
+              <div style="font-weight:600; color:var(--ac)">${Number(w.billing_rate_multiplier).toFixed(2)}x</div>
+            </div>
+            <div>
+              <span style="color:var(--mu)">OT Eligible:</span>
+              <div style="font-weight:600; color:${isOtEligible ? 'var(--ok)' : 'var(--mu)'}">${isOtEligible ? '✓ Yes' : '✕ No'}</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:6px; border-top:1px solid var(--br); padding-top:10px; margin-top:6px">
+          <button type="button" class="btn bsm" onclick="openEditWorkCodeModal('${w.id}')">✏️ Edit</button>
+          <button type="button" class="btn bsm" style="color:var(--er); border-color:var(--er)" onclick="deleteWorkCodeAction('${w.id}', '${escapeHtml(w.name)}')">🗑️ Delete</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function openAddWorkCodeModal() {
+  const m = document.getElementById('work-code-form-modal');
+  if (!m) return;
+  document.getElementById('wc-form-title').textContent = 'Add Work Code';
+  document.getElementById('wc-id').value = '';
+  document.getElementById('wc-code').value = '';
+  document.getElementById('wc-code').readOnly = false;
+  document.getElementById('wc-name').value = '';
+  document.getElementById('wc-category').value = 'BILLABLE_PROJECT';
+  document.getElementById('wc-multiplier').value = '1.00';
+  document.getElementById('wc-desc').value = '';
+  document.getElementById('wc-ot-eligible').checked = true;
+  document.getElementById('wc-active').checked = true;
+  m.style.display = 'flex';
+}
+
+function openEditWorkCodeModal(id) {
+  const w = workCodesData.find(x => x.id === id);
+  if (!w) return;
+
+  const m = document.getElementById('work-code-form-modal');
+  if (!m) return;
+  document.getElementById('wc-form-title').textContent = 'Edit Work Code';
+  document.getElementById('wc-id').value = w.id;
+  document.getElementById('wc-code').value = w.code;
+  document.getElementById('wc-code').readOnly = true;
+  document.getElementById('wc-name').value = w.name;
+  document.getElementById('wc-category').value = w.category || 'BILLABLE_PROJECT';
+  document.getElementById('wc-multiplier').value = w.billing_rate_multiplier || 1.0;
+  document.getElementById('wc-desc').value = w.description || '';
+  document.getElementById('wc-ot-eligible').checked = !!w.ot_eligible;
+  document.getElementById('wc-active').checked = !!w.active;
+  m.style.display = 'flex';
+}
+
+function closeWorkCodeFormModal() {
+  const m = document.getElementById('work-code-form-modal');
+  if (m) m.style.display = 'none';
+}
+
+async function saveWorkCodeForm(event) {
+  if (event) event.preventDefault();
+  const id = document.getElementById('wc-id').value;
+  const code = document.getElementById('wc-code').value.trim();
+  const name = document.getElementById('wc-name').value.trim();
+  const category = document.getElementById('wc-category').value;
+  const billing_rate_multiplier = parseFloat(document.getElementById('wc-multiplier').value);
+  const description = document.getElementById('wc-desc').value.trim() || null;
+  const ot_eligible = document.getElementById('wc-ot-eligible').checked;
+  const active = document.getElementById('wc-active').checked;
+
+  const payload = {
+    code,
+    name,
+    category,
+    billing_rate_multiplier,
+    description,
+    ot_eligible,
+    active
+  };
+
+  try {
+    const url = id ? `/work-codes/${id}` : '/work-codes';
+    const method = id ? 'PUT' : 'POST';
+    const res = await api(url, { method, body: JSON.stringify(payload) });
+
+    if (res && res.success) {
+      notify(`Work code ${id ? 'updated' : 'created'} successfully!`, 'ok');
+      closeWorkCodeFormModal();
+      await loadWorkCodesList();
+    } else {
+      notify(`Failed to save work code: ${res?.error?.message || 'Error'}`, 'er');
+    }
+  } catch (err) {
+    notify(`Error saving work code: ${err.message}`, 'er');
+  }
+}
+
+async function deleteWorkCodeAction(id, name) {
+  if (!confirm(`Are you sure you want to delete work code "${name}"?`)) return;
+  try {
+    const res = await api(`/work-codes/${id}`, { method: 'DELETE' });
+    if (res && res.success) {
+      notify('Work code deleted successfully', 'ok');
+      await loadWorkCodesList();
+    } else {
+      notify(`Failed to delete: ${res?.error?.message || 'Error'}`, 'er');
+    }
+  } catch (err) {
+    notify(`Error deleting work code: ${err.message}`, 'er');
+  }
+}
+
+// ══════════════════════════════════════════════
+// ⏱️ EMPLOYEE OVERTIME (OT) REGISTER CONTROLLERS
+// ══════════════════════════════════════════════
+let currentOtPage = 1;
+const otLimit = 25;
+let otRecordsData = [];
+
+async function openOtRegisterModal() {
+  const m = document.getElementById('ot-register-modal');
+  if (!m) return;
+  m.style.display = 'flex';
+  await loadOtRegisterGrid(1);
+}
+
+function closeOtRegisterModal() {
+  const m = document.getElementById('ot-register-modal');
+  if (m) m.style.display = 'none';
+}
+
+async function loadOtRegisterGrid(page = 1) {
+  currentOtPage = page;
+  const startDate = document.getElementById('ot-start-date')?.value || '';
+  const endDate = document.getElementById('ot-end-date')?.value || '';
+  const status = document.getElementById('ot-status-filter')?.value || '';
+
+  const tbody = document.getElementById('ot-tbody');
+  if (tbody) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:20px; color:var(--mu)">Loading overtime records...</td></tr>';
+  }
+
+  const queryParams = new URLSearchParams({
+    page: String(page),
+    limit: String(otLimit)
+  });
+  if (startDate) queryParams.append('start_date', startDate);
+  if (endDate) queryParams.append('end_date', endDate);
+  if (status) queryParams.append('status', status);
+
+  try {
+    const res = await api(`/ot-register?${queryParams.toString()}`);
+    if (res && res.success) {
+      otRecordsData = res.data?.rows || [];
+      renderOtRegisterRows(otRecordsData);
+      renderOtRegisterPagination(res.data?.total || 0, page, otLimit);
+    } else {
+      if (tbody) tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:20px; color:var(--er)">Failed to load OT records: ${res?.error?.message}</td></tr>`;
+    }
+  } catch (err) {
+    if (tbody) tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:20px; color:var(--er)">Network error: ${err.message}</td></tr>`;
+  }
+}
+
+function renderOtRegisterRows(records) {
+  const tbody = document.getElementById('ot-tbody');
+  if (!tbody) return;
+
+  if (!records || records.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:24px; color:var(--mu)">No overtime records found matching current filters.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = records.map(r => {
+    const statusClass = {
+      PENDING: 'wn',
+      APPROVED: 'ok',
+      COMP_OFF: 'admin',
+      REJECTED: 'er'
+    }[r.status] || 'mu';
+
+    const rateBadges = {
+      STANDARD_DAY: `<span style="font-size:10px; color:#4f8ef7; font-weight:600">${r.ot_multiplier}x (Std Day)</span>`,
+      WEEKLY_OFF: `<span style="font-size:10px; color:#f59e0b; font-weight:600">${r.ot_multiplier}x (Weekly Off)</span>`,
+      PUBLIC_HOLIDAY: `<span style="font-size:10px; color:#ef4444; font-weight:600">${r.ot_multiplier}x (Holiday)</span>`
+    }[r.ot_rate_type] || `<span style="font-size:10px">${r.ot_multiplier}x</span>`;
+
+    const safeComments = escapeHtml(r.comments || '—');
+    const safeEmpName = escapeHtml(r.employee_name || 'Staff');
+    const safeDept = escapeHtml(r.department || 'Operations');
+
+    return `
+      <tr style="border-bottom:1px solid var(--br); transition:background 0.15s" onmouseover="this.style.background='var(--s1)'" onmouseout="this.style.background=''">
+        <td style="padding:8px 10px; text-align:center">
+          <input type="checkbox" class="ot-row-chk" value="${r.id}" />
+        </td>
+        <td style="padding:8px 10px; font-family:var(--mo); font-size:11.5px; font-weight:600; color:var(--tx)">${r.ot_date}</td>
+        <td style="padding:8px 10px">
+          <div style="font-weight:600; color:var(--tx)">${safeEmpName}</div>
+          <div style="font-family:var(--mo); font-size:10.5px; color:var(--ac)">${r.emp_id}</div>
+        </td>
+        <td style="padding:8px 10px; font-size:11.5px; color:var(--tx)">${safeDept}</td>
+        <td style="padding:8px 10px; text-align:center; font-size:11.5px">
+          ${Number(r.scheduled_hours).toFixed(1)}h / <strong>${Number(r.actual_hours).toFixed(1)}h</strong>
+        </td>
+        <td style="padding:8px 10px; text-align:center; font-family:var(--mo); font-weight:700; color:var(--wn); font-size:13px">
+          +${Number(r.ot_hours).toFixed(1)}h
+        </td>
+        <td style="padding:8px 10px; text-align:center">${rateBadges}</td>
+        <td style="padding:8px 10px; text-align:center">
+          <span class="mode-badge ${statusClass}" style="font-size:9.5px; padding:2px 6px">${r.status}</span>
+        </td>
+        <td style="padding:8px 10px; font-size:11px; color:var(--mu); max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${safeComments}">
+          ${r.approved_by ? `<div style="color:var(--ok); font-size:10px">✓ ${escapeHtml(r.approved_by)}</div>` : ''}
+          ${safeComments}
+        </td>
+        <td style="padding:8px 10px; text-align:center">
+          <div style="display:flex; gap:4px; justify-content:center">
+            ${r.status === 'PENDING' ? `
+              <button type="button" class="btn bsm" style="padding:2px 6px; font-size:10px; color:var(--ok); border-color:var(--ok)" title="Approve for Payroll" onclick="approveSingleOtRecord(${r.id})">✓</button>
+              <button type="button" class="btn bsm" style="padding:2px 6px; font-size:10px; color:var(--ac); border-color:var(--ac)" title="Grant Compensatory Off" onclick="compOffSingleOtRecord(${r.id})">🏖️</button>
+              <button type="button" class="btn bsm" style="padding:2px 6px; font-size:10px; color:var(--er); border-color:var(--er)" title="Reject" onclick="rejectSingleOtRecord(${r.id})">✕</button>
+            ` : `
+              <button type="button" class="btn bsm" style="padding:2px 6px; font-size:10px" title="Reset to Pending" onclick="updateOtStatusAction(${r.id}, 'PENDING')">↺</button>
+            `}
+            <button type="button" class="btn bsm" style="padding:2px 6px; font-size:10px; color:var(--er)" title="Delete Record" onclick="deleteOtRecordAction(${r.id})">🗑️</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function renderOtRegisterPagination(total, page, limit) {
+  const lbl = document.getElementById('ot-pagination-label');
+  const ctrl = document.getElementById('ot-pagination-controls');
+  if (lbl) {
+    const start = total === 0 ? 0 : (page - 1) * limit + 1;
+    const end = Math.min(total, page * limit);
+    lbl.textContent = `Showing ${start}-${end} of ${total} OT records`;
+  }
+  if (!ctrl) return;
+
+  const totalPages = Math.ceil(total / limit) || 1;
+  ctrl.innerHTML = `
+    <button type="button" class="btn bsm" ${page <= 1 ? 'disabled' : ''} onclick="loadOtRegisterGrid(${page - 1})">◀ Prev</button>
+    <span style="font-size:11px; color:var(--tx); padding:0 6px">Page ${page} of ${totalPages}</span>
+    <button type="button" class="btn bsm" ${page >= totalPages ? 'disabled' : ''} onclick="loadOtRegisterGrid(${page + 1})">Next ▶</button>
+  `;
+}
+
+function toggleSelectAllOtRecords(checked) {
+  const chks = document.querySelectorAll('.ot-row-chk');
+  chks.forEach(c => c.checked = checked);
+}
+
+function resetOtFilters() {
+  const sd = document.getElementById('ot-start-date');
+  const ed = document.getElementById('ot-end-date');
+  const st = document.getElementById('ot-status-filter');
+  if (sd) sd.value = '';
+  if (ed) ed.value = '';
+  if (st) st.value = '';
+  loadOtRegisterGrid(1);
+}
+
+async function approveSingleOtRecord(id) {
+  await updateOtStatusAction(id, 'APPROVED', 'Approved for monthly payroll disbursement');
+}
+
+async function rejectSingleOtRecord(id) {
+  const reason = prompt('Please enter reason for overtime rejection:') || 'Overtime not pre-approved';
+  await updateOtStatusAction(id, 'REJECTED', reason);
+}
+
+async function compOffSingleOtRecord(id) {
+  await updateOtStatusAction(id, 'COMP_OFF', 'Converted to Compensatory Off leave credit');
+}
+
+async function updateOtStatusAction(id, status, comments = '') {
+  try {
+    const res = await api(`/ot-register/${id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status, comments })
+    });
+    if (res && res.success) {
+      notify(`OT record updated to ${status}!`, 'ok');
+      await loadOtRegisterGrid(currentOtPage);
+    } else {
+      notify(`Failed to update status: ${res?.error?.message}`, 'er');
+    }
+  } catch (err) {
+    notify(`Error updating OT status: ${err.message}`, 'er');
+  }
+}
+
+async function bulkApproveSelectedOt() {
+  const chks = document.querySelectorAll('.ot-row-chk:checked');
+  const ids = Array.from(chks).map(c => parseInt(c.value, 10));
+  if (ids.length === 0) {
+    notify('Please select at least one OT record to approve', 'wn');
+    return;
+  }
+
+  try {
+    const res = await api('/ot-register/bulk-status', {
+      method: 'POST',
+      body: JSON.stringify({
+        ids,
+        status: 'APPROVED',
+        comments: 'Bulk approved by HR Admin'
+      })
+    });
+
+    if (res && res.success) {
+      notify(`Bulk approved ${res.data?.updated || ids.length} OT records!`, 'ok');
+      await loadOtRegisterGrid(currentOtPage);
+    } else {
+      notify(`Bulk approve failed: ${res?.error?.message}`, 'er');
+    }
+  } catch (err) {
+    notify(`Error in bulk approval: ${err.message}`, 'er');
+  }
+}
+
+async function deleteOtRecordAction(id) {
+  if (!confirm('Are you sure you want to delete this overtime record?')) return;
+  try {
+    const res = await api(`/ot-register/${id}`, { method: 'DELETE' });
+    if (res && res.success) {
+      notify('OT record deleted', 'ok');
+      await loadOtRegisterGrid(currentOtPage);
+    } else {
+      notify(`Failed to delete: ${res?.error?.message}`, 'er');
+    }
+  } catch (err) {
+    notify(`Error deleting OT record: ${err.message}`, 'er');
+  }
+}
+
+function openAddOtManualModal() {
+  const m = document.getElementById('ot-entry-modal');
+  if (!m) return;
+  m.style.display = 'flex';
+
+  const sel = document.getElementById('otm-emp-id');
+  if (sel) {
+    sel.innerHTML = '<option value="">Select Employee...</option>';
+    (state.employees || []).forEach(e => {
+      const opt = document.createElement('option');
+      opt.value = e.id;
+      opt.textContent = `${e.name} (${e.id}) - ${e.department || 'Operations'}`;
+      sel.appendChild(opt);
+    });
+  }
+
+  document.getElementById('otm-date').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('otm-shift').value = 'SHIFT_GEN';
+  document.getElementById('otm-sched-hrs').value = '8.0';
+  document.getElementById('otm-actual-hrs').value = '10.5';
+  document.getElementById('otm-ot-hrs').value = '2.5';
+  document.getElementById('otm-multiplier').value = '1.5';
+  document.getElementById('otm-rate-type').value = 'STANDARD_DAY';
+  document.getElementById('otm-comments').value = '';
+}
+
+function closeAddOtManualModal() {
+  const m = document.getElementById('ot-entry-modal');
+  if (m) m.style.display = 'none';
+}
+
+function autoCalculateOtDiff() {
+  const sched = parseFloat(document.getElementById('otm-sched-hrs')?.value || 8.0);
+  const actual = parseFloat(document.getElementById('otm-actual-hrs')?.value || 8.0);
+  const ot = Math.max(0, Math.round((actual - sched) * 10) / 10);
+  const otEl = document.getElementById('otm-ot-hrs');
+  if (otEl) otEl.value = ot.toFixed(1);
+}
+
+async function saveOtManualEntry(event) {
+  if (event) event.preventDefault();
+  const emp_id = document.getElementById('otm-emp-id')?.value;
+  const ot_date = document.getElementById('otm-date')?.value;
+  const shift_id = document.getElementById('otm-shift')?.value || 'SHIFT_GEN';
+  const scheduled_hours = parseFloat(document.getElementById('otm-sched-hrs')?.value || 8.0);
+  const actual_hours = parseFloat(document.getElementById('otm-actual-hrs')?.value || 8.0);
+  const ot_hours = parseFloat(document.getElementById('otm-ot-hrs')?.value || 0.0);
+  const ot_multiplier = parseFloat(document.getElementById('otm-multiplier')?.value || 1.5);
+  const ot_rate_type = document.getElementById('otm-rate-type')?.value || 'STANDARD_DAY';
+  const comments = document.getElementById('otm-comments')?.value.trim() || null;
+
+  if (!emp_id) {
+    notify('Please select an employee', 'wn');
+    return;
+  }
+  if (!ot_date) {
+    notify('Please select an OT date', 'wn');
+    return;
+  }
+
+  const payload = {
+    emp_id,
+    ot_date,
+    shift_id,
+    scheduled_hours,
+    actual_hours,
+    ot_hours,
+    ot_multiplier,
+    ot_rate_type,
+    status: 'PENDING',
+    comments
+  };
+
+  try {
+    const res = await api('/ot-register', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+
+    if (res && res.success) {
+      notify('Overtime record submitted successfully!', 'ok');
+      closeAddOtManualModal();
+      await loadOtRegisterGrid(1);
+    } else {
+      notify(`Failed to save OT entry: ${res?.error?.message || 'Error'}`, 'er');
+    }
+  } catch (err) {
+    notify(`Error saving OT entry: ${err.message}`, 'er');
+  }
+}
+
+function openOtAutoCalcModal() {
+  const m = document.getElementById('ot-calc-modal');
+  if (!m) return;
+  m.style.display = 'flex';
+  document.getElementById('ot-calc-date').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('ot-calc-threshold').value = '8.0';
+  const box = document.getElementById('ot-calc-result-box');
+  if (box) box.style.display = 'none';
+}
+
+function closeOtAutoCalcModal() {
+  const m = document.getElementById('ot-calc-modal');
+  if (m) m.style.display = 'none';
+}
+
+async function runOtAutoCalculation() {
+  const date = document.getElementById('ot-calc-date')?.value;
+  const threshold_hours = parseFloat(document.getElementById('ot-calc-threshold')?.value || 8.0);
+  const box = document.getElementById('ot-calc-result-box');
+
+  if (!date) {
+    notify('Please select a calculation date', 'wn');
+    return;
+  }
+
+  if (box) {
+    box.style.display = 'block';
+    box.innerHTML = '<span style="color:var(--mu)">Calculating daily overtime spans...</span>';
+  }
+
+  try {
+    const res = await api('/ot-register/calculate', {
+      method: 'POST',
+      body: JSON.stringify({ date, threshold_hours })
+    });
+
+    if (res && res.success) {
+      const d = res.data;
+      if (box) {
+        box.innerHTML = `
+          <div style="color:var(--ok); font-weight:700; margin-bottom:4px">✓ Auto-Calculation Complete</div>
+          <div>Date: <strong>${d.date}</strong> (${d.rate_type} - ${d.multiplier}x)</div>
+          <div>Generated OT Records: <strong>${d.generated_count}</strong></div>
+        `;
+      }
+      notify(`Generated ${d.generated_count} OT records for ${d.date}!`, 'ok');
+      await loadOtRegisterGrid(1);
+    } else {
+      if (box) box.innerHTML = `<span style="color:var(--er)">Calculation failed: ${res?.error?.message}</span>`;
+    }
+  } catch (err) {
+    if (box) box.innerHTML = `<span style="color:var(--er)">Error: ${err.message}</span>`;
+  }
+}
+
+// Window exports for Attendance & Time
+window.openAttendanceLogModal = openAttendanceLogModal;
+window.closeAttendanceLogModal = closeAttendanceLogModal;
+window.loadAttendanceLogStats = loadAttendanceLogStats;
+window.loadAttendanceLogGrid = loadAttendanceLogGrid;
+window.resetAttendanceLogFilters = resetAttendanceLogFilters;
+window.exportAttendanceLogCsv = exportAttendanceLogCsv;
+window.openRegularizeAttendanceModal = openRegularizeAttendanceModal;
+window.closeRegularizeAttendanceModal = closeRegularizeAttendanceModal;
+window.saveRegularizeAttendance = saveRegularizeAttendance;
+
+window.openGeofencesModal = openGeofencesModal;
+window.closeGeofencesModal = closeGeofencesModal;
+window.loadGeofencesList = loadGeofencesList;
+window.openAddGeofenceModal = openAddGeofenceModal;
+window.openEditGeofenceModal = openEditGeofenceModal;
+window.closeGeofenceFormModal = closeGeofenceFormModal;
+window.saveGeofenceForm = saveGeofenceForm;
+window.deleteGeofenceAction = deleteGeofenceAction;
+window.openTestCoordsModal = openTestCoordsModal;
+window.closeTestCoordsModal = closeTestCoordsModal;
+window.setTestCoordPreset = setTestCoordPreset;
+window.runGeofenceVerificationTest = runGeofenceVerificationTest;
+
+window.openWorkCodesModal = openWorkCodesModal;
+window.closeWorkCodesModal = closeWorkCodesModal;
+window.loadWorkCodesList = loadWorkCodesList;
+window.openAddWorkCodeModal = openAddWorkCodeModal;
+window.openEditWorkCodeModal = openEditWorkCodeModal;
+window.closeWorkCodeFormModal = closeWorkCodeFormModal;
+window.saveWorkCodeForm = saveWorkCodeForm;
+window.deleteWorkCodeAction = deleteWorkCodeAction;
+
+window.openOtRegisterModal = openOtRegisterModal;
+window.closeOtRegisterModal = closeOtRegisterModal;
+window.loadOtRegisterGrid = loadOtRegisterGrid;
+window.toggleSelectAllOtRecords = toggleSelectAllOtRecords;
+window.resetOtFilters = resetOtFilters;
+window.approveSingleOtRecord = approveSingleOtRecord;
+window.rejectSingleOtRecord = rejectSingleOtRecord;
+window.compOffSingleOtRecord = compOffSingleOtRecord;
+window.updateOtStatusAction = updateOtStatusAction;
+window.bulkApproveSelectedOt = bulkApproveSelectedOt;
+window.deleteOtRecordAction = deleteOtRecordAction;
+window.openAddOtManualModal = openAddOtManualModal;
+window.closeAddOtManualModal = closeAddOtManualModal;
+window.autoCalculateOtDiff = autoCalculateOtDiff;
+window.saveOtManualEntry = saveOtManualEntry;
+window.openOtAutoCalcModal = openOtAutoCalcModal;
+window.closeOtAutoCalcModal = closeOtAutoCalcModal;
+window.runOtAutoCalculation = runOtAutoCalculation;
 
 // ══════════════════════════════════════════════
 // Boot

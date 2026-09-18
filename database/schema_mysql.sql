@@ -439,6 +439,81 @@ INSERT IGNORE INTO `employee_cohort_groups` (`id`, `code`, `name`, `category`, `
   ('EGRP_INNOV', 'INNOV', 'R&D Innovation & AI Lab', 'PROJECT', 'Deep-tech research and product incubation squad', '#00d4aa', 1),
   ('EGRP_OPS', 'OPS_SWAT', '24x7 Tier-2 Rapid Support Team', 'OPERATIONAL', 'Critical response and production incident resolution', '#f59e0b', 1);
 
+-- ── 19. Geofences Table (GPS Boundaries & Location Rules) ──
+CREATE TABLE IF NOT EXISTS `geofences` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `code` VARCHAR(20) NOT NULL,
+  `name` VARCHAR(100) NOT NULL,
+  `latitude` DECIMAL(10, 7) NOT NULL,
+  `longitude` DECIMAL(10, 7) NOT NULL,
+  `radius_meters` INT UNSIGNED NOT NULL DEFAULT 150,
+  `enforcement_mode` ENUM('STRICT', 'WARNING') NOT NULL DEFAULT 'STRICT',
+  `allowed_depts` JSON NULL,
+  `ip_range` VARCHAR(100) NULL,
+  `wifi_bssid` VARCHAR(100) NULL,
+  `active` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_geofence_code` (`code`),
+  KEY `idx_geofence_active` (`active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Pre-seeded Geofences
+INSERT IGNORE INTO `geofences` (`id`, `code`, `name`, `latitude`, `longitude`, `radius_meters`, `enforcement_mode`, `active`) VALUES
+  ('GEO_HQ', 'BLR_HQ', 'Soukhya Tech Corporate HQ (Bangalore)', 12.9716000, 77.5946000, 150, 'STRICT', 1),
+  ('GEO_WFD', 'WFD_PARK', 'Whitefield Tech Campus (SEZ Unit)', 12.9698000, 77.7499000, 250, 'STRICT', 1),
+  ('GEO_MYS', 'MYS_PLANT', 'Mysore R&D and Manufacturing Center', 12.3051000, 76.6551000, 300, 'WARNING', 1),
+  ('GEO_REMOTE', 'FIELD_SALES', 'Client Onsite & Flexible Field Zone', 12.9716000, 77.5946000, 5000, 'WARNING', 1);
+
+-- ── 20. Work Codes Table (Project, Task & Cost Center Tracking) ──
+CREATE TABLE IF NOT EXISTS `work_codes` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `code` VARCHAR(20) NOT NULL,
+  `name` VARCHAR(100) NOT NULL,
+  `category` ENUM('BILLABLE_PROJECT', 'CLIENT_ONSITE', 'INTERNAL_OPS', 'TRAINING_LD', 'FACILITY_MAINT') NOT NULL DEFAULT 'BILLABLE_PROJECT',
+  `description` VARCHAR(255) NULL,
+  `billing_rate_multiplier` DECIMAL(4,2) NOT NULL DEFAULT 1.00,
+  `ot_eligible` TINYINT(1) NOT NULL DEFAULT 1,
+  `active` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_work_code_code` (`code`),
+  KEY `idx_work_code_active` (`active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Pre-seeded Work Codes
+INSERT IGNORE INTO `work_codes` (`id`, `code`, `name`, `category`, `description`, `billing_rate_multiplier`, `ot_eligible`, `active`) VALUES
+  ('WC_DEV', 'DEV_PROD', 'Core Engineering & Product Sprint', 'BILLABLE_PROJECT', 'Standard software engineering and product feature delivery', 1.00, 1, 1),
+  ('WC_CLIENT', 'CLIENT_IMP', 'Client Deployment & Onsite Integration', 'CLIENT_ONSITE', 'Customer site deployment, hardware commissioning & training', 1.25, 1, 1),
+  ('WC_OPS', 'OPS_RUN', '24x7 Infrastructure & Production Support', 'INTERNAL_OPS', 'Critical server uptime, SecOps and IT helpdesk response', 1.00, 1, 1),
+  ('WC_MAINT', 'FAC_MAINT', 'Biometric Hardware & Facility Maintenance', 'FACILITY_MAINT', 'Face terminal calibration, access gate servicing & repairs', 1.00, 1, 1),
+  ('WC_TRAIN', 'LND_SKILLS', 'Learning & Development / Certification', 'TRAINING_LD', 'Internal technical training and domain compliance programs', 1.00, 0, 1);
+
+-- ── 21. Employee Overtime Register Table ──
+CREATE TABLE IF NOT EXISTS `ot_records` (
+  `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `emp_id` VARCHAR(50) NOT NULL,
+  `ot_date` DATE NOT NULL,
+  `shift_id` VARCHAR(50) NULL,
+  `scheduled_hours` DECIMAL(4,2) NOT NULL DEFAULT 8.00,
+  `actual_hours` DECIMAL(4,2) NOT NULL DEFAULT 8.00,
+  `ot_hours` DECIMAL(4,2) NOT NULL DEFAULT 0.00,
+  `ot_multiplier` DECIMAL(4,2) NOT NULL DEFAULT 1.50,
+  `ot_rate_type` ENUM('STANDARD_DAY', 'WEEKLY_OFF', 'PUBLIC_HOLIDAY') NOT NULL DEFAULT 'STANDARD_DAY',
+  `status` ENUM('PENDING', 'APPROVED', 'REJECTED', 'COMP_OFF') NOT NULL DEFAULT 'PENDING',
+  `approved_by` VARCHAR(100) NULL,
+  `approved_at` DATETIME NULL,
+  `comments` VARCHAR(255) NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_emp_ot_date` (`emp_id`, `ot_date`),
+  KEY `idx_ot_date` (`ot_date`),
+  KEY `idx_ot_status` (`status`),
+  CONSTRAINT `fk_ot_emp`
+    FOREIGN KEY (`emp_id`) REFERENCES `employees` (`id`)
+    ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 -- Default Administrator: admin / admin123 (SHA-256 username hash, Bcrypt password hash)
 
 INSERT IGNORE INTO `users` (`username`, `username_hash`, `username_display`, `password_hash`, `role`, `active`)

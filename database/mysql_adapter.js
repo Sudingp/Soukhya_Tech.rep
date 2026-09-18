@@ -1748,6 +1748,413 @@ class MySQLAdapter {
   }
 
   // ──────────────────────────────────────────────
+  // 19. Geofences
+  // ──────────────────────────────────────────────
+  async getAllGeofences() {
+    const pool = await this.getPool();
+    const [rows] = await pool.execute('SELECT * FROM geofences ORDER BY name ASC');
+    return rows.map(r => {
+      if (typeof r.allowed_depts === 'string') {
+        try { r.allowed_depts = JSON.parse(r.allowed_depts); } catch {}
+      }
+      return r;
+    });
+  }
+
+  async getGeofenceById(id) {
+    const pool = await this.getPool();
+    const [rows] = await pool.execute('SELECT * FROM geofences WHERE id = ?', [id]);
+    if (!rows[0]) return null;
+    const r = rows[0];
+    if (typeof r.allowed_depts === 'string') {
+      try { r.allowed_depts = JSON.parse(r.allowed_depts); } catch {}
+    }
+    return r;
+  }
+
+  async insertGeofence(data) {
+    const pool = await this.getPool();
+    const id = data.id || `GEO_${Date.now().toString(36).toUpperCase()}`;
+    const allowedDeptsJson = Array.isArray(data.allowed_depts) ? JSON.stringify(data.allowed_depts) : (typeof data.allowed_depts === 'string' ? data.allowed_depts : null);
+    await pool.execute(
+      `INSERT INTO geofences (id, code, name, latitude, longitude, radius_meters, enforcement_mode, allowed_depts, ip_range, wifi_bssid, active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        data.code.toUpperCase(),
+        data.name,
+        parseFloat(data.latitude) || 0,
+        parseFloat(data.longitude) || 0,
+        parseInt(data.radius_meters || 150, 10),
+        data.enforcement_mode || 'STRICT',
+        allowedDeptsJson,
+        data.ip_range || null,
+        data.wifi_bssid || null,
+        data.active !== undefined ? (data.active ? 1 : 0) : 1
+      ]
+    );
+    return this.getGeofenceById(id);
+  }
+
+  async updateGeofence(id, data) {
+    const pool = await this.getPool();
+    const allowedDeptsJson = Array.isArray(data.allowed_depts) ? JSON.stringify(data.allowed_depts) : (typeof data.allowed_depts === 'string' ? data.allowed_depts : null);
+    await pool.execute(
+      `UPDATE geofences SET
+        code = ?,
+        name = ?,
+        latitude = ?,
+        longitude = ?,
+        radius_meters = ?,
+        enforcement_mode = ?,
+        allowed_depts = ?,
+        ip_range = ?,
+        wifi_bssid = ?,
+        active = ?,
+        updated_at = NOW()
+       WHERE id = ?`,
+      [
+        data.code.toUpperCase(),
+        data.name,
+        parseFloat(data.latitude) || 0,
+        parseFloat(data.longitude) || 0,
+        parseInt(data.radius_meters || 150, 10),
+        data.enforcement_mode || 'STRICT',
+        allowedDeptsJson,
+        data.ip_range || null,
+        data.wifi_bssid || null,
+        data.active !== undefined ? (data.active ? 1 : 0) : 1,
+        id
+      ]
+    );
+    return this.getGeofenceById(id);
+  }
+
+  async deleteGeofence(id) {
+    const pool = await this.getPool();
+    await pool.execute('DELETE FROM geofences WHERE id = ?', [id]);
+    return { id, deleted: true };
+  }
+
+  // ──────────────────────────────────────────────
+  // 20. Work Codes
+  // ──────────────────────────────────────────────
+  async getAllWorkCodes() {
+    const pool = await this.getPool();
+    const [rows] = await pool.execute('SELECT * FROM work_codes ORDER BY category ASC, code ASC');
+    return rows;
+  }
+
+  async getWorkCodeById(id) {
+    const pool = await this.getPool();
+    const [rows] = await pool.execute('SELECT * FROM work_codes WHERE id = ?', [id]);
+    return rows[0] || null;
+  }
+
+  async insertWorkCode(data) {
+    const pool = await this.getPool();
+    const id = data.id || `WC_${Date.now().toString(36).toUpperCase()}`;
+    await pool.execute(
+      `INSERT INTO work_codes (id, code, name, category, description, billing_rate_multiplier, ot_eligible, active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        data.code.toUpperCase(),
+        data.name,
+        data.category || 'BILLABLE_PROJECT',
+        data.description || null,
+        parseFloat(data.billing_rate_multiplier || 1.00),
+        data.ot_eligible !== undefined ? (data.ot_eligible ? 1 : 0) : 1,
+        data.active !== undefined ? (data.active ? 1 : 0) : 1
+      ]
+    );
+    return this.getWorkCodeById(id);
+  }
+
+  async updateWorkCode(id, data) {
+    const pool = await this.getPool();
+    await pool.execute(
+      `UPDATE work_codes SET
+        code = ?,
+        name = ?,
+        category = ?,
+        description = ?,
+        billing_rate_multiplier = ?,
+        ot_eligible = ?,
+        active = ?,
+        updated_at = NOW()
+       WHERE id = ?`,
+      [
+        data.code.toUpperCase(),
+        data.name,
+        data.category || 'BILLABLE_PROJECT',
+        data.description || null,
+        parseFloat(data.billing_rate_multiplier || 1.00),
+        data.ot_eligible !== undefined ? (data.ot_eligible ? 1 : 0) : 1,
+        data.active !== undefined ? (data.active ? 1 : 0) : 1,
+        id
+      ]
+    );
+    return this.getWorkCodeById(id);
+  }
+
+  async deleteWorkCode(id) {
+    const pool = await this.getPool();
+    await pool.execute('DELETE FROM work_codes WHERE id = ?', [id]);
+    return { id, deleted: true };
+  }
+
+  // ──────────────────────────────────────────────
+  // 21. Employee Overtime Register
+  // ──────────────────────────────────────────────
+  async getOtRegister({ emp_id, start_date, end_date, status, limit = 50, offset = 0 } = {}) {
+    const pool = await this.getPool();
+    let whereClauses = [];
+    let params = [];
+
+    if (emp_id) {
+      whereClauses.push('o.emp_id = ?');
+      params.push(emp_id);
+    }
+    if (start_date) {
+      whereClauses.push('o.ot_date >= ?');
+      params.push(start_date);
+    }
+    if (end_date) {
+      whereClauses.push('o.ot_date <= ?');
+      params.push(end_date);
+    }
+    if (status) {
+      whereClauses.push('o.status = ?');
+      params.push(status);
+    }
+
+    const whereStr = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+    const countSql = `SELECT COUNT(*) as total FROM ot_records o ${whereStr}`;
+    const [countRows] = await pool.execute(countSql, params);
+    const total = countRows[0]?.total || 0;
+
+    const dataSql = `
+      SELECT o.*, e.name as employee_name, e.department, e.role as employee_role, s.name as shift_name
+      FROM ot_records o
+      LEFT JOIN employees e ON o.emp_id = e.id
+      LEFT JOIN shifts s ON o.shift_id = s.id
+      ${whereStr}
+      ORDER BY o.ot_date DESC, o.id DESC
+      LIMIT ? OFFSET ?
+    `;
+    const queryParams = [...params, String(limit), String(offset)];
+    const [rows] = await pool.execute(dataSql, queryParams);
+
+    return { total, rows };
+  }
+
+  async getOtRecordById(id) {
+    const pool = await this.getPool();
+    const [rows] = await pool.execute(
+      `SELECT o.*, e.name as employee_name, e.department, e.role as employee_role, s.name as shift_name
+       FROM ot_records o
+       LEFT JOIN employees e ON o.emp_id = e.id
+       LEFT JOIN shifts s ON o.shift_id = s.id
+       WHERE o.id = ?`,
+      [id]
+    );
+    return rows[0] || null;
+  }
+
+  async insertOtRecord(data) {
+    const pool = await this.getPool();
+    const [result] = await pool.execute(
+      `INSERT INTO ot_records (emp_id, ot_date, shift_id, scheduled_hours, actual_hours, ot_hours, ot_multiplier, ot_rate_type, status, approved_by, approved_at, comments)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+        shift_id = VALUES(shift_id),
+        scheduled_hours = VALUES(scheduled_hours),
+        actual_hours = VALUES(actual_hours),
+        ot_hours = VALUES(ot_hours),
+        ot_multiplier = VALUES(ot_multiplier),
+        ot_rate_type = VALUES(ot_rate_type),
+        status = VALUES(status),
+        comments = VALUES(comments),
+        updated_at = NOW()`,
+      [
+        data.emp_id,
+        data.ot_date,
+        data.shift_id || 'SHIFT_GEN',
+        parseFloat(data.scheduled_hours || 8.0),
+        parseFloat(data.actual_hours || 8.0),
+        parseFloat(data.ot_hours || 0.0),
+        parseFloat(data.ot_multiplier || 1.5),
+        data.ot_rate_type || 'STANDARD_DAY',
+        data.status || 'PENDING',
+        data.approved_by || null,
+        data.approved_at || null,
+        data.comments || null
+      ]
+    );
+    const id = result.insertId || (await this.getOtRecordByEmpDate(data.emp_id, data.ot_date))?.id;
+    return this.getOtRecordById(id);
+  }
+
+  async getOtRecordByEmpDate(empId, otDate) {
+    const pool = await this.getPool();
+    const [rows] = await pool.execute('SELECT * FROM ot_records WHERE emp_id = ? AND ot_date = ?', [empId, otDate]);
+    return rows[0] || null;
+  }
+
+  async updateOtStatus(id, { status, approved_by, comments }) {
+    const pool = await this.getPool();
+    const approvedAt = (status === 'APPROVED' || status === 'COMP_OFF') ? new Date().toISOString().slice(0, 19).replace('T', ' ') : null;
+    await pool.execute(
+      `UPDATE ot_records SET
+        status = ?,
+        approved_by = ?,
+        approved_at = ?,
+        comments = COALESCE(?, comments),
+        updated_at = NOW()
+       WHERE id = ?`,
+      [status, approved_by || null, approvedAt, comments || null, id]
+    );
+    return this.getOtRecordById(id);
+  }
+
+  async bulkUpdateOtStatus(ids, { status, approved_by, comments }) {
+    const pool = await this.getPool();
+    if (!ids || ids.length === 0) return { updated: 0 };
+    const approvedAt = (status === 'APPROVED' || status === 'COMP_OFF') ? new Date().toISOString().slice(0, 19).replace('T', ' ') : null;
+    const placeholders = ids.map(() => '?').join(',');
+    const [result] = await pool.execute(
+      `UPDATE ot_records SET
+        status = ?,
+        approved_by = ?,
+        approved_at = ?,
+        comments = COALESCE(?, comments),
+        updated_at = NOW()
+       WHERE id IN (${placeholders})`,
+      [status, approved_by || null, approvedAt, comments || null, ...ids]
+    );
+    return { updated: result.affectedRows };
+  }
+
+  async deleteOtRecord(id) {
+    const pool = await this.getPool();
+    await pool.execute('DELETE FROM ot_records WHERE id = ?', [id]);
+    return { id, deleted: true };
+  }
+
+  // ──────────────────────────────────────────────
+  // 22. Attendance Log Advanced Queries & Regularization
+  // ──────────────────────────────────────────────
+  async getDetailedAttendanceLog({ emp_id, dept, status, start_date, end_date, search, limit = 20, offset = 0 } = {}) {
+    const pool = await this.getPool();
+    let whereClauses = [];
+    let params = [];
+
+    if (emp_id) {
+      whereClauses.push('a.emp_id = ?');
+      params.push(emp_id);
+    }
+    if (dept) {
+      whereClauses.push('a.dept = ?');
+      params.push(dept);
+    }
+    if (status) {
+      whereClauses.push('a.status = ?');
+      params.push(status);
+    }
+    if (start_date) {
+      whereClauses.push('a.timestamp >= ?');
+      params.push(start_date.includes(' ') ? start_date : `${start_date} 00:00:00`);
+    }
+    if (end_date) {
+      whereClauses.push('a.timestamp <= ?');
+      params.push(end_date.includes(' ') ? end_date : `${end_date} 23:59:59`);
+    }
+    if (search) {
+      whereClauses.push('(a.name LIKE ? OR a.emp_id LIKE ?)');
+      params.push(`%${search}%`, `%${search}%`);
+    }
+
+    const whereStr = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+    const countSql = `SELECT COUNT(*) as total FROM attendance a ${whereStr}`;
+    const [countRows] = await pool.execute(countSql, params);
+    const total = countRows[0]?.total || 0;
+
+    const dataSql = `
+      SELECT a.*, e.image, e.employment_type, e.designation, e.company
+      FROM attendance a
+      LEFT JOIN employees e ON a.emp_id = e.id
+      ${whereStr}
+      ORDER BY a.timestamp DESC
+      LIMIT ? OFFSET ?
+    `;
+    const queryParams = [...params, String(limit), String(offset)];
+    const [rows] = await pool.execute(dataSql, queryParams);
+
+    return { total, rows };
+  }
+
+  async getAttendanceLogStats(date) {
+    const pool = await this.getPool();
+    const targetDate = date || new Date().toISOString().slice(0, 10);
+    const [rows] = await pool.execute(
+      `SELECT
+        COUNT(*) as total_punches,
+        SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END) as on_time_count,
+        SUM(CASE WHEN status = 'Late' THEN 1 ELSE 0 END) as late_count,
+        COUNT(DISTINCT emp_id) as unique_employees
+       FROM attendance
+       WHERE timestamp >= ? AND timestamp < DATE_ADD(?, INTERVAL 1 DAY)`,
+      [`${targetDate} 00:00:00`, `${targetDate} 00:00:00`]
+    );
+    const stats = rows[0] || { total_punches: 0, on_time_count: 0, late_count: 0, unique_employees: 0 };
+    stats.on_time_rate = stats.total_punches > 0
+      ? Math.round((Number(stats.on_time_count) / Number(stats.total_punches)) * 100)
+      : 100;
+    return stats;
+  }
+
+  async regularizeAttendance({ att_id, emp_id, timestamp, status, reason, regularized_by }) {
+    const pool = await this.getPool();
+    const formattedTs = this._formatDatetime(timestamp);
+    if (att_id) {
+      await pool.execute(
+        `UPDATE attendance SET
+          timestamp = ?,
+          status = ?,
+          logged_by = CONCAT(COALESCE(logged_by, 'PUNCH'), ' [REGULARIZED by ', ?, ': ', ?, ']')
+         WHERE att_id = ?`,
+        [formattedTs, status || 'Present', regularized_by || 'HR Admin', reason || 'Regularization', att_id]
+      );
+      const [updated] = await pool.execute('SELECT * FROM attendance WHERE att_id = ?', [att_id]);
+      return updated[0] || null;
+    } else if (emp_id) {
+      const [empRows] = await pool.execute('SELECT * FROM employees WHERE id = ?', [emp_id]);
+      const emp = empRows[0];
+      if (!emp) throw new Error('Employee not found');
+      const [res] = await pool.execute(
+        `INSERT INTO attendance (emp_id, name, dept, role, timestamp, status, logged_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          emp.id,
+          emp.name,
+          emp.department || 'Operations',
+          emp.role || 'Staff',
+          formattedTs,
+          status || 'Present',
+          `MANUAL_REGULARIZED (${regularized_by || 'HR Admin'}: ${reason || 'Attendance regularized'})`
+        ]
+      );
+      const [inserted] = await pool.execute('SELECT * FROM attendance WHERE att_id = ?', [res.insertId]);
+      return inserted[0] || null;
+    } else {
+      throw new Error('Either att_id or emp_id is required for attendance regularization');
+    }
+  }
+
+  // ──────────────────────────────────────────────
   // Reset & Clear
   // ──────────────────────────────────────────────
   async clearAll() {

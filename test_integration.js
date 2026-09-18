@@ -422,26 +422,184 @@ async function runTests() {
       if (groupDelete.status !== 200) throw new Error('Delete Employee Group failed: ' + JSON.stringify(groupDelete));
       console.log('   [PASS] Cleaned up test employee group:', testGroupId2);
 
-      // 19. Token Refresh
-      console.log('19. Testing /api/auth/refresh...');
+      // 19. Attendance Log & Regularization APIs
+      console.log('19. Testing /api/attendance-log & Regularization...');
+      const attLogGet = await request('/api/attendance-log?page=1&limit=20', 'GET', authHeaders);
+      if (attLogGet.status !== 200 || !Array.isArray(attLogGet.body.rows)) {
+        throw new Error('Get Attendance Log failed: ' + JSON.stringify(attLogGet));
+      }
+      console.log(`   [PASS] Retrieved attendance log (Total: ${attLogGet.body.total}, Page Rows: ${attLogGet.body.rows.length})`);
+
+      const attStatsGet = await request('/api/attendance-log/stats', 'GET', authHeaders);
+      if (attStatsGet.status !== 200 || !attStatsGet.body.stats) {
+        throw new Error('Get Attendance Stats failed: ' + JSON.stringify(attStatsGet));
+      }
+      console.log(`   [PASS] Attendance stats retrieved (Total: ${attStatsGet.body.stats.total_punches}, On-Time: ${attStatsGet.body.stats.on_time_count})`);
+
+      // Regularize Attendance (Missed punch regularization)
+      const regAtt = await request('/api/attendance-log/regularize', 'POST', authHeaders, {
+        emp_id: 'EMP002',
+        timestamp: '2026-09-18 09:05:00',
+        status: 'Present',
+        reason: 'Integration test regularization'
+      });
+      if (regAtt.status !== 200 || !regAtt.body.attendance) {
+        throw new Error('Attendance Regularization failed: ' + JSON.stringify(regAtt));
+      }
+      console.log('   [PASS] Attendance regularized for EMP002 (att_id: ' + regAtt.body.attendance.att_id + ')');
+
+      // 20. Geofences CRUD & Coordinate Verification
+      console.log('20. Testing /api/geofences CRUD & Coordinate Verification...');
+      const geoList = await request('/api/geofences', 'GET', authHeaders);
+      if (geoList.status !== 200 || !Array.isArray(geoList.body.geofences)) {
+        throw new Error('Get Geofences failed: ' + JSON.stringify(geoList));
+      }
+      console.log(`   [PASS] Retrieved ${geoList.body.total} geofences`);
+
+      const testGeoCode = `GEO_${Math.floor(Math.random() * 8999 + 1000)}`;
+      const geoCreate = await request('/api/geofences', 'POST', authHeaders, {
+        code: testGeoCode,
+        name: 'Test Innovation Park',
+        latitude: 12.9716000,
+        longitude: 77.5946000,
+        radius_meters: 200,
+        enforcement_mode: 'STRICT',
+        allowed_depts: ['Engineering', 'Product & Design'],
+        active: true
+      });
+      if (geoCreate.status !== 201 || !geoCreate.body.geofence) {
+        throw new Error('Create Geofence failed: ' + JSON.stringify(geoCreate));
+      }
+      const testGeoId = geoCreate.body.geofence.id;
+      console.log('   [PASS] Created geofence:', testGeoId);
+
+      // Verify Coordinates API (Haversine distance calculation)
+      const coordVerify = await request('/api/geofences/verify-coords', 'POST', authHeaders, {
+        latitude: 12.9716100,
+        longitude: 77.5946100,
+        dept: 'Engineering'
+      });
+      if (coordVerify.status !== 200 || !coordVerify.body.is_valid) {
+        throw new Error('Coordinate verification failed: ' + JSON.stringify(coordVerify));
+      }
+      console.log('   [PASS] Coordinates verified inside geofence:', coordVerify.body.matched_geofence?.name);
+
+      // Delete Geofence
+      const geoDelete = await request(`/api/geofences/${testGeoId}`, 'DELETE', authHeaders);
+      if (geoDelete.status !== 200) throw new Error('Delete Geofence failed: ' + JSON.stringify(geoDelete));
+      console.log('   [PASS] Cleaned up test geofence:', testGeoId);
+
+      // 21. Work Codes CRUD
+      console.log('21. Testing /api/work-codes CRUD...');
+      const wcList = await request('/api/work-codes', 'GET', authHeaders);
+      if (wcList.status !== 200 || !Array.isArray(wcList.body.workCodes)) {
+        throw new Error('Get Work Codes failed: ' + JSON.stringify(wcList));
+      }
+      console.log(`   [PASS] Retrieved ${wcList.body.total} work codes`);
+
+      const testWcCode = `WC_${Math.floor(Math.random() * 8999 + 1000)}`;
+      const wcCreate = await request('/api/work-codes', 'POST', authHeaders, {
+        code: testWcCode,
+        name: 'AI Model Optimization Sprint',
+        category: 'BILLABLE_PROJECT',
+        description: 'Deep learning performance tuning and deployment',
+        billing_rate_multiplier: 1.5,
+        ot_eligible: true,
+        active: true
+      });
+      if (wcCreate.status !== 201 || !wcCreate.body.workCode) {
+        throw new Error('Create Work Code failed: ' + JSON.stringify(wcCreate));
+      }
+      const testWcId = wcCreate.body.workCode.id;
+      console.log('   [PASS] Created work code:', testWcId);
+
+      const wcUpdate = await request(`/api/work-codes/${testWcId}`, 'PUT', authHeaders, {
+        code: testWcCode,
+        name: 'AI Model Optimization Sprint V2',
+        category: 'BILLABLE_PROJECT',
+        billing_rate_multiplier: 1.75,
+        ot_eligible: true,
+        active: true
+      });
+      if (wcUpdate.status !== 200 || parseFloat(wcUpdate.body.workCode.billing_rate_multiplier) !== 1.75) {
+        throw new Error('Update Work Code failed: ' + JSON.stringify(wcUpdate));
+      }
+      console.log('   [PASS] Updated work code multiplier to 1.75x');
+
+      const wcDelete = await request(`/api/work-codes/${testWcId}`, 'DELETE', authHeaders);
+      if (wcDelete.status !== 200) throw new Error('Delete Work Code failed: ' + JSON.stringify(wcDelete));
+      console.log('   [PASS] Cleaned up test work code:', testWcId);
+
+      // 22. OT Register, Auto-Calculate & Approvals
+      console.log('22. Testing /api/ot-register CRUD, Auto-Calculation & Approvals...');
+      const otList = await request('/api/ot-register?page=1&limit=50', 'GET', authHeaders);
+      if (otList.status !== 200 || !Array.isArray(otList.body.rows)) {
+        throw new Error('Get OT Register failed: ' + JSON.stringify(otList));
+      }
+      console.log(`   [PASS] Retrieved OT register (Total: ${otList.body.total})`);
+
+      // Manual OT Entry creation
+      const otCreate = await request('/api/ot-register', 'POST', authHeaders, {
+        emp_id: 'EMP001',
+        ot_date: '2026-09-18',
+        shift_id: 'SHIFT_GEN',
+        scheduled_hours: 8.0,
+        actual_hours: 10.5,
+        ot_hours: 2.5,
+        ot_multiplier: 1.5,
+        ot_rate_type: 'STANDARD_DAY',
+        status: 'PENDING',
+        comments: 'Integration test manual OT entry'
+      });
+      if (otCreate.status !== 201 || !otCreate.body.record) {
+        throw new Error('Create OT Record failed: ' + JSON.stringify(otCreate));
+      }
+      const testOtId = otCreate.body.record.id;
+      console.log('   [PASS] Created manual OT record ID:', testOtId);
+
+      // Update OT Status to APPROVED
+      const otStatusUpdate = await request(`/api/ot-register/${testOtId}/status`, 'PUT', authHeaders, {
+        status: 'APPROVED',
+        comments: 'Approved by test runner'
+      });
+      if (otStatusUpdate.status !== 200 || otStatusUpdate.body.record.status !== 'APPROVED') {
+        throw new Error('Update OT Status failed: ' + JSON.stringify(otStatusUpdate));
+      }
+      console.log('   [PASS] OT record approved for payroll');
+
+      // Test Auto-Calculate OT for today
+      const otCalc = await request('/api/ot-register/calculate', 'POST', authHeaders, {
+        date: '2026-09-18',
+        threshold_hours: 8.0
+      });
+      if (otCalc.status !== 200) throw new Error('OT Auto-Calculate failed: ' + JSON.stringify(otCalc));
+      console.log(`   [PASS] Auto-calculated OT for 2026-09-18 (Multiplier: ${otCalc.body.multiplier}x, Type: ${otCalc.body.rate_type})`);
+
+      // Clean up test OT Record
+      const otDelete = await request(`/api/ot-register/${testOtId}`, 'DELETE', authHeaders);
+      if (otDelete.status !== 200) throw new Error('Delete OT Record failed: ' + JSON.stringify(otDelete));
+      console.log('   [PASS] Cleaned up test OT record:', testOtId);
+
+      // 23. Token Refresh
+      console.log('23. Testing /api/auth/refresh...');
       const ref = await request('/api/auth/refresh', 'POST', {}, { refresh_token: refreshToken });
       if (ref.status !== 200 || !ref.body.access_token) throw new Error('Token refresh failed: ' + JSON.stringify(ref));
       console.log('   [PASS] Refresh token issued new access token');
 
-      // 20. Logout & Blacklist
-      console.log('20. Testing /api/auth/logout...');
+      // 24. Logout & Blacklist
+      console.log('24. Testing /api/auth/logout...');
       const logout = await request('/api/auth/logout', 'POST', authHeaders);
       if (logout.status !== 200) throw new Error('Logout failed: ' + JSON.stringify(logout));
       console.log('   [PASS] Logged out successfully');
 
-      // 21. Blacklisted token rejected
-      console.log('21. Testing blacklisted token rejection...');
+      // 25. Blacklisted token rejected
+      console.log('25. Testing blacklisted token rejection...');
       const rejected = await request('/api/auth/me', 'GET', authHeaders);
       if (rejected.status !== 401) throw new Error('Blacklisted token was not rejected: ' + JSON.stringify(rejected));
       console.log('   [PASS] Blacklisted token rejected with HTTP 401:', rejected.body.error.code);
 
       console.log('\n=============================================');
-      console.log('  ALL 21 INTEGRATION TESTS PASSED 100%!     ');
+      console.log('  ALL 25 INTEGRATION TESTS PASSED 100%!     ');
       console.log('=============================================\n');
 
       server.close();

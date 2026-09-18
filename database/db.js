@@ -335,6 +335,71 @@ const stmts = {
   },
   setEmployeeCohortGroupMembers: {
     run: (groupId, empIds, roleInGroup) => mysqlAdapter.setEmployeeCohortGroupMembers(groupId, empIds, roleInGroup)
+  },
+
+  // ── 📍 Geofences ──
+  getAllGeofences: {
+    all: () => mysqlAdapter.getAllGeofences()
+  },
+  getGeofenceById: {
+    get: (id) => mysqlAdapter.getGeofenceById(id)
+  },
+  insertGeofence: {
+    run: (data) => mysqlAdapter.insertGeofence(data)
+  },
+  updateGeofence: {
+    run: (id, data) => mysqlAdapter.updateGeofence(id, data)
+  },
+  deleteGeofence: {
+    run: (id) => mysqlAdapter.deleteGeofence(id)
+  },
+
+  // ── 🔢 Work Codes ──
+  getAllWorkCodes: {
+    all: () => mysqlAdapter.getAllWorkCodes()
+  },
+  getWorkCodeById: {
+    get: (id) => mysqlAdapter.getWorkCodeById(id)
+  },
+  insertWorkCode: {
+    run: (data) => mysqlAdapter.insertWorkCode(data)
+  },
+  updateWorkCode: {
+    run: (id, data) => mysqlAdapter.updateWorkCode(id, data)
+  },
+  deleteWorkCode: {
+    run: (id) => mysqlAdapter.deleteWorkCode(id)
+  },
+
+  // ── ⏱️ OT Register ──
+  getOtRegister: {
+    all: (filter) => mysqlAdapter.getOtRegister(filter)
+  },
+  getOtRecordById: {
+    get: (id) => mysqlAdapter.getOtRecordById(id)
+  },
+  insertOtRecord: {
+    run: (data) => mysqlAdapter.insertOtRecord(data)
+  },
+  updateOtStatus: {
+    run: (id, data) => mysqlAdapter.updateOtStatus(id, data)
+  },
+  bulkUpdateOtStatus: {
+    run: (ids, data) => mysqlAdapter.bulkUpdateOtStatus(ids, data)
+  },
+  deleteOtRecord: {
+    run: (id) => mysqlAdapter.deleteOtRecord(id)
+  },
+
+  // ── 📊 Attendance Log & Regularization ──
+  getDetailedAttendanceLog: {
+    all: (filter) => mysqlAdapter.getDetailedAttendanceLog(filter)
+  },
+  getAttendanceLogStats: {
+    get: (date) => mysqlAdapter.getAttendanceLogStats(date)
+  },
+  regularizeAttendance: {
+    run: (data) => mysqlAdapter.regularizeAttendance(data)
   }
 };
 
