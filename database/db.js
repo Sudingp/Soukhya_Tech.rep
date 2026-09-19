@@ -1,611 +1,101 @@
-// database/db.js — Production MySQL 8.4 LTS Database Layer
-const MySQLAdapter = require('./mysql_adapter');
-const mysqlAdapter = new MySQLAdapter();
+/**
+ * database/db.js — Production MySQL 8.4 LTS Database Layer & Statement Interface
+ * Max file limit: < 500 lines
+ */
 
 const path = require('path');
 const fs = require('fs');
 const { execSync } = require('child_process');
+const MySQLAdapter = require('./mysql_adapter');
 
+const mysqlAdapter = new MySQLAdapter();
 let mysqlReady = false;
 
 async function checkMySQL() {
-  let status = await mysqlAdapter.testConnection();
-  if (!status.ok) {
+  try {
+    await mysqlAdapter.testConnection();
+    mysqlReady = true;
+    console.log('[DB] Active Database: MySQL 8.4 LTS');
+    return true;
+  } catch (err) {
     const setupScriptJs = path.resolve(__dirname, '..', 'scripts', 'setup_mysql.js');
-    const setupScriptSh = path.resolve(__dirname, '..', 'scripts', 'setup_mysql.sh');
     if (fs.existsSync(setupScriptJs)) {
       try {
         console.log('[DB] MySQL offline. Auto-initiating local daemon via scripts/setup_mysql.js...');
         execSync(`node "${setupScriptJs}"`, { stdio: 'inherit' });
         await new Promise(r => setTimeout(r, 1000));
-        status = await mysqlAdapter.testConnection();
-      } catch (err) {
-        console.warn('[DB] Auto-start attempt error:', err.message);
-      }
-    } else if (fs.existsSync(setupScriptSh) && process.platform !== 'win32') {
-      try {
-        console.log('[DB] MySQL offline. Auto-initiating local daemon via scripts/setup_mysql.sh...');
-        execSync(`bash "${setupScriptSh}"`, { stdio: 'inherit' });
-        await new Promise(r => setTimeout(r, 1000));
-        status = await mysqlAdapter.testConnection();
-      } catch (err) {
-        console.warn('[DB] Auto-start attempt error:', err.message);
+        await mysqlAdapter.testConnection();
+        mysqlReady = true;
+        console.log('[DB] Active Database: MySQL 8.4 LTS (Started)');
+        return true;
+      } catch (subErr) {
+        console.warn('[DB] Auto-start attempt error:', subErr.message);
       }
     }
-  }
-
-  if (status.ok) {
-    mysqlReady = true;
-    console.log(`[DB] Active Database: MySQL 8.4 LTS (${status.version})`);
-    try {
-      await mysqlAdapter.initSchema();
-    } catch (err) {
-      console.warn('[DB] MySQL initSchema warning:', err.message);
-    }
-    return true;
-  } else {
-    console.error(`[DB] MySQL Connection Error: ${status.error}`);
-    throw new Error(`MySQL connection failed: ${status.error}`);
+    console.warn('[DB] MySQL connection error:', err.message);
+    return false;
   }
 }
 
-// Auto-check on module load
+// Auto-check on boot
 checkMySQL().catch(e => console.warn('[DB] MySQL connection notice:', e.message));
 
 function getActiveDialect() {
   return 'mysql';
 }
 
-const stmts = {
-  // ── Users ──
-  getUserByUsername: {
-    get: (username) => mysqlAdapter.getUserByUsername(username)
-  },
-  getUserByUsernameHash: {
-    get: (uHash) => mysqlAdapter.getUserByUsernameHash(uHash)
-  },
-  getUserById: {
-    get: (id) => mysqlAdapter.getUserById(id)
-  },
-  getAllUsers: {
-    all: () => mysqlAdapter.getAllUsers()
-  },
-  insertUser: {
-    run: (params) => mysqlAdapter.insertUser(params)
-  },
-  updateUserPassword: {
-    run: (pw, id) => mysqlAdapter.updateUserPassword(pw, id)
-  },
-  deleteUser: {
-    run: (id) => mysqlAdapter.deleteUser(id)
-  },
-
-  // ── Employees ──
-  getAllEmployees: {
-    all: () => mysqlAdapter.getAllEmployees()
-  },
-  getEmployee: {
-    get: (id) => mysqlAdapter.getEmployee(id)
-  },
-  getEmployeeByStatus: {
-    all: (status) => mysqlAdapter.getEmployeeByStatus(status)
-  },
-  insertEmployee: {
-    run: (emp) => mysqlAdapter.insertEmployee(emp)
-  },
-  updateEmployee: {
-    run: (emp) => mysqlAdapter.updateEmployee(emp)
-  },
-  deleteEmployee: {
-    run: (id) => mysqlAdapter.deleteEmployee(id)
-  },
-  employeeCount: {
-    get: () => mysqlAdapter.employeeCount()
-  },
-  totalEmployeesCount: {
-    get: () => mysqlAdapter.totalEmployeesCount()
-  },
-
-  // ── Attendance ──
-  getAllAttendance: {
-    all: (size, offset) => mysqlAdapter.getAllAttendance(size, offset)
-  },
-  getAttByDateRange: {
-    all: (start, end, size, offset) => mysqlAdapter.getAttByDateRange(start, end, size, offset)
-  },
-  getAttByEmp: {
-    all: (empId, size, offset) => mysqlAdapter.getAttByEmp(empId, size, offset)
-  },
-  getAttendance: {
-    all: (limit) => mysqlAdapter.getAttendance(limit)
-  },
-  insertAtt: {
-    run: (att) => mysqlAdapter.insertAtt(att)
-  },
-  checkDuplicate: {
-    get: (emp_id) => mysqlAdapter.checkDuplicate(emp_id)
-  },
-  deleteAtt: {
-    run: (att_id) => mysqlAdapter.deleteAtt(att_id)
-  },
-
-  // ── Stats ──
-  statsToday: {
-    get: () => mysqlAdapter.statsToday()
-  },
-  totalEmployees: {
-    get: () => mysqlAdapter.totalEmployees()
-  },
-  totalRecords: {
-    get: () => mysqlAdapter.totalRecords()
-  },
-  statusCounts: {
-    get: () => mysqlAdapter.statusCounts()
-  },
-  deptHibernateCounts: {
-    all: () => mysqlAdapter.deptHibernateCounts()
-  },
-  monthlyHibernateTrend: {
-    all: () => mysqlAdapter.monthlyHibernateTrend()
-  },
-
-  // ── Audit ──
-  insertAudit: {
-    run: (audit) => mysqlAdapter.insertAudit(audit)
-  },
-  getAuditLogs: {
-    all: (size, offset) => mysqlAdapter.getAuditLogs(size, offset)
-  },
-  countAuditLogs: {
-    get: () => mysqlAdapter.countAuditLogs()
-  },
-
-  // ── Reset & Truncate ──
-  resetAttendanceAndEmployees: {
-    run: () => mysqlAdapter.clearAll()
-  },
-
-  // ── Token Blacklist ──
-  blacklistToken: {
-    run: (token, exp) => mysqlAdapter.blacklistToken(token, exp)
-  },
-  isTokenBlacklisted: {
-    get: (token) => mysqlAdapter.isTokenBlacklisted(token)
-  },
-  purgeExpiredTokens: {
-    run: (now) => mysqlAdapter.purgeExpiredTokens(now)
-  },
-
-  // ── Master Settings ──
-  getMasterSettings: {
-    get: () => mysqlAdapter.getMasterSettings()
-  },
-  updateMasterSettings: {
-    run: (settingsMap, updatedBy) => mysqlAdapter.updateMasterSettings(settingsMap, updatedBy)
-  },
-
-  // ── Shifts ──
-  getAllShifts: {
-    all: () => mysqlAdapter.getAllShifts()
-  },
-  getShiftById: {
-    get: (id) => mysqlAdapter.getShiftById(id)
-  },
-  insertShift: {
-    run: (shift) => mysqlAdapter.insertShift(shift)
-  },
-  updateShift: {
-    run: (shift) => mysqlAdapter.updateShift(shift)
-  },
-  deleteShift: {
-    run: (id) => mysqlAdapter.deleteShift(id)
-  },
-
-  // ── Shift Calendar ──
-  getShiftCalendarMonth: {
-    get: (year, month) => mysqlAdapter.getShiftCalendarMonth(year, month)
-  },
-  upsertShiftCalendarDay: {
-    run: (data) => mysqlAdapter.upsertShiftCalendarDay(data)
-  },
-  applyShiftCalendarPattern: {
-    run: (data) => mysqlAdapter.applyShiftCalendarPattern(data)
-  },
-
-  // ── Shift Groups ──
-  getAllShiftGroups: {
-    all: () => mysqlAdapter.getAllShiftGroups()
-  },
-  getShiftGroupById: {
-    get: (id) => mysqlAdapter.getShiftGroupById(id)
-  },
-  insertShiftGroup: {
-    run: (group) => mysqlAdapter.insertShiftGroup(group)
-  },
-  updateShiftGroup: {
-    run: (group) => mysqlAdapter.updateShiftGroup(group)
-  },
-  deleteShiftGroup: {
-    run: (id) => mysqlAdapter.deleteShiftGroup(id)
-  },
-  setShiftGroupMembers: {
-    run: (groupId, empIds, startDate) => mysqlAdapter.setShiftGroupMembers(groupId, empIds, startDate)
-  },
-
-  // ── Shift Roster ──
-  getShiftRosterMatrix: {
-    get: (filter) => mysqlAdapter.getShiftRosterMatrix(filter)
-  },
-  assignShiftRoster: {
-    run: (data) => mysqlAdapter.assignShiftRoster(data)
-  },
-  autoGenerateMonthlyRoster: {
-    run: (data) => mysqlAdapter.autoGenerateMonthlyRoster(data)
-  },
-
-  // ── 🏢 Departments ──
-  getAllDepartments: {
-    all: () => mysqlAdapter.getAllDepartments()
-  },
-  getDepartmentById: {
-    get: (id) => mysqlAdapter.getDepartmentById(id)
-  },
-  insertDepartment: {
-    run: (dept) => mysqlAdapter.insertDepartment(dept)
-  },
-  updateDepartment: {
-    run: (dept) => mysqlAdapter.updateDepartment(dept)
-  },
-  deleteDepartment: {
-    run: (id) => mysqlAdapter.deleteDepartment(id)
-  },
-
-  // ── 🔄 Department Shifts ──
-  getAllDepartmentShifts: {
-    all: () => mysqlAdapter.getAllDepartmentShifts()
-  },
-  getDepartmentShiftsByDept: {
-    get: (deptId) => mysqlAdapter.getDepartmentShiftsByDept(deptId)
-  },
-  upsertDepartmentShifts: {
-    run: (data) => mysqlAdapter.upsertDepartmentShifts(data)
-  },
-  applyDepartmentShiftsToEmployees: {
-    run: (deptId) => mysqlAdapter.applyDepartmentShiftsToEmployees(deptId)
-  },
-
-  // ── 🏖️ Public Holidays ──
-  getAllPublicHolidays: {
-    all: (year) => mysqlAdapter.getAllPublicHolidays(year)
-  },
-  getPublicHolidayById: {
-    get: (id) => mysqlAdapter.getPublicHolidayById(id)
-  },
-  insertPublicHoliday: {
-    run: (holiday) => mysqlAdapter.insertPublicHoliday(holiday)
-  },
-  updatePublicHoliday: {
-    run: (holiday) => mysqlAdapter.updatePublicHoliday(holiday)
-  },
-  deletePublicHoliday: {
-    run: (id) => mysqlAdapter.deletePublicHoliday(id)
-  },
-  importKarnatakaHolidays: {
-    run: (year) => mysqlAdapter.importKarnatakaHolidays(year)
-  },
-  syncHolidaysWithCalendar: {
-    run: (year, updatedBy) => mysqlAdapter.syncHolidaysWithCalendar(year, updatedBy)
-  },
-
-  // ── 👔 Employment Types ──
-  getAllEmploymentTypes: {
-    all: () => mysqlAdapter.getAllEmploymentTypes()
-  },
-  getEmploymentTypeById: {
-    get: (id) => mysqlAdapter.getEmploymentTypeById(id)
-  },
-  insertEmploymentType: {
-    run: (data) => mysqlAdapter.insertEmploymentType(data)
-  },
-  updateEmploymentType: {
-    run: (id, data) => mysqlAdapter.updateEmploymentType(id, data)
-  },
-  deleteEmploymentType: {
-    run: (id) => mysqlAdapter.deleteEmploymentType(id)
-  },
-
-  // ── 👥 Employee Cohort Groups ──
-  getAllEmployeeCohortGroups: {
-    all: () => mysqlAdapter.getAllEmployeeCohortGroups()
-  },
-  getEmployeeCohortGroupById: {
-    get: (id) => mysqlAdapter.getEmployeeCohortGroupById(id)
-  },
-  insertEmployeeCohortGroup: {
-    run: (data) => mysqlAdapter.insertEmployeeCohortGroup(data)
-  },
-  updateEmployeeCohortGroup: {
-    run: (id, data) => mysqlAdapter.updateEmployeeCohortGroup(id, data)
-  },
-  deleteEmployeeCohortGroup: {
-    run: (id) => mysqlAdapter.deleteEmployeeCohortGroup(id)
-  },
-  getEmployeeCohortGroupMembers: {
-    all: (groupId) => mysqlAdapter.getEmployeeCohortGroupById(groupId)
-  },
-  setEmployeeCohortGroupMembers: {
-    run: (groupId, empIds, roleInGroup) => mysqlAdapter.setEmployeeCohortGroupMembers(groupId, empIds, roleInGroup)
-  },
-
-  // ── 📍 Geofences ──
-  getAllGeofences: {
-    all: () => mysqlAdapter.getAllGeofences()
-  },
-  getGeofenceById: {
-    get: (id) => mysqlAdapter.getGeofenceById(id)
-  },
-  insertGeofence: {
-    run: (data) => mysqlAdapter.insertGeofence(data)
-  },
-  updateGeofence: {
-    run: (id, data) => mysqlAdapter.updateGeofence(id, data)
-  },
-  deleteGeofence: {
-    run: (id) => mysqlAdapter.deleteGeofence(id)
-  },
-
-  // ── 🔢 Work Codes ──
-  getAllWorkCodes: {
-    all: () => mysqlAdapter.getAllWorkCodes()
-  },
-  getWorkCodeById: {
-    get: (id) => mysqlAdapter.getWorkCodeById(id)
-  },
-  insertWorkCode: {
-    run: (data) => mysqlAdapter.insertWorkCode(data)
-  },
-  updateWorkCode: {
-    run: (id, data) => mysqlAdapter.updateWorkCode(id, data)
-  },
-  deleteWorkCode: {
-    run: (id) => mysqlAdapter.deleteWorkCode(id)
-  },
-
-  // ── ⏱️ OT Register ──
-  getOtRegister: {
-    all: (filter) => mysqlAdapter.getOtRegister(filter)
-  },
-  getOtRecordById: {
-    get: (id) => mysqlAdapter.getOtRecordById(id)
-  },
-  insertOtRecord: {
-    run: (data) => mysqlAdapter.insertOtRecord(data)
-  },
-  updateOtStatus: {
-    run: (id, data) => mysqlAdapter.updateOtStatus(id, data)
-  },
-  bulkUpdateOtStatus: {
-    run: (ids, data) => mysqlAdapter.bulkUpdateOtStatus(ids, data)
-  },
-  deleteOtRecord: {
-    run: (id) => mysqlAdapter.deleteOtRecord(id)
-  },
-
-  // ── 📊 Attendance Log & Regularization ──
-  getDetailedAttendanceLog: {
-    all: (filter) => mysqlAdapter.getDetailedAttendanceLog(filter)
-  },
-  getAttendanceLogStats: {
-    get: (date) => mysqlAdapter.getAttendanceLogStats(date)
-  },
-  regularizeAttendance: {
-    run: (data) => mysqlAdapter.regularizeAttendance(data)
-  },
-
-  // ── 🏥 Leave Types (Organization) ──
-  getAllLeaveTypes: {
-    all: () => mysqlAdapter.getAllLeaveTypes()
-  },
-  getLeaveTypeById: {
-    get: (id) => mysqlAdapter.getLeaveTypeById(id)
-  },
-  insertLeaveType: {
-    run: (data) => mysqlAdapter.insertLeaveType(data)
-  },
-  updateLeaveType: {
-    run: (id, data) => mysqlAdapter.updateLeaveType(id, data)
-  },
-  deleteLeaveType: {
-    run: (id) => mysqlAdapter.deleteLeaveType(id)
-  },
-
-  // ── 📝 Employee Leave Entries ──
-  getLeaveEntries: {
-    all: (filter) => mysqlAdapter.getLeaveEntries(filter)
-  },
-  getLeaveEntryById: {
-    get: (id) => mysqlAdapter.getLeaveEntryById(id)
-  },
-  insertLeaveEntry: {
-    run: (data) => mysqlAdapter.insertLeaveEntry(data)
-  },
-  updateLeaveEntryStatus: {
-    run: (id, data) => mysqlAdapter.updateLeaveEntryStatus(id, data)
-  },
-  deleteLeaveEntry: {
-    run: (id) => mysqlAdapter.deleteLeaveEntry(id)
-  },
-  getEmployeeLeaveBalances: {
-    all: (empId, year) => mysqlAdapter.getEmployeeLeaveBalances(empId, year)
-  },
-
-
-  // ── 🏢 Companies Master ──
-  getAllCompanies: {
-    all: () => mysqlAdapter.getAllCompanies()
-  },
-  getCompanyById: {
-    get: (id) => mysqlAdapter.getCompanyById(id)
-  },
-  insertCompany: {
-    run: (data) => mysqlAdapter.insertCompany(data)
-  },
-  updateCompany: {
-    run: (data) => mysqlAdapter.updateCompany(data)
-  },
-  deleteCompany: {
-    run: (id) => mysqlAdapter.deleteCompany(id)
-  },
-
-  // ── 👔 Designations Master ──
-  getAllDesignations: {
-    all: () => mysqlAdapter.getAllDesignations()
-  },
-  getDesignationById: {
-    get: (id) => mysqlAdapter.getDesignationById(id)
-  },
-  insertDesignation: {
-    run: (data) => mysqlAdapter.insertDesignation(data)
-  },
-  updateDesignation: {
-    run: (data) => mysqlAdapter.updateDesignation(data)
-  },
-  deleteDesignation: {
-    run: (id) => mysqlAdapter.deleteDesignation(id)
-  },
-
-  // ── 🏢 Branches Master ──
-  getAllBranches: {
-    all: () => mysqlAdapter.getAllBranches()
-  },
-  getBranchById: {
-    get: (id) => mysqlAdapter.getBranchById(id)
-  },
-  insertBranch: {
-    run: (data) => mysqlAdapter.insertBranch(data)
-  },
-  updateBranch: {
-    run: (data) => mysqlAdapter.updateBranch(data)
-  },
-  deleteBranch: {
-    run: (id) => mysqlAdapter.deleteBranch(id)
-  },
-
-  // ── ⚡ Paginated Employees ──
-  getEmployees: {
-    all: (params) => mysqlAdapter.getEmployees(params)
-  },
-  bulkInsertEmployees: {
-    run: (records, chunkSize) => mysqlAdapter.bulkInsertEmployees(records, chunkSize)
-  },
-
-  // ── 🚶 Employee Outdoor Entries (On-Duty / OD) ──
-  getOutdoorEntries: {
-    all: (filter) => mysqlAdapter.getOutdoorEntries(filter)
-  },
-  getOutdoorEntryById: {
-    get: (id) => mysqlAdapter.getOutdoorEntryById(id)
-  },
-  insertOutdoorEntry: {
-    run: (data) => mysqlAdapter.insertOutdoorEntry(data)
-  },
-  updateOutdoorEntryStatus: {
-    run: (id, data) => mysqlAdapter.updateOutdoorEntryStatus(id, data)
-  },
-  deleteOutdoorEntry: {
-    run: (id) => mysqlAdapter.deleteOutdoorEntry(id)
-  },
-
-  // ── 🏢 Divisions Master ──
-  getAllDivisions: {
-    all: (filter) => mysqlAdapter.getAllDivisions(filter)
-  },
-  getDivisionById: {
-    get: (id) => mysqlAdapter.getDivisionById(id)
-  },
-  getDivisionByCode: {
-    get: (code) => mysqlAdapter.getDivisionByCode(code)
-  },
-  insertDivision: {
-    run: (data) => mysqlAdapter.insertDivision(data)
-  },
-  updateDivision: {
-    run: (data) => mysqlAdapter.updateDivision(data)
-  },
-  deleteDivision: {
-    run: (id) => mysqlAdapter.deleteDivision(id)
-  },
-
-  // ── 💰 Cost Centers Master ──
-  getAllCostCenters: {
-    all: (filter) => mysqlAdapter.getAllCostCenters(filter)
-  },
-  getCostCenterById: {
-    get: (id) => mysqlAdapter.getCostCenterById(id)
-  },
-  getCostCenterByCode: {
-    get: (code) => mysqlAdapter.getCostCenterByCode(code)
-  },
-  insertCostCenter: {
-    run: (data) => mysqlAdapter.insertCostCenter(data)
-  },
-  updateCostCenter: {
-    run: (data) => mysqlAdapter.updateCostCenter(data)
-  },
-  deleteCostCenter: {
-    run: (id) => mysqlAdapter.deleteCostCenter(id)
-  },
-
-  // ── 📟 Biometric Devices & Edge Terminals ──
-  getAllDevices: {
-    all: (filter) => mysqlAdapter.getAllDevices(filter)
-  },
-  getDeviceById: {
-    get: (id) => mysqlAdapter.getDeviceById(id)
-  },
-  getDeviceBySerial: {
-    get: (serial) => mysqlAdapter.getDeviceBySerial(serial)
-  },
-  insertDevice: {
-    run: (data) => mysqlAdapter.insertDevice(data)
-  },
-  updateDevice: {
-    run: (data) => mysqlAdapter.updateDevice(data)
-  },
-  deleteDevice: {
-    run: (id) => mysqlAdapter.deleteDevice(id)
-  },
-  pingDevice: {
-    run: (id) => mysqlAdapter.pingDevice(id)
-  },
-  syncDeviceTemplates: {
-    run: (id) => mysqlAdapter.syncDeviceTemplates(id)
-  },
-
-  // ── 🔄 Employee Career Transfers & Promotions ──
-  getTransfers: {
-    all: (filter) => mysqlAdapter.getTransfers(filter)
-  },
-  recordEmployeeTransfer: {
-    run: (data) => mysqlAdapter.recordEmployeeTransfer(data)
-  },
-
-  // ── ⚡ High-Speed Fast Punch Buffer ──
-  ingestFastPunch: {
-    run: (data) => mysqlAdapter.ingestFastPunch(data)
-  },
-  batchIngestFastPunches: {
-    run: (punches) => mysqlAdapter.batchIngestFastPunches(punches)
-  },
-  flushFastPunchBuffer: {
-    run: (limit) => mysqlAdapter.flushFastPunchBuffer(limit)
-  },
-  getFastPunchMetrics: {
-    get: () => mysqlAdapter.getFastPunchMetrics()
+/**
+ * Universal Statement Proxy Generator
+ * Maps `stmts.methodName.all(...)`, `stmts.methodName.get(...)`, and `stmts.methodName.run(...)`
+ * directly and cleanly to `mysqlAdapter[methodName](...)`.
+ */
+const stmts = new Proxy({}, {
+  get(target, prop) {
+    if (!target[prop]) {
+      target[prop] = {
+        all: (...args) => {
+          if (typeof mysqlAdapter[prop] === 'function') {
+            return mysqlAdapter[prop](...args);
+          }
+          throw new Error(`Method ${String(prop)} not found on MySQLAdapter`);
+        },
+        get: (...args) => {
+          if (typeof mysqlAdapter[prop] === 'function') {
+            return mysqlAdapter[prop](...args);
+          }
+          throw new Error(`Method ${String(prop)} not found on MySQLAdapter`);
+        },
+        run: (...args) => {
+          if (typeof mysqlAdapter[prop] === 'function') {
+            return mysqlAdapter[prop](...args);
+          }
+          throw new Error(`Method ${String(prop)} not found on MySQLAdapter`);
+        }
+      };
+    }
+    return target[prop];
   }
-};
+});
 
-
+// Explicit backward compatibility aliases
+stmts.getEmployees = { all: (params) => mysqlAdapter.getAllEmployees(params) };
+stmts.getAttendance = { all: (limit) => mysqlAdapter.getRecentAttendance(limit) };
+stmts.getAllAttendance = { all: (size, offset) => mysqlAdapter.getAttendanceLogs({ size, page: Math.floor((offset || 0) / (size || 20)) + 1 }) };
+stmts.getDetailedAttendanceLog = { all: (filter) => mysqlAdapter.getAttendanceLogs(filter) };
+stmts.getAttendanceLogStats = { get: (date) => mysqlAdapter.getStats() };
+stmts.statsToday = { get: () => mysqlAdapter.getStats() };
+stmts.totalEmployees = { get: () => mysqlAdapter.getEmployeeStats() };
+stmts.totalEmployeesCount = { get: () => mysqlAdapter.getEmployeeStats() };
+stmts.resetAttendanceAndEmployees = { run: () => mysqlAdapter.close() };
+stmts.getEmployeeCohortGroupMembers = { all: (groupId) => mysqlAdapter.getCohortGroupMembers(groupId) };
+stmts.setEmployeeCohortGroupMembers = { run: (groupId, members) => mysqlAdapter.assignCohortMembers(groupId, members) };
+stmts.setShiftGroupMembers = { run: (groupId, empIds) => mysqlAdapter.assignShiftGroupMembers(groupId, empIds) };
+stmts.getShiftRosterMatrix = { get: (filter) => mysqlAdapter.getRosterMatrix(filter) };
+stmts.assignShiftRoster = { run: (data) => mysqlAdapter.assignEmployeeRoster(data) };
+stmts.getOtRegister = { all: (filter) => mysqlAdapter.getOtRecords(filter) };
+stmts.updateLeaveEntryStatus = { run: (id, data) => mysqlAdapter.updateLeaveStatus(id, data) };
+stmts.updateOutdoorEntryStatus = { run: (id, data) => mysqlAdapter.updateOutdoorStatus(id, data) };
+stmts.insertAudit = { run: (audit) => mysqlAdapter.insertAuditLog(audit) };
 
 module.exports = {
   stmts,
