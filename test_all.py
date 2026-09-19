@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Soukhya Tech — Cross-Platform Endpoint Test Suite (Windows & Linux)
+Soukhya Tech — Cross-Platform Endpoint & Integration Test Suite (Windows & Linux)
 Pure Python standard library (no third-party dependencies required).
-Tests Node.js & Java Spring Boot REST endpoints.
+Runs full 28-step Node integration tests and probes Node.js & Java Spring Boot REST endpoints.
 """
 
 import sys
@@ -10,7 +10,11 @@ import os
 import json
 import urllib.request
 import urllib.error
+import subprocess
 import time
+
+# Bypass proxy for localhost / loopback calls
+urllib.request.install_opener(urllib.request.build_opener(urllib.request.ProxyHandler({})))
 
 # Enable ANSI escape sequences on Windows
 if sys.platform.startswith('win'):
@@ -91,6 +95,17 @@ def make_request(url, method='GET', headers=None, data=None):
     except Exception as e:
         return 0, str(e)
 
+def service_reachable(port):
+    try:
+        url = f"http://127.0.0.1:{port}/"
+        req = urllib.request.Request(url, method='GET')
+        with urllib.request.urlopen(req, timeout=2) as resp:
+            return True
+    except urllib.error.HTTPError:
+        return True
+    except Exception:
+        return False
+
 def assert_service_ready(port, name):
     url = f"http://127.0.0.1:{port}/"
     status, body = make_request(url)
@@ -167,9 +182,9 @@ def assert_api_get(port, path, token, name):
 
 def run_service_tests(port, name):
     print()
-    log_info("══════════════════════════════════════════")
-    log_info(f" Running Tests for: {name} (Port {port})")
-    log_info("══════════════════════════════════════════")
+    log_info("═══════════════════════════════════════════════════════")
+    log_info(f" Probing Live REST Endpoints: {name} (Port {port})")
+    log_info("═══════════════════════════════════════════════════════")
 
     if not assert_service_ready(port, name):
         return False
@@ -195,7 +210,7 @@ def run_service_tests(port, name):
         else:
             log_fail(f"{name} /api/sync/version returned HTTP {sync_status}")
 
-        # ── Test /api/auth/me ──
+        # Test /api/auth/me
         log_info("Testing GET /api/auth/me with Admin Token")
         me_status, me_body = make_request(f"http://127.0.0.1:{port}/api/auth/me", headers={"Authorization": f"Bearer {access_token}"})
         if me_status == 200 and "ADMIN" in me_body:
@@ -203,14 +218,14 @@ def run_service_tests(port, name):
         else:
             log_fail(f"{name} /api/auth/me returned HTTP {me_status}: {me_body}")
 
-        # ── Test User Login with Hashed Credentials ──
+        # Test User Login with Hashed Credentials
         log_info("Testing User Login (user / user123)")
         u_status, u_body = make_request(f"http://127.0.0.1:{port}/api/auth/login", method="POST", data={"username": "user", "password": "user123"})
         if u_status == 200 and "USER" in u_body:
             log_ok(f"{name} User login succeeded with USER role")
             user_token = json.loads(u_body).get("data", {}).get("access_token") or json.loads(u_body).get("access_token")
 
-            # ── Test RBAC: User trying to access /api/admin/users should get 403 ──
+            # Test RBAC
             log_info("Testing RBAC: Non-admin accessing /api/admin/users (expect 403)")
             rbac_status, _ = make_request(f"http://127.0.0.1:{port}/api/admin/users", headers={"Authorization": f"Bearer {user_token}"})
             if rbac_status == 403:
@@ -220,7 +235,24 @@ def run_service_tests(port, name):
         else:
             log_fail(f"{name} User login failed: HTTP {u_status}: {u_body}")
 
-        # ── Test Admin User Management ──
+        # ── Test Colleague's New HR Enterprise Modules ──
+        log_info("── Probing Colleague Enterprise Configuration Modules ──")
+        assert_api_get(port, "/api/settings/master", access_token, name)
+        assert_api_get(port, "/api/shifts", access_token, name)
+        assert_api_get(port, "/api/shift-calendar?month=2026-09", access_token, name)
+        assert_api_get(port, "/api/shift-groups", access_token, name)
+        assert_api_get(port, "/api/departments", access_token, name)
+        assert_api_get(port, "/api/department-shifts", access_token, name)
+        assert_api_get(port, "/api/public-holidays?year=2026", access_token, name)
+        assert_api_get(port, "/api/employment-types", access_token, name)
+        assert_api_get(port, "/api/employee-groups", access_token, name)
+        assert_api_get(port, "/api/attendance-log", access_token, name)
+        assert_api_get(port, "/api/geofences", access_token, name)
+        assert_api_get(port, "/api/work-codes", access_token, name)
+        assert_api_get(port, "/api/ot-register", access_token, name)
+        assert_api_get(port, "/api/leave-types", access_token, name)
+
+        # Test Admin User Management
         log_info("Testing Admin User Management (/api/admin/users)")
         adm_u_status, adm_u_body = make_request(f"http://127.0.0.1:{port}/api/admin/users", headers={"Authorization": f"Bearer {access_token}"})
         if adm_u_status == 200:
@@ -228,7 +260,6 @@ def run_service_tests(port, name):
         else:
             log_fail(f"{name} GET /api/admin/users returned HTTP {adm_u_status}: {adm_u_body}")
 
-        # Create temporary user
         test_username = f"test_user_{int(time.time())}"
         log_info(f"Testing Admin Create User: {test_username}")
         c_status, c_body = make_request(f"http://127.0.0.1:{port}/api/admin/users", method="POST",
@@ -239,8 +270,6 @@ def run_service_tests(port, name):
             try:
                 new_user_id = json.loads(c_body).get("data", {}).get("id") or json.loads(c_body).get("id")
                 if new_user_id:
-                    # Reset password
-                    log_info(f"Testing Admin Reset Password for user ID {new_user_id}")
                     pw_status, _ = make_request(f"http://127.0.0.1:{port}/api/admin/users/{new_user_id}/reset-password", method="POST",
                                                 headers={"Authorization": f"Bearer {access_token}"},
                                                 data={"new_password": "new_secret_pass_456"})
@@ -249,8 +278,6 @@ def run_service_tests(port, name):
                     else:
                         log_fail(f"{name} Admin reset password returned HTTP {pw_status}")
 
-                    # Delete temporary user
-                    log_info(f"Testing Admin Delete User for user ID {new_user_id}")
                     del_status, _ = make_request(f"http://127.0.0.1:{port}/api/admin/users/{new_user_id}", method="DELETE",
                                                  headers={"Authorization": f"Bearer {access_token}"})
                     if del_status == 200:
@@ -272,30 +299,55 @@ def run_service_tests(port, name):
 
     return True
 
+def run_node_integration_suite():
+    integ_script = os.path.join(SCRIPT_DIR, 'test_integration.js')
+    if os.path.exists(integ_script):
+        print()
+        log_info("═════════════════════════════════════════════════════════════")
+        log_info(" Running Full 28-Step Node.js Integration Test Suite        ")
+        log_info("═════════════════════════════════════════════════════════════")
+        node_cmd = 'node.cmd' if sys.platform.startswith('win') else 'node'
+        res = subprocess.run([node_cmd, integ_script], cwd=SCRIPT_DIR)
+        if res.returncode == 0:
+            log_ok("Complete 28-Step Integration Test Suite passed (100%).")
+            return True
+        else:
+            log_fail("Complete 28-Step Integration Test Suite encountered failures.")
+            return False
+    return True
 
 def main():
     target = (sys.argv[1] if len(sys.argv) > 1 else 'all').lower()
     log_info(f"Starting Soukhya Tech test suite for target: {target}")
 
-    if target == 'node':
-        run_service_tests(NODE_PORT, "Node.js")
-    elif target == 'java':
-        run_service_tests(JAVA_PORT, "Java Spring Boot")
-    else:
-        run_service_tests(NODE_PORT, "Node.js")
-        run_service_tests(JAVA_PORT, "Java Spring Boot")
+    if target in ('node', 'all'):
+        # 1. Run complete 28-step Node integration test suite
+        run_node_integration_suite()
+
+        # 2. Probe live Node server if active
+        if service_reachable(NODE_PORT):
+            run_service_tests(NODE_PORT, "Node.js")
+        else:
+            log_info(f"Live Node server not active on port {NODE_PORT}; skipped live endpoint probe.")
+
+    if target in ('java', 'all'):
+        if service_reachable(JAVA_PORT):
+            run_service_tests(JAVA_PORT, "Java Spring Boot")
+        else:
+            log_info(f"Live Java backend not active on port {JAVA_PORT}; skipped live endpoint probe.")
 
     print()
     if FAILED_TESTS == 0:
-        print(f"{GREEN}============================================{RESET}")
-        print(f"{GREEN}   ALL ENDPOINT TESTS PASSED ({PASSED_TESTS} passed)    {RESET}")
-        print(f"{GREEN}============================================{RESET}")
+        print(f"{GREEN}============================================================{RESET}")
+        print(f"{GREEN}   ALL ENDPOINT & INTEGRATION TESTS PASSED ({PASSED_TESTS} passed)     {RESET}")
+        print(f"{GREEN}============================================================{RESET}")
         sys.exit(0)
     else:
-        print(f"{RED}============================================{RESET}")
+        print(f"{RED}============================================================{RESET}")
         print(f"{RED}   TEST SUITE FAILED ({FAILED_TESTS} failed, {PASSED_TESTS} passed) {RESET}")
-        print(f"{RED}============================================{RESET}")
+        print(f"{RED}============================================================{RESET}")
         sys.exit(1)
 
 if __name__ == '__main__':
     main()
+

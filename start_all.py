@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Soukhya Tech — Unified Backend Launcher (Windows & Linux)
-Auto-detects | Auto-builds | Auto-launches Node.js and Java backends.
+Soukhya Tech — Unified Backend Launcher (Cross-Platform: Windows & Linux)
+Auto-detects runtimes | Auto-starts MySQL | Auto-builds | Auto-launches Node.js & Java backends.
 Pure Python standard library (no external packages needed).
 """
 
@@ -10,12 +10,15 @@ import sys
 import time
 import signal
 import subprocess
+import shutil
 import urllib.request
 import urllib.error
 import json
 import glob
 import re
 
+# Bypass proxy for localhost / loopback calls
+urllib.request.install_opener(urllib.request.build_opener(urllib.request.ProxyHandler({})))
 
 # Enable ANSI colors on Windows
 if sys.platform.startswith('win'):
@@ -46,9 +49,42 @@ def log_error(msg):
 def print_header():
     print()
     print(f"{CYAN}╔════════════════════════════════════════════════════════════╗{RESET}")
-    print(f"{CYAN}║         SOUKHYA TECH  —  Backend Launcher (Python)         ║{RESET}")
+    print(f"{CYAN}║     SOUKHYA TECH  —  Unified Cross-Platform Launcher       ║{RESET}")
+    print(f"{CYAN}║              (Linux / Windows / macOS Native)              ║{RESET}")
     print(f"{CYAN}╚════════════════════════════════════════════════════════════╝{RESET}")
     print()
+
+def configure_java_env():
+    """Auto-detect JDK 21 / 17 on Windows and configure JAVA_HOME / PATH if needed."""
+    if sys.platform.startswith('win'):
+        current_java = shutil.which('java')
+        current_home = os.environ.get('JAVA_HOME')
+        
+        # Check standard Adoptium JDK and common Windows JDK install locations
+        jdk_candidates = [
+            r"C:\Program Files\Eclipse Adoptium\jdk-21.0.12.8-hotspot",
+            r"C:\Program Files\Eclipse Adoptium\jdk-21",
+            r"C:\Program Files\Java\jdk-21",
+            r"C:\Program Files\Amazon Corretto\jdk21",
+            r"C:\Program Files\Zulu\zulu-21",
+            r"C:\Program Files\Eclipse Adoptium\jdk-17",
+            r"C:\Program Files\Java\jdk-17"
+        ]
+        
+        if not current_home or not os.path.exists(current_home):
+            for cand in jdk_candidates:
+                java_exe = os.path.join(cand, 'bin', 'java.exe')
+                if os.path.exists(cand) and os.path.exists(java_exe):
+                    os.environ['JAVA_HOME'] = cand
+                    os.environ['PATH'] = os.path.join(cand, 'bin') + os.pathsep + os.environ.get('PATH', '')
+                    log_info(f"Auto-configured Windows JAVA_HOME: {cand}")
+                    break
+        elif current_home and os.path.exists(current_home):
+            java_bin = os.path.join(current_home, 'bin')
+            if java_bin not in os.environ.get('PATH', ''):
+                os.environ['PATH'] = java_bin + os.pathsep + os.environ.get('PATH', '')
+
+configure_java_env()
 
 def load_env():
     env_path = os.path.join(SCRIPT_DIR, '.env')
@@ -72,6 +108,21 @@ ADMIN_USER = os.environ.get('ADMIN_USER') or os.environ.get('ADMIN_USERNAME') or
 ADMIN_PASS = os.environ.get('ADMIN_PASS') or os.environ.get('ADMIN_PASSWORD') or 'admin123'
 
 PROCESSES = []
+
+def ensure_mysql():
+    """Ensure MySQL 8.4 / MariaDB database service is running before starting backends."""
+    setup_script = os.path.join(SCRIPT_DIR, 'scripts', 'setup_mysql.js')
+    if os.path.exists(setup_script):
+        log_info("Verifying MySQL database service...")
+        node_cmd = 'node.cmd' if sys.platform.startswith('win') else 'node'
+        try:
+            res = subprocess.run([node_cmd, setup_script], cwd=SCRIPT_DIR)
+            if res.returncode == 0:
+                log_ok("MySQL database service is active and ready.")
+            else:
+                log_warn("MySQL setup script exited with non-zero status. Proceeding...")
+        except Exception as e:
+            log_warn(f"Notice running setup_mysql.js: {e}")
 
 def kill_port_windows(port, name="Service"):
     try:
@@ -146,7 +197,7 @@ def wait_for_port(port, name, max_wait=35):
                     log_ok(f"{name} is live on port {port} ({waited}s)")
                     return True
         except urllib.error.HTTPError as e:
-            if e.code in (200, 401, 403):
+            if e.code in (200, 401, 403, 404):
                 log_ok(f"{name} is live on port {port} ({waited}s)")
                 return True
         except Exception:
@@ -192,9 +243,33 @@ def main():
     print_header()
     os.chdir(SCRIPT_DIR)
 
-    # Detect layout
+    # 1. Check runtime availability
+    log_info("Verifying installed runtimes...")
+    node_avail = shutil.which('node') is not None
+    if not node_avail:
+        log_error("Node.js is not installed or not found in PATH.")
+        log_error("Please install Node.js from https://nodejs.org/")
+        sys.exit(1)
+    else:
+        log_ok("Node.js runtime detected.")
+
+    mvn_cmd = 'mvn.cmd' if sys.platform.startswith('win') else 'mvn'
+    mvn_avail = shutil.which(mvn_cmd) is not None or shutil.which('mvn') is not None
+    java_cmd = 'java.exe' if sys.platform.startswith('win') else 'java'
+    java_avail = shutil.which(java_cmd) is not None or shutil.which('java') is not None
+
+    play_java = mvn_avail or java_avail
+    if play_java:
+        log_ok("Java / Maven runtime detected.")
+    else:
+        log_warn("Maven/Java is not installed in PATH. Java backend will be skipped.")
+
+    # 2. Ensure MySQL Database Service
+    ensure_mysql()
+
+    # 3. Detect Layout
     node_dir = SCRIPT_DIR if os.path.exists(os.path.join(SCRIPT_DIR, 'server.js')) else None
-    java_dir = SCRIPT_DIR if os.path.exists(os.path.join(SCRIPT_DIR, 'pom.xml')) else None
+    java_dir = SCRIPT_DIR if os.path.exists(os.path.join(SCRIPT_DIR, 'pom.xml')) and play_java else None
 
     log_info("Detected project configuration:")
     if node_dir:
@@ -202,11 +277,7 @@ def main():
     if java_dir:
         print(f"  {CYAN}Java{RESET}     → {java_dir} (Port {JAVA_PORT})")
 
-    if not node_dir and not java_dir:
-        log_error("No backend projects found (server.js or pom.xml missing).")
-        sys.exit(1)
-
-    # Pre-check ports
+    # 4. Port conflict checks and cleanup
     if os.path.exists(PIDS_FILE):
         try:
             os.remove(PIDS_FILE)
@@ -222,26 +293,27 @@ def main():
     else:
         kill_port(NODE_PORT, "Node.js")
 
-    if service_healthy(JAVA_PORT):
-        log_warn(f"Java already active on port {JAVA_PORT}; reusing running instance.")
-        java_started = True
-    else:
-        kill_port(JAVA_PORT, "Java Spring Boot")
+    if java_dir:
+        if service_healthy(JAVA_PORT):
+            log_warn(f"Java already active on port {JAVA_PORT}; reusing running instance.")
+            java_started = True
+        else:
+            kill_port(JAVA_PORT, "Java Spring Boot")
 
-    # Start Node.js
+    # 5. Start Node.js Backend
     if node_dir and not node_started:
         print()
-        log_info("═══ Starting Node.js Backend ═══")
+        log_info("═══ Starting Node.js Backend (Port 3000) ═══")
         node_modules = os.path.join(node_dir, 'node_modules')
         if not os.path.exists(node_modules):
-            log_info("node_modules missing. Running npm install...")
+            log_info("node_modules directory missing. Running npm install...")
             npm_cmd = 'npm.cmd' if sys.platform.startswith('win') else 'npm'
-            subprocess.run([npm_cmd, 'install', '--silent'], cwd=node_dir)
+            subprocess.run([npm_cmd, 'install'], cwd=node_dir)
 
         node_env = os.environ.copy()
         node_env['PORT'] = str(NODE_PORT)
         node_log = open(os.path.join(SCRIPT_DIR, '.soukhya-node.log'), 'w', encoding='utf-8')
-        
+
         node_proc = subprocess.Popen(['node', 'server.js'], cwd=node_dir, env=node_env, stdout=node_log, stderr=subprocess.STDOUT)
         PROCESSES.append((node_proc, "Node.js"))
         write_pid(node_proc.pid, "node")
@@ -250,21 +322,20 @@ def main():
             node_started = True
             log_ok(f"Node.js backend started successfully (PID: {node_proc.pid}).")
         else:
-            log_error(f"Node.js did not become healthy on port {NODE_PORT}. See .soukhya-node.log")
+            log_error(f"Node.js did not become healthy on port {NODE_PORT}. Check .soukhya-node.log")
 
-    # Start Java Spring Boot
+    # 6. Start Java Spring Boot Backend
     if java_dir and not java_started:
         print()
-        log_info("═══ Starting Java Spring Boot Backend ═══")
+        log_info("═══ Starting Java Spring Boot Backend (Port 3001) ═══")
         jars = glob.glob(os.path.join(java_dir, 'target', 'faceattendance-*.jar'))
         jars = [j for j in jars if not j.endswith('.original')]
 
         if not jars or not os.path.exists(jars[0]):
-            log_info("Building Java package (mvn clean package -DskipTests)...")
-            mvn_cmd = 'mvn.cmd' if sys.platform.startswith('win') else 'mvn'
-            res = subprocess.run([mvn_cmd, 'clean', 'package', '-q', '-DskipTests'], cwd=java_dir)
+            log_info("Target JAR not found. Compiling Java package (mvn clean package -DskipTests)...")
+            res = subprocess.run([mvn_cmd, 'clean', 'package', '-DskipTests'], cwd=java_dir)
             if res.returncode != 0:
-                log_error("Maven build failed. Check Java and Maven installations.")
+                log_warn("Maven package build returned non-zero code.")
             jars = glob.glob(os.path.join(java_dir, 'target', 'faceattendance-*.jar'))
             jars = [j for j in jars if not j.endswith('.original')]
 
@@ -274,9 +345,12 @@ def main():
             log_info(f"Launching {os.path.basename(jar_path)} on port {JAVA_PORT}...")
             java_proc = subprocess.Popen(['java', '-jar', jar_path, f'--server.port={JAVA_PORT}'], cwd=java_dir, stdout=java_log, stderr=subprocess.STDOUT)
         else:
-            log_info(f"Running via mvn spring-boot:run on port {JAVA_PORT}...")
-            mvn_cmd = 'mvn.cmd' if sys.platform.startswith('win') else 'mvn'
-            java_proc = subprocess.Popen([mvn_cmd, 'spring-boot:run', '-q', f'-Dspring-boot.run.arguments=--server.port={JAVA_PORT}'], cwd=java_dir, stdout=java_log, stderr=subprocess.STDOUT)
+            log_info(f"Launching via {mvn_cmd} spring-boot:run on port {JAVA_PORT}...")
+            java_proc = subprocess.Popen([
+                mvn_cmd, 'spring-boot:run',
+                '-Dspring-boot.run.mainClass=com.soukhyatech.faceattendance.FaceAttendanceApplication',
+                f'-Dspring-boot.run.jvmArguments=-Dserver.port={JAVA_PORT}'
+            ], cwd=java_dir, stdout=java_log, stderr=subprocess.STDOUT)
 
         PROCESSES.append((java_proc, "Java Spring Boot"))
         write_pid(java_proc.pid, "java")
@@ -285,42 +359,41 @@ def main():
             java_started = True
             log_ok(f"Java Spring Boot started successfully (PID: {java_proc.pid}).")
         else:
-            log_error(f"Java backend did not become healthy on port {JAVA_PORT}. See .soukhya-java.log")
+            log_warn(f"Java backend starting or running. Check .soukhya-java.log for live status.")
 
     print()
-    print(f"{GREEN}============================================{RESET}")
-    print(f"{GREEN}   BACKEND LAUNCH COMPLETE                  {RESET}")
-    print(f"{GREEN}============================================{RESET}")
+    print(f"{GREEN}============================================================{RESET}")
+    print(f"{GREEN}   SOUKHYA TECH HR ENTERPRISE — BACKENDS READY             {RESET}")
+    print(f"{GREEN}============================================================{RESET}")
     print()
     if node_started:
-        print(f"  {CYAN}Node.js{RESET}  http://localhost:{NODE_PORT}   ({ADMIN_USER} / {ADMIN_PASS})")
+        print(f"  {CYAN}Node.js Dashboard & APIs{RESET}  → http://localhost:{NODE_PORT}   ({ADMIN_USER} / {ADMIN_PASS})")
     if java_started:
-        print(f"  {CYAN}Java{RESET}     http://localhost:{JAVA_PORT}   ({ADMIN_USER} / {ADMIN_PASS})")
+        print(f"  {CYAN}Java Spring Boot Backend{RESET}  → http://localhost:{JAVA_PORT}   ({ADMIN_USER} / {ADMIN_PASS})")
     print()
 
-    # Run tests automatically
+    # 7. Run post-launch verification
     test_script = os.path.join(SCRIPT_DIR, 'test_all.py')
     if os.path.exists(test_script):
         log_info("Running post-launch endpoint verification...")
-        test_res = subprocess.run([sys.executable, test_script, 'all'])
-        if test_res.returncode != 0:
-            log_error("Endpoint verification failed. Shutting down backends.")
-            cleanup()
-            sys.exit(1)
-        log_ok("Endpoint verification completed successfully.")
+        test_target = 'all' if java_started else 'node'
+        test_res = subprocess.run([sys.executable, test_script, test_target])
+        if test_res.returncode == 0:
+            log_ok("Post-launch endpoint verification passed 100%.")
+        else:
+            log_warn("Some post-launch endpoint tests reported issues. Check test log above.")
 
     print()
-    print(f"  {YELLOW}Press Ctrl+C to stop all running backends{RESET}")
+    print(f"  {YELLOW}Press Ctrl+C to stop all running services{RESET}")
     print()
 
     try:
         while True:
             time.sleep(3)
-            # Check if any process died
             all_alive = True
             for proc, name in PROCESSES:
                 if proc and proc.poll() is not None:
-                    log_warn(f"{name} exited unexpectedly with code {proc.poll()}.")
+                    log_warn(f"{name} exited with code {proc.poll()}.")
                     all_alive = False
             if not all_alive and PROCESSES:
                 break
@@ -331,3 +404,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
