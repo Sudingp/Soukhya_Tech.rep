@@ -3319,34 +3319,53 @@ app.use((err, req, res, next) => {
 // Boot
 // ══════════════════════════════════════════════
 async function ensureAdminUser() {
-  if (!ADMIN_PASSWORD) {
-    console.warn('[AUTH] ADMIN_PASSWORD is not configured.');
-    return;
+  // 1. Ensure Default Admin User
+  if (ADMIN_PASSWORD) {
+    const cleanAdmin = ADMIN_USERNAME.trim();
+    const adminHash = crypto.createHash('sha256').update(cleanAdmin.toLowerCase()).digest('hex');
+    let existingAdmin = await stmts.getUserByUsernameHash.get(adminHash);
+    if (!existingAdmin) {
+      existingAdmin = await stmts.getUserByUsername.get(cleanAdmin);
+    }
+    const adminBcrypt = bcrypt.hashSync(ADMIN_PASSWORD, 12);
+
+    if (!existingAdmin) {
+      await stmts.insertUser.run({
+        username: cleanAdmin,
+        username_hash: adminHash,
+        username_display: cleanAdmin,
+        password_hash: adminBcrypt,
+        role: 'ADMIN'
+      });
+      console.log(`  [AUTH] Default admin user created: ${cleanAdmin}`);
+    } else if (!bcrypt.compareSync(ADMIN_PASSWORD, existingAdmin.password_hash)) {
+      await stmts.updateUserPassword.run(adminBcrypt, existingAdmin.id);
+      console.log(`  [AUTH] Existing admin password updated to configured ADMIN_PASSWORD.`);
+    }
   }
 
-  const cleanUser = ADMIN_USERNAME.trim();
-  const uHash = crypto.createHash('sha256').update(cleanUser.toLowerCase()).digest('hex');
-  let existing = await stmts.getUserByUsernameHash.get(uHash);
-  if (!existing) {
-    existing = await stmts.getUserByUsername.get(cleanUser);
+  // 2. Ensure Default 'user' Account (for non-admin testing & RBAC)
+  const defaultUser = 'user';
+  const defaultPass = 'user123';
+  const userHash = crypto.createHash('sha256').update(defaultUser.toLowerCase()).digest('hex');
+  let existingUser = await stmts.getUserByUsernameHash.get(userHash);
+  if (!existingUser) {
+    existingUser = await stmts.getUserByUsername.get(defaultUser);
   }
-  const hash = bcrypt.hashSync(ADMIN_PASSWORD, 12);
+  const userBcrypt = bcrypt.hashSync(defaultPass, 12);
 
-  if (!existing) {
+  if (!existingUser) {
     await stmts.insertUser.run({
-      username: cleanUser,
-      username_hash: uHash,
-      username_display: cleanUser,
-      password_hash: hash,
-      role: 'ADMIN'
+      username: defaultUser,
+      username_hash: userHash,
+      username_display: defaultUser,
+      password_hash: userBcrypt,
+      role: 'USER'
     });
-    console.log(`  [AUTH] Default admin user created: ${cleanUser}`);
-    return;
-  }
-
-  if (!bcrypt.compareSync(ADMIN_PASSWORD, existing.password_hash)) {
-    await stmts.updateUserPassword.run(hash, existing.id);
-    console.log(`  [AUTH] Existing admin password updated to configured ADMIN_PASSWORD.`);
+    console.log(`  [AUTH] Default user account created: ${defaultUser}`);
+  } else if (!bcrypt.compareSync(defaultPass, existingUser.password_hash)) {
+    await stmts.updateUserPassword.run(userBcrypt, existingUser.id);
+    console.log(`  [AUTH] Existing user password updated to default user123.`);
   }
 }
 

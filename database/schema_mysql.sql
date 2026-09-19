@@ -598,7 +598,7 @@ VALUES (
   'admin',
   '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918',
   'admin',
-  '$2a$12$sXN1/1O0xspznvIkGBj2qeH.C3v326J1JmYkZqYhYgW955n37U4sO',
+  '$2a$12$onT9g75hBg6X6.OH1NU1uu/J17IZGVZl1p96TNG3TeCp.ZeKtZZKy',
   'ADMIN',
   1
 );
@@ -609,9 +609,10 @@ VALUES (
   'user',
   '04f8996da763b7a969b1028ee3007569eaf3a635486ddab211d512c85b9df8fb',
   'user',
-  '$2a$12$WBhCotrZQesRnzIiz.ifqOoFqG9Q2G8vjP1Z2x.2G2t0g2E7g7R0m',
+  '$2a$12$SAFTdl1/QIJnUigAAQ0kzuzEYGb3SxMtqgpNh7i9LrkZEX6F8k47.',
   'USER',
   1
 );
 
 SET FOREIGN_KEY_CHECKS = 1;
+
