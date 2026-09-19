@@ -3164,7 +3164,7 @@ class MySQLAdapter {
 
   async syncDeviceTemplates(id) {
     const pool = await this.getPool();
-    const [empCount] = await pool.query('SELECT COUNT(*) as count FROM employees WHERE active = 1');
+    const [empCount] = await pool.query("SELECT COUNT(*) as count FROM employees WHERE status = 'Active'");
     const totalTemplates = empCount[0]?.count || 0;
     await pool.execute(
       `UPDATE biometric_devices SET template_count = ?, last_heartbeat = NOW(), updated_at = NOW() WHERE id = ?`,
@@ -3366,8 +3366,8 @@ class MySQLAdapter {
       for (const p of pending) {
         // Fast deduplication check within 5 min
         const [recent] = await conn.query(
-          `SELECT id FROM attendance
-           WHERE employee_id = ? AND timestamp >= DATE_SUB(?, INTERVAL 5 MINUTE) AND timestamp <= DATE_ADD(?, INTERVAL 5 MINUTE)
+          `SELECT att_id FROM attendance
+           WHERE emp_id = ? AND timestamp >= DATE_SUB(?, INTERVAL 5 MINUTE) AND timestamp <= DATE_ADD(?, INTERVAL 5 MINUTE)
            LIMIT 1`,
           [p.emp_id, p.punch_timestamp, p.punch_timestamp]
         );
@@ -3376,11 +3376,12 @@ class MySQLAdapter {
           await conn.execute('UPDATE fast_punch_buffer SET processed = 2 WHERE id = ?', [p.id]);
           duplicateCount++;
         } else {
-          // Write to attendance
+          // Write to attendance table
           await conn.execute(
-            `INSERT INTO attendance (employee_id, employee_name, timestamp, confidence)
-             VALUES (?, COALESCE((SELECT name FROM employees WHERE id = ?), ?), ?, 0.99)`,
-            [p.emp_id, p.emp_id, p.emp_id, p.punch_timestamp]
+            `INSERT INTO attendance (emp_id, name, dept, role, timestamp, status, logged_by, ip_address, user_agent)
+             SELECT e.id, e.name, e.department, e.role, ?, 'Present', 'FastPunchEngine', '127.0.0.1', ?
+             FROM employees e WHERE e.id = ?`,
+            [p.punch_timestamp, p.terminal_id || 'Hardware Terminal', p.emp_id]
           );
           // Mark processed
           await conn.execute('UPDATE fast_punch_buffer SET processed = 1 WHERE id = ?', [p.id]);
@@ -3403,10 +3404,10 @@ class MySQLAdapter {
     const [counts] = await pool.query(`
       SELECT
         COUNT(*) as total_ingested,
-        SUM(CASE WHEN processed = 0 THEN 1 ELSE 0 END) as queued_count,
-        SUM(CASE WHEN processed = 1 THEN 1 ELSE 0 END) as processed_count,
-        SUM(CASE WHEN processed = 2 THEN 1 ELSE 0 END) as duplicate_count,
-        AVG(process_latency_ms) as avg_latency_ms
+        CAST(COALESCE(SUM(CASE WHEN processed = 0 THEN 1 ELSE 0 END), 0) AS UNSIGNED) as queued_count,
+        CAST(COALESCE(SUM(CASE WHEN processed = 1 THEN 1 ELSE 0 END), 0) AS UNSIGNED) as processed_count,
+        CAST(COALESCE(SUM(CASE WHEN processed = 2 THEN 1 ELSE 0 END), 0) AS UNSIGNED) as duplicate_count,
+        ROUND(COALESCE(AVG(process_latency_ms), 0.0), 2) as avg_latency_ms
       FROM fast_punch_buffer
     `);
     const [recent] = await pool.query(`
