@@ -1,7 +1,8 @@
 -- ══════════════════════════════════════════════════════════════════════════════
 -- Soukhya Tech Face Recognition Attendance System — Enterprise Database Schema
--- Target Engine: MySQL 8.4 LTS (Long-Term Support) / 8.0 LTS Compatible
+-- Target Engine: MySQL 8.4 LTS (Long-Term Support) / MariaDB Compatible
 -- Storage Engine: InnoDB | Character Set: utf8mb4 | Collation: utf8mb4_0900_ai_ci
+-- Architecture: Normalized Transactional Relational Database (1NF, 2NF, 3NF)
 -- ══════════════════════════════════════════════════════════════════════════════
 
 SET FOREIGN_KEY_CHECKS = 0;
@@ -36,7 +37,160 @@ CREATE TABLE IF NOT EXISTS `users` (
   KEY `idx_users_role_active` (`role`, `active`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- ── 4. Employees Table (Biometric Profiles & Enterprise Master Data) ──
+-- ── 4. Master: Companies (Enterprise Organization Units) ──
+CREATE TABLE IF NOT EXISTS `companies` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `code` VARCHAR(30) NOT NULL,
+  `name` VARCHAR(150) NOT NULL,
+  `short_name` VARCHAR(50) NOT NULL,
+  `logo_url` VARCHAR(255) NULL,
+  `address` VARCHAR(255) NULL,
+  `city` VARCHAR(100) NOT NULL DEFAULT 'Bangalore',
+  `state` VARCHAR(100) NOT NULL DEFAULT 'Karnataka',
+  `country` VARCHAR(100) NOT NULL DEFAULT 'India',
+  `pincode` VARCHAR(20) NULL,
+  `email` VARCHAR(100) NULL,
+  `phone` VARCHAR(25) NULL,
+  `active` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_companies_code` (`code`),
+  UNIQUE KEY `uq_companies_short_name` (`short_name`),
+  KEY `idx_companies_active` (`active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ── 5. Master: Departments (Divisions & Functional Units) ──
+CREATE TABLE IF NOT EXISTS `departments` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `code` VARCHAR(20) NOT NULL,
+  `name` VARCHAR(100) NOT NULL,
+  `head_emp_id` VARCHAR(50) NULL,
+  `parent_dept_id` VARCHAR(50) NULL,
+  `division` VARCHAR(50) NULL DEFAULT 'Corporate',
+  `location` VARCHAR(100) NOT NULL DEFAULT 'Bangalore HQ',
+  `active` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_dept_code` (`code`),
+  KEY `idx_dept_active` (`active`),
+  KEY `idx_dept_parent` (`parent_dept_id`),
+  CONSTRAINT `fk_dept_head`
+    FOREIGN KEY (`head_emp_id`) REFERENCES `employees` (`id`)
+    ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ── 6. Master: Designations (Hierarchical Job Roles) ──
+CREATE TABLE IF NOT EXISTS `designations` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `code` VARCHAR(30) NOT NULL,
+  `name` VARCHAR(100) NOT NULL,
+  `dept_id` VARCHAR(50) NULL,
+  `grade_level` VARCHAR(20) NOT NULL DEFAULT 'L1',
+  `description` VARCHAR(255) NULL,
+  `active` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_designations_code` (`code`),
+  KEY `idx_designations_dept` (`dept_id`),
+  KEY `idx_designations_active` (`active`),
+  CONSTRAINT `fk_designations_dept`
+    FOREIGN KEY (`dept_id`) REFERENCES `departments` (`id`)
+    ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ── 7. Master: Geofences (GPS Boundaries & Mobile Zones) ──
+CREATE TABLE IF NOT EXISTS `geofences` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `code` VARCHAR(20) NOT NULL,
+  `name` VARCHAR(100) NOT NULL,
+  `latitude` DECIMAL(10, 7) NOT NULL,
+  `longitude` DECIMAL(10, 7) NOT NULL,
+  `radius_meters` INT UNSIGNED NOT NULL DEFAULT 150,
+  `enforcement_mode` ENUM('STRICT', 'WARNING') NOT NULL DEFAULT 'STRICT',
+  `allowed_depts` JSON NULL,
+  `ip_range` VARCHAR(100) NULL,
+  `wifi_bssid` VARCHAR(100) NULL,
+  `active` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_geofence_code` (`code`),
+  KEY `idx_geofence_active` (`active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ── 8. Master: Branches (Physical Campus & Office Locations) ──
+CREATE TABLE IF NOT EXISTS `branches` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `code` VARCHAR(30) NOT NULL,
+  `name` VARCHAR(100) NOT NULL,
+  `address` VARCHAR(255) NULL,
+  `city` VARCHAR(100) NOT NULL DEFAULT 'Bangalore',
+  `state` VARCHAR(100) NOT NULL DEFAULT 'Karnataka',
+  `country` VARCHAR(100) NOT NULL DEFAULT 'India',
+  `pincode` VARCHAR(20) NULL,
+  `geofence_id` VARCHAR(50) NULL,
+  `active` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_branches_code` (`code`),
+  KEY `idx_branches_geofence` (`geofence_id`),
+  KEY `idx_branches_active` (`active`),
+  CONSTRAINT `fk_branches_geofence`
+    FOREIGN KEY (`geofence_id`) REFERENCES `geofences` (`id`)
+    ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ── 9. Master: Shifts (Work Timing Rules) ──
+CREATE TABLE IF NOT EXISTS `shifts` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `name` VARCHAR(100) NOT NULL,
+  `code` VARCHAR(20) NOT NULL,
+  `start_time` TIME NOT NULL,
+  `end_time` TIME NOT NULL,
+  `break_start` TIME NULL,
+  `break_end` TIME NULL,
+  `break_mins` INT UNSIGNED NOT NULL DEFAULT 60,
+  `early_in_mins` INT UNSIGNED NOT NULL DEFAULT 30,
+  `late_grace_mins` INT UNSIGNED NOT NULL DEFAULT 15,
+  `early_out_mins` INT UNSIGNED NOT NULL DEFAULT 15,
+  `min_half_day_hrs` DECIMAL(4,2) NOT NULL DEFAULT 4.00,
+  `min_full_day_hrs` DECIMAL(4,2) NOT NULL DEFAULT 8.00,
+  `is_night_shift` TINYINT(1) NOT NULL DEFAULT 0,
+  `color` VARCHAR(20) NOT NULL DEFAULT '#00d4aa',
+  `active` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_shifts_code` (`code`),
+  KEY `idx_shifts_active` (`active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ── 10. Master: Employment Types (Workforce Classifications) ──
+CREATE TABLE IF NOT EXISTS `employment_types` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `code` VARCHAR(20) NOT NULL,
+  `title` VARCHAR(100) NOT NULL,
+  `description` VARCHAR(255) NULL,
+  `probation_days` INT UNSIGNED NOT NULL DEFAULT 90,
+  `notice_period_days` INT UNSIGNED NOT NULL DEFAULT 30,
+  `pf_esi_eligible` TINYINT(1) NOT NULL DEFAULT 1,
+  `active` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_employment_type_code` (`code`),
+  KEY `idx_employment_type_active` (`active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ── 11. Master Configuration Settings Table ──
+CREATE TABLE IF NOT EXISTS `master_settings` (
+  `setting_key` VARCHAR(100) NOT NULL PRIMARY KEY,
+  `setting_value` TEXT NOT NULL,
+  `category` ENUM('GENERAL', 'ATTENDANCE', 'BIOMETRICS', 'SECURITY') NOT NULL DEFAULT 'GENERAL',
+  `description` VARCHAR(255) NULL,
+  `updated_by` VARCHAR(100) NULL,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY `idx_settings_category` (`category`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ── 12. Employees Table (Core Biometric Profiles & 3NF Normalized Relational Entity) ──
 CREATE TABLE IF NOT EXISTS `employees` (
   `id` VARCHAR(50) NOT NULL PRIMARY KEY,
   `name` VARCHAR(100) NOT NULL,
@@ -50,7 +204,14 @@ CREATE TABLE IF NOT EXISTS `employees` (
   `hibernate_end_date` DATE NULL,
   `hibernate_reason` TEXT NULL,
   `company` VARCHAR(100) NULL,
+  `company_id` VARCHAR(50) NULL,
+  `department_id` VARCHAR(50) NULL,
   `designation` VARCHAR(100) NULL,
+  `designation_id` VARCHAR(50) NULL,
+  `branch_id` VARCHAR(50) NULL,
+  `employment_type_id` VARCHAR(50) NULL,
+  `primary_shift_id` VARCHAR(50) NULL,
+  `geofence_id` VARCHAR(50) NULL,
   `gender` VARCHAR(20) NULL,
   `date_of_joining` DATE NULL,
   `date_of_confirmation` DATE NULL,
@@ -83,121 +244,58 @@ CREATE TABLE IF NOT EXISTS `employees` (
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY `idx_emp_dept_status` (`department`, `status`),
   KEY `idx_emp_company` (`company`),
+  KEY `idx_emp_company_id` (`company_id`),
+  KEY `idx_emp_dept_id` (`department_id`),
+  KEY `idx_emp_designation_id` (`designation_id`),
+  KEY `idx_emp_branch_id` (`branch_id`),
+  KEY `idx_emp_employment_type_id` (`employment_type_id`),
+  KEY `idx_emp_primary_shift_id` (`primary_shift_id`),
+  KEY `idx_emp_geofence_id` (`geofence_id`),
   KEY `idx_emp_status_created` (`status`, `created_at`),
   KEY `idx_emp_card_number` (`card_number`),
-  KEY `idx_emp_email` (`email`)
+  KEY `idx_emp_email` (`email`),
+  CONSTRAINT `fk_emp_company`
+    FOREIGN KEY (`company_id`) REFERENCES `companies` (`id`)
+    ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_emp_dept`
+    FOREIGN KEY (`department_id`) REFERENCES `departments` (`id`)
+    ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_emp_designation`
+    FOREIGN KEY (`designation_id`) REFERENCES `designations` (`id`)
+    ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_emp_branch`
+    FOREIGN KEY (`branch_id`) REFERENCES `branches` (`id`)
+    ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_emp_employment_type`
+    FOREIGN KEY (`employment_type_id`) REFERENCES `employment_types` (`id`)
+    ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_emp_shift`
+    FOREIGN KEY (`primary_shift_id`) REFERENCES `shifts` (`id`)
+    ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_emp_geofence`
+    FOREIGN KEY (`geofence_id`) REFERENCES `geofences` (`id`)
+    ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- ── 5. Attendance Punches Table (High-Speed Time Logging) ──
-CREATE TABLE IF NOT EXISTS `attendance` (
-  `att_id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  `emp_id` VARCHAR(50) NOT NULL,
-  `name` VARCHAR(100) NOT NULL,
-  `dept` VARCHAR(50) NOT NULL,
-  `role` VARCHAR(100) NOT NULL,
-  `timestamp` DATETIME NOT NULL,
-  `status` ENUM('Present', 'Late') NOT NULL DEFAULT 'Present',
-  `logged_by` VARCHAR(100) NULL,
-  `ip_address` VARCHAR(45) NULL,
-  `user_agent` VARCHAR(255) NULL,
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT `fk_attendance_employee`
-    FOREIGN KEY (`emp_id`) REFERENCES `employees` (`id`)
-    ON DELETE CASCADE ON UPDATE CASCADE,
-  KEY `idx_att_emp_ts` (`emp_id`, `timestamp`),
-  KEY `idx_att_ts_status` (`timestamp`, `status`),
-  KEY `idx_att_dept_ts` (`dept`, `timestamp`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- ── 6. Audit Trail Table (Enterprise Compliance & Security) ──
-CREATE TABLE IF NOT EXISTS `audit_log` (
-  `log_id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  `table_name` VARCHAR(50) NOT NULL,
-  `record_id` VARCHAR(100) NOT NULL,
-  `action` ENUM('INSERT', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT', 'RESET_SEED') NOT NULL,
-  `old_values` JSON NULL,
-  `new_values` JSON NULL,
-  `performed_by` VARCHAR(100) NOT NULL,
-  `performed_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `ip_address` VARCHAR(45) NULL,
-  `user_agent` VARCHAR(255) NULL,
-  KEY `idx_audit_table_record` (`table_name`, `record_id`),
-  KEY `idx_audit_performed_at` (`performed_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- ── 7. Token Blacklist Table (JWT Revocation) ──
-CREATE TABLE IF NOT EXISTS `token_blacklist` (
-  `token_hash` CHAR(64) NOT NULL PRIMARY KEY,
-  `expires_at` BIGINT UNSIGNED NOT NULL,
-  KEY `idx_blacklist_expires` (`expires_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- ── 8. Master Configuration Settings Table ──
-CREATE TABLE IF NOT EXISTS `master_settings` (
-  `setting_key` VARCHAR(100) NOT NULL PRIMARY KEY,
-  `setting_value` TEXT NOT NULL,
-  `category` ENUM('GENERAL', 'ATTENDANCE', 'BIOMETRICS', 'SECURITY') NOT NULL DEFAULT 'GENERAL',
-  `description` VARCHAR(255) NULL,
+-- ── 13. Department Shifts Table (Department Default Shift Policy) ──
+CREATE TABLE IF NOT EXISTS `department_shifts` (
+  `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `dept_id` VARCHAR(50) NOT NULL,
+  `default_shift_id` VARCHAR(50) NOT NULL DEFAULT 'SHIFT_GEN',
+  `allowed_shifts` JSON NOT NULL,
+  `auto_apply` TINYINT(1) NOT NULL DEFAULT 1,
   `updated_by` VARCHAR(100) NULL,
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  KEY `idx_settings_category` (`category`)
+  UNIQUE KEY `uq_dept_shifts_dept` (`dept_id`),
+  CONSTRAINT `fk_dept_shifts_dept`
+    FOREIGN KEY (`dept_id`) REFERENCES `departments` (`id`)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_dept_shifts_shift`
+    FOREIGN KEY (`default_shift_id`) REFERENCES `shifts` (`id`)
+    ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- ── 9. Seed Initial Schema Version, Master Settings & Default Users ──
-INSERT IGNORE INTO `_schema_version` (`version`, `description`)
-VALUES (8, 'Add master_settings table for enterprise business rules');
-
--- Default Master Settings
-INSERT IGNORE INTO `master_settings` (`setting_key`, `setting_value`, `category`, `description`) VALUES
-  ('company_name', 'Soukhya Tech Solutions Ltd.', 'GENERAL', 'Global enterprise display name'),
-  ('hq_location', 'Bangalore Headquarters, India', 'GENERAL', 'Primary corporate headquarters location'),
-  ('timezone', 'Asia/Kolkata', 'GENERAL', 'Default system timezone'),
-  ('date_format', 'DD/MM/YYYY', 'GENERAL', 'Default date format across UI and exports'),
-  ('currency', 'INR (₹)', 'GENERAL', 'Corporate currency identifier'),
-  ('late_grace_mins', '15', 'ATTENDANCE', 'Permissible punch-in delay in minutes before marking Late'),
-  ('half_day_hrs', '4.0', 'ATTENDANCE', 'Minimum hours worked required for Half-Day presence'),
-  ('full_day_hrs', '8.0', 'ATTENDANCE', 'Standard hours worked required for Full-Day presence'),
-  ('punch_cooldown_mins', '5', 'ATTENDANCE', 'Cooldown buffer between consecutive punches to prevent duplicates'),
-  ('ot_threshold_mins', '30', 'ATTENDANCE', 'Minimum minutes worked past shift end before Overtime starts counting'),
-  ('face_match_threshold', '0.55', 'BIOMETRICS', 'AI Face Recognition Euclidean distance matching threshold (lower is stricter)'),
-  ('liveness_detection_enabled', 'true', 'BIOMETRICS', 'Enforce anti-spoofing liveness check during facial scan'),
-  ('multi_factor_required', 'false', 'BIOMETRICS', 'Require dual verification (Card/PIN + Face Scan)'),
-  ('session_timeout_mins', '30', 'SECURITY', 'Automatic administrator and user session inactivity timeout in minutes'),
-  ('pii_masking_enabled', 'true', 'SECURITY', 'Mask sensitive Aadhaar, PAN, and phone numbers in non-admin views'),
-  ('audit_retention_days', '180', 'SECURITY', 'Number of days before audit logs are eligible for archival');
-
--- ── 9. Shift Master & Definitions Table ──
-CREATE TABLE IF NOT EXISTS `shifts` (
-  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
-  `name` VARCHAR(100) NOT NULL,
-  `code` VARCHAR(20) NOT NULL,
-  `start_time` TIME NOT NULL,
-  `end_time` TIME NOT NULL,
-  `break_start` TIME NULL,
-  `break_end` TIME NULL,
-  `break_mins` INT UNSIGNED NOT NULL DEFAULT 60,
-  `early_in_mins` INT UNSIGNED NOT NULL DEFAULT 30,
-  `late_grace_mins` INT UNSIGNED NOT NULL DEFAULT 15,
-  `early_out_mins` INT UNSIGNED NOT NULL DEFAULT 15,
-  `min_half_day_hrs` DECIMAL(4,2) NOT NULL DEFAULT 4.00,
-  `min_full_day_hrs` DECIMAL(4,2) NOT NULL DEFAULT 8.00,
-  `is_night_shift` TINYINT(1) NOT NULL DEFAULT 0,
-  `color` VARCHAR(20) NOT NULL DEFAULT '#00d4aa',
-  `active` TINYINT(1) NOT NULL DEFAULT 1,
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY `uq_shifts_code` (`code`),
-  KEY `idx_shifts_active` (`active`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- Default Standard Shifts Seed
-INSERT IGNORE INTO `shifts` (`id`, `name`, `code`, `start_time`, `end_time`, `break_start`, `break_end`, `break_mins`, `early_in_mins`, `late_grace_mins`, `early_out_mins`, `min_half_day_hrs`, `min_full_day_hrs`, `is_night_shift`, `color`) VALUES
-  ('SHIFT_GEN', 'General Day Shift', 'GEN', '09:00:00', '18:00:00', '13:00:00', '14:00:00', 60, 30, 15, 15, 4.00, 8.00, 0, '#00d4aa'),
-  ('SHIFT_MOR', 'Morning Early Shift', 'MOR', '06:00:00', '14:30:00', '10:00:00', '10:30:00', 30, 30, 15, 15, 4.00, 8.00, 0, '#4f8ef7'),
-  ('SHIFT_EVE', 'Evening Afternoon Shift', 'EVE', '14:00:00', '22:30:00', '18:00:00', '18:30:00', 30, 30, 15, 15, 4.00, 8.00, 0, '#f59e0b'),
-  ('SHIFT_NIT', 'Night Overnight Shift', 'NIT', '22:00:00', '06:30:00', '02:00:00', '02:30:00', 30, 30, 15, 15, 4.00, 8.00, 1, '#a855f7');
-
--- ── 10. Shift Calendar Days Table (Holidays, Weekly Offs & Default Shifts) ──
+-- ── 14. Shift Calendar Days Table (Holidays, Weekly Offs & Default Shifts) ──
 CREATE TABLE IF NOT EXISTS `shift_calendar_days` (
   `cal_id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   `cal_date` DATE NOT NULL,
@@ -214,7 +312,7 @@ CREATE TABLE IF NOT EXISTS `shift_calendar_days` (
     ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- ── 11. Shift Groups Table (Team Cohort & Rotation Rules) ──
+-- ── 15. Shift Groups Table (Team Cohort & Rotation Rules) ──
 CREATE TABLE IF NOT EXISTS `shift_groups` (
   `id` VARCHAR(50) NOT NULL PRIMARY KEY,
   `name` VARCHAR(100) NOT NULL,
@@ -230,7 +328,7 @@ CREATE TABLE IF NOT EXISTS `shift_groups` (
   KEY `idx_shift_group_active` (`active`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- ── 12. Shift Group Members Table (Employee to Group Assignment) ──
+-- ── 16. Shift Group Members Table (Employee to Group Assignment) ──
 CREATE TABLE IF NOT EXISTS `shift_group_members` (
   `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   `group_id` VARCHAR(50) NOT NULL,
@@ -248,7 +346,7 @@ CREATE TABLE IF NOT EXISTS `shift_group_members` (
     ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- ── 13. Shift Roster Matrix Table (Day-by-Day Employee Assignments) ──
+-- ── 17. Shift Roster Matrix Table (Day-by-Day Employee Assignments) ──
 CREATE TABLE IF NOT EXISTS `shift_roster` (
   `roster_id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   `emp_id` VARCHAR(50) NOT NULL,
@@ -271,48 +369,7 @@ CREATE TABLE IF NOT EXISTS `shift_roster` (
     ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- ── 14. Departments Table (Department Master) ──
-CREATE TABLE IF NOT EXISTS `departments` (
-  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
-  `code` VARCHAR(20) NOT NULL,
-  `name` VARCHAR(100) NOT NULL,
-  `head_emp_id` VARCHAR(50) NULL,
-  `parent_dept_id` VARCHAR(50) NULL,
-  `division` VARCHAR(50) NULL DEFAULT 'Corporate',
-  `location` VARCHAR(100) NOT NULL DEFAULT 'Bangalore HQ',
-  `active` TINYINT(1) NOT NULL DEFAULT 1,
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY `uq_dept_code` (`code`),
-  KEY `idx_dept_active` (`active`),
-  KEY `idx_dept_parent` (`parent_dept_id`),
-  CONSTRAINT `fk_dept_head`
-    FOREIGN KEY (`head_emp_id`) REFERENCES `employees` (`id`)
-    ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT `fk_dept_parent`
-    FOREIGN KEY (`parent_dept_id`) REFERENCES `departments` (`id`)
-    ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- ── 15. Department Shifts Table (Department Default Shift Policy) ──
-CREATE TABLE IF NOT EXISTS `department_shifts` (
-  `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  `dept_id` VARCHAR(50) NOT NULL,
-  `default_shift_id` VARCHAR(50) NOT NULL DEFAULT 'SHIFT_GEN',
-  `allowed_shifts` JSON NOT NULL,
-  `auto_apply` TINYINT(1) NOT NULL DEFAULT 1,
-  `updated_by` VARCHAR(100) NULL,
-  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY `uq_dept_shifts_dept` (`dept_id`),
-  CONSTRAINT `fk_dept_shifts_dept`
-    FOREIGN KEY (`dept_id`) REFERENCES `departments` (`id`)
-    ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_dept_shifts_shift`
-    FOREIGN KEY (`default_shift_id`) REFERENCES `shifts` (`id`)
-    ON DELETE RESTRICT ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- ── 16. Public Holidays Table (Annual Gazette Holidays Master) ──
+-- ── 18. Public Holidays Table (Annual Gazette Holidays Master) ──
 CREATE TABLE IF NOT EXISTS `public_holidays` (
   `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   `title` VARCHAR(120) NOT NULL,
@@ -329,74 +386,7 @@ CREATE TABLE IF NOT EXISTS `public_holidays` (
   KEY `idx_holiday_type` (`holiday_type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Pre-seeded Standard Enterprise Departments
-INSERT IGNORE INTO `departments` (`id`, `code`, `name`, `division`, `location`, `active`) VALUES
-  ('DEP_ENG', 'ENG', 'Engineering & Product', 'Technology', 'Bangalore HQ', 1),
-  ('DEP_HR', 'HR', 'Human Resources', 'Corporate', 'Bangalore HQ', 1),
-  ('DEP_FIN', 'FIN', 'Finance & Accounts', 'Corporate', 'Bangalore HQ', 1),
-  ('DEP_OPS', 'OPS', '24x7 Operations & Support', 'Operations', 'Bangalore HQ', 1),
-  ('DEP_SALES', 'SALES', 'Sales & Marketing', 'Commercial', 'Bangalore HQ', 1),
-  ('DEP_IT', 'IT', 'IT Infrastructure & SecOps', 'Technology', 'Bangalore HQ', 1);
-
--- Pre-seeded Department Shift Mappings
-INSERT IGNORE INTO `department_shifts` (`dept_id`, `default_shift_id`, `allowed_shifts`, `auto_apply`, `updated_by`) VALUES
-  ('DEP_ENG', 'SHIFT_GEN', '["SHIFT_GEN", "SHIFT_MOR"]', 1, 'system'),
-  ('DEP_HR', 'SHIFT_GEN', '["SHIFT_GEN"]', 1, 'system'),
-  ('DEP_FIN', 'SHIFT_GEN', '["SHIFT_GEN"]', 1, 'system'),
-  ('DEP_OPS', 'SHIFT_MOR', '["SHIFT_MOR", "SHIFT_EVE", "SHIFT_NIT"]', 1, 'system'),
-  ('DEP_SALES', 'SHIFT_GEN', '["SHIFT_GEN", "SHIFT_EVE"]', 1, 'system'),
-  ('DEP_IT', 'SHIFT_GEN', '["SHIFT_GEN", "SHIFT_NIT"]', 1, 'system');
-
--- Pre-seeded Karnataka Gazetted Public Holidays 2026 (From Official Gazette / india.gov.in)
-INSERT IGNORE INTO `public_holidays` (`title`, `holiday_date`, `holiday_type`, `applicable_state`, `applicable_location`, `description`) VALUES
-  ('Uttarayana Punyakala, Makara Sankranti', '2026-01-15', 'MANDATORY', 'Karnataka', 'All Locations', 'Harvest Festival / Makara Sankranti (Gazetted)'),
-  ('Republic Day', '2026-01-26', 'MANDATORY', 'Karnataka', 'All Locations', 'National Holiday - Republic Day of India'),
-  ('Ugadi Festival', '2026-03-19', 'MANDATORY', 'Karnataka', 'All Locations', 'Kannada New Year (Gazetted)'),
-  ('Khutub-E-Ramzan (Eid-ul-Fitr)', '2026-03-21', 'MANDATORY', 'Karnataka', 'All Locations', 'Eid-ul-Fitr Celebration (Gazetted)'),
-  ('Mahaveera Jayanthi', '2026-03-31', 'MANDATORY', 'Karnataka', 'All Locations', 'Birth anniversary of Bhagwan Mahaveer (Gazetted)'),
-  ('Good Friday', '2026-04-03', 'MANDATORY', 'Karnataka', 'All Locations', 'Christian Observance - Good Friday (Gazetted)'),
-  ('Dr. B.R. Ambedkar Jayanthi', '2026-04-14', 'MANDATORY', 'Karnataka', 'All Locations', 'Birth anniversary of Dr. B.R. Ambedkar (Gazetted)'),
-  ('Basava Jayanthi, Akshaya Tritiya', '2026-04-20', 'MANDATORY', 'Karnataka', 'All Locations', 'Birth anniversary of Jagadjyothi Basaveshwara (Gazetted)'),
-  ('May Day (International Labour Day)', '2026-05-01', 'MANDATORY', 'Karnataka', 'All Locations', 'Labour Day / Worker Rights Day (Gazetted)'),
-  ('Bakrid (Eid al-Adha)', '2026-05-28', 'MANDATORY', 'Karnataka', 'All Locations', 'Eid al-Adha Feast of Sacrifice (Gazetted)'),
-  ('Last Day of Muharram', '2026-06-26', 'MANDATORY', 'Karnataka', 'All Locations', 'Muharram Observance (Gazetted)'),
-  ('Independence Day', '2026-08-15', 'MANDATORY', 'Karnataka', 'All Locations', 'National Holiday - 79th Independence Day of India'),
-  ('Eid-Milad', '2026-08-26', 'MANDATORY', 'Karnataka', 'All Locations', 'Milad-un-Nabi (Gazetted)'),
-  ('Varasiddhi Vinayaka Vrata', '2026-09-14', 'MANDATORY', 'Karnataka', 'All Locations', 'Ganesh Chaturthi Festival (Gazetted)'),
-  ('Mahatma Gandhi Jayanthi', '2026-10-02', 'MANDATORY', 'Karnataka', 'All Locations', 'National Holiday - Birth anniversary of Mahatma Gandhi'),
-  ('Mahanavami / Ayudha Pooja', '2026-10-20', 'MANDATORY', 'Karnataka', 'All Locations', 'Ayudha Pooja Festival (Gazetted)'),
-  ('Vijayadashami (Dussehra)', '2026-10-21', 'MANDATORY', 'Karnataka', 'All Locations', 'Vijayadashami / Mysore Dasara Festival (Gazetted)'),
-  ('Kannada Rajyotsava', '2026-11-01', 'MANDATORY', 'Karnataka', 'All Locations', 'Karnataka State Formation Day (Gazetted)'),
-  ('Kanakadasa Jayanthi', '2026-11-10', 'MANDATORY', 'Karnataka', 'All Locations', 'Birth anniversary of Saint Kanakadasa (Gazetted)'),
-  ('Guru Nanak Jayanthi', '2026-11-27', 'MANDATORY', 'Karnataka', 'All Locations', 'Birth anniversary of Guru Nanak Dev (Gazetted)'),
-  ('Christmas Day', '2026-12-25', 'MANDATORY', 'Karnataka', 'All Locations', 'Christian Festival - Christmas Day (Gazetted)');
-
--- ── 16. Employment Types Table (Workforce Classifications) ──
-CREATE TABLE IF NOT EXISTS `employment_types` (
-  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
-  `code` VARCHAR(20) NOT NULL,
-  `title` VARCHAR(100) NOT NULL,
-  `description` VARCHAR(255) NULL,
-  `probation_days` INT UNSIGNED NOT NULL DEFAULT 90,
-  `notice_period_days` INT UNSIGNED NOT NULL DEFAULT 30,
-  `pf_esi_eligible` TINYINT(1) NOT NULL DEFAULT 1,
-  `active` TINYINT(1) NOT NULL DEFAULT 1,
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY `uq_employment_type_code` (`code`),
-  KEY `idx_employment_type_active` (`active`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- Pre-seeded Employment Types
-INSERT IGNORE INTO `employment_types` (`id`, `code`, `title`, `description`, `probation_days`, `notice_period_days`, `pf_esi_eligible`, `active`) VALUES
-  ('ET_PERM', 'PERM', 'Permanent / Full-Time', 'Regular permanent employee with standard company benefits', 90, 30, 1, 1),
-  ('ET_PROB', 'PROB', 'Probationary Staff', 'New joiner under probation evaluation', 180, 15, 1, 1),
-  ('ET_CONT', 'CONT', 'Fixed-Term Contract', 'Contractual staff hired for fixed durations/deliverables', 0, 30, 1, 1),
-  ('ET_INTR', 'INTR', 'Intern / Trainee', 'Apprenticeship and university trainee roles', 0, 7, 0, 1),
-  ('ET_PTME', 'PTME', 'Part-Time Employee', 'Part-time hourly or flexible shift schedule', 0, 15, 0, 1),
-  ('ET_CONS', 'CONS', 'Consultant / Retainer', 'Professional external advisory or retainer engagement', 0, 15, 0, 1);
-
--- ── 17. Employee Groups Table (Cohorts & Cross-Functional Teams) ──
+-- ── 19. Employee Groups Table (Cohorts & Cross-Functional Teams) ──
 CREATE TABLE IF NOT EXISTS `employee_cohort_groups` (
   `id` VARCHAR(50) NOT NULL PRIMARY KEY,
   `code` VARCHAR(20) NOT NULL,
@@ -415,7 +405,7 @@ CREATE TABLE IF NOT EXISTS `employee_cohort_groups` (
     ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- ── 18. Employee Group Members Table (Junction Mapping) ──
+-- ── 20. Employee Group Members Table (Junction Mapping) ──
 CREATE TABLE IF NOT EXISTS `employee_cohort_members` (
   `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   `group_id` VARCHAR(50) NOT NULL,
@@ -432,40 +422,7 @@ CREATE TABLE IF NOT EXISTS `employee_cohort_members` (
     ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Pre-seeded Employee Groups
-INSERT IGNORE INTO `employee_cohort_groups` (`id`, `code`, `name`, `category`, `description`, `color`, `active`) VALUES
-  ('EGRP_EXEC', 'EXEC', 'Executive & Leadership Council', 'GOVERNANCE', 'Core strategic and executive operational team', '#8b5cf6', 1),
-  ('EGRP_SAFETY', 'SAFETY', 'Emergency & Workplace Safety Taskforce', 'COMPLIANCE', 'First-aid, fire safety, and emergency response leads', '#ef4444', 1),
-  ('EGRP_INNOV', 'INNOV', 'R&D Innovation & AI Lab', 'PROJECT', 'Deep-tech research and product incubation squad', '#00d4aa', 1),
-  ('EGRP_OPS', 'OPS_SWAT', '24x7 Tier-2 Rapid Support Team', 'OPERATIONAL', 'Critical response and production incident resolution', '#f59e0b', 1);
-
--- ── 19. Geofences Table (GPS Boundaries & Location Rules) ──
-CREATE TABLE IF NOT EXISTS `geofences` (
-  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
-  `code` VARCHAR(20) NOT NULL,
-  `name` VARCHAR(100) NOT NULL,
-  `latitude` DECIMAL(10, 7) NOT NULL,
-  `longitude` DECIMAL(10, 7) NOT NULL,
-  `radius_meters` INT UNSIGNED NOT NULL DEFAULT 150,
-  `enforcement_mode` ENUM('STRICT', 'WARNING') NOT NULL DEFAULT 'STRICT',
-  `allowed_depts` JSON NULL,
-  `ip_range` VARCHAR(100) NULL,
-  `wifi_bssid` VARCHAR(100) NULL,
-  `active` TINYINT(1) NOT NULL DEFAULT 1,
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY `uq_geofence_code` (`code`),
-  KEY `idx_geofence_active` (`active`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- Pre-seeded Geofences
-INSERT IGNORE INTO `geofences` (`id`, `code`, `name`, `latitude`, `longitude`, `radius_meters`, `enforcement_mode`, `active`) VALUES
-  ('GEO_HQ', 'BLR_HQ', 'Soukhya Tech Corporate HQ (Bangalore)', 12.9716000, 77.5946000, 150, 'STRICT', 1),
-  ('GEO_WFD', 'WFD_PARK', 'Whitefield Tech Campus (SEZ Unit)', 12.9698000, 77.7499000, 250, 'STRICT', 1),
-  ('GEO_MYS', 'MYS_PLANT', 'Mysore R&D and Manufacturing Center', 12.3051000, 76.6551000, 300, 'WARNING', 1),
-  ('GEO_REMOTE', 'FIELD_SALES', 'Client Onsite & Flexible Field Zone', 12.9716000, 77.5946000, 5000, 'WARNING', 1);
-
--- ── 20. Work Codes Table (Project, Task & Cost Center Tracking) ──
+-- ── 21. Work Codes Table (Project, Task & Cost Center Tracking) ──
 CREATE TABLE IF NOT EXISTS `work_codes` (
   `id` VARCHAR(50) NOT NULL PRIMARY KEY,
   `code` VARCHAR(20) NOT NULL,
@@ -481,15 +438,28 @@ CREATE TABLE IF NOT EXISTS `work_codes` (
   KEY `idx_work_code_active` (`active`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Pre-seeded Work Codes
-INSERT IGNORE INTO `work_codes` (`id`, `code`, `name`, `category`, `description`, `billing_rate_multiplier`, `ot_eligible`, `active`) VALUES
-  ('WC_DEV', 'DEV_PROD', 'Core Engineering & Product Sprint', 'BILLABLE_PROJECT', 'Standard software engineering and product feature delivery', 1.00, 1, 1),
-  ('WC_CLIENT', 'CLIENT_IMP', 'Client Deployment & Onsite Integration', 'CLIENT_ONSITE', 'Customer site deployment, hardware commissioning & training', 1.25, 1, 1),
-  ('WC_OPS', 'OPS_RUN', '24x7 Infrastructure & Production Support', 'INTERNAL_OPS', 'Critical server uptime, SecOps and IT helpdesk response', 1.00, 1, 1),
-  ('WC_MAINT', 'FAC_MAINT', 'Biometric Hardware & Facility Maintenance', 'FACILITY_MAINT', 'Face terminal calibration, access gate servicing & repairs', 1.00, 1, 1),
-  ('WC_TRAIN', 'LND_SKILLS', 'Learning & Development / Certification', 'TRAINING_LD', 'Internal technical training and domain compliance programs', 1.00, 0, 1);
+-- ── 22. Attendance Punches Table (High-Speed Time Logging) ──
+CREATE TABLE IF NOT EXISTS `attendance` (
+  `att_id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `emp_id` VARCHAR(50) NOT NULL,
+  `name` VARCHAR(100) NOT NULL,
+  `dept` VARCHAR(50) NOT NULL,
+  `role` VARCHAR(100) NOT NULL,
+  `timestamp` DATETIME NOT NULL,
+  `status` ENUM('Present', 'Late') NOT NULL DEFAULT 'Present',
+  `logged_by` VARCHAR(100) NULL,
+  `ip_address` VARCHAR(45) NULL,
+  `user_agent` VARCHAR(255) NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT `fk_attendance_employee`
+    FOREIGN KEY (`emp_id`) REFERENCES `employees` (`id`)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  KEY `idx_att_emp_ts` (`emp_id`, `timestamp`),
+  KEY `idx_att_ts_status` (`timestamp`, `status`),
+  KEY `idx_att_dept_ts` (`dept`, `timestamp`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- ── 21. Employee Overtime Register Table ──
+-- ── 23. Employee Overtime Register Table ──
 CREATE TABLE IF NOT EXISTS `ot_records` (
   `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   `emp_id` VARCHAR(50) NOT NULL,
@@ -511,10 +481,13 @@ CREATE TABLE IF NOT EXISTS `ot_records` (
   KEY `idx_ot_status` (`status`),
   CONSTRAINT `fk_ot_emp`
     FOREIGN KEY (`emp_id`) REFERENCES `employees` (`id`)
-    ON DELETE CASCADE ON UPDATE CASCADE
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_ot_shift`
+    FOREIGN KEY (`shift_id`) REFERENCES `shifts` (`id`)
+    ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- ── 22. Leave Types Master Table ──
+-- ── 24. Leave Types Master Table ──
 CREATE TABLE IF NOT EXISTS `leave_types` (
   `id` VARCHAR(50) NOT NULL PRIMARY KEY,
   `code` VARCHAR(20) NOT NULL,
@@ -533,17 +506,7 @@ CREATE TABLE IF NOT EXISTS `leave_types` (
   KEY `idx_leave_type_active` (`active`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Pre-seeded Statutory & Standard Leave Types
-INSERT IGNORE INTO `leave_types` (`id`, `code`, `name`, `category`, `description`, `paid`, `annual_quota_days`, `carry_forward_max`, `encashable`, `color`, `active`) VALUES
-  ('LT_CL', 'CL', 'Casual Leave (CL)', 'CASUAL', 'Short-notice personal leave for urgent private affairs', 1, 12.0, 0.0, 0, '#4f8ef7', 1),
-  ('LT_SL', 'SL', 'Sick / Medical Leave (SL)', 'SICK', 'Medical illness or health recovery leave', 1, 12.0, 6.0, 0, '#ef4444', 1),
-  ('LT_EL', 'EL', 'Earned / Privilege Leave (EL)', 'EARNED', 'Annual accrued vacation and privilege leave', 1, 18.0, 30.0, 1, '#10b981', 1),
-  ('LT_ML', 'ML', 'Maternity Leave (Statutory)', 'MATERNITY', 'Statutory 26-week paid maternity benefit under Indian Maternity Act', 1, 182.0, 0.0, 0, '#ec4899', 1),
-  ('LT_PL', 'PL', 'Paternity Leave', 'PATERNITY', 'Parental support leave for male employees on child birth', 1, 15.0, 0.0, 0, '#8b5cf6', 1),
-  ('LT_CO', 'COMP_OFF', 'Compensatory Off (Comp-Off)', 'COMP_OFF', 'Credit granted for approved overtime or weekend shifts worked', 1, 0.0, 10.0, 0, '#f59e0b', 1),
-  ('LT_LWP', 'LWP', 'Leave Without Pay / Loss of Pay', 'UNPAID', 'Authorized absence when all paid leave balances are exhausted', 0, 0.0, 0.0, 0, '#64748b', 1);
-
--- ── 23. Employee Leave Applications & Entries Table ──
+-- ── 25. Employee Leave Applications & Entries Table ──
 CREATE TABLE IF NOT EXISTS `employee_leave_entries` (
   `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   `emp_id` VARCHAR(50) NOT NULL,
@@ -568,7 +531,7 @@ CREATE TABLE IF NOT EXISTS `employee_leave_entries` (
     ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- ── 24. Employee Outdoor / On-Duty (OD) Entries Table ──
+-- ── 26. Employee Outdoor / On-Duty (OD) Entries Table ──
 CREATE TABLE IF NOT EXISTS `employee_outdoor_entries` (
   `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   `emp_id` VARCHAR(50) NOT NULL,
@@ -591,8 +554,183 @@ CREATE TABLE IF NOT EXISTS `employee_outdoor_entries` (
     ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Default Administrator: admin / admin123 (SHA-256 username hash, Bcrypt password hash)
+-- ── 27. Audit Trail Table (Enterprise Compliance & Security) ──
+CREATE TABLE IF NOT EXISTS `audit_log` (
+  `log_id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `table_name` VARCHAR(50) NOT NULL,
+  `record_id` VARCHAR(100) NOT NULL,
+  `action` ENUM('INSERT', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT', 'RESET_SEED') NOT NULL,
+  `old_values` JSON NULL,
+  `new_values` JSON NULL,
+  `performed_by` VARCHAR(100) NOT NULL,
+  `performed_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `ip_address` VARCHAR(45) NULL,
+  `user_agent` VARCHAR(255) NULL,
+  KEY `idx_audit_table_record` (`table_name`, `record_id`),
+  KEY `idx_audit_performed_at` (`performed_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- ── 28. Token Blacklist Table (JWT Revocation) ──
+CREATE TABLE IF NOT EXISTS `token_blacklist` (
+  `token_hash` CHAR(64) NOT NULL PRIMARY KEY,
+  `expires_at` BIGINT UNSIGNED NOT NULL,
+  KEY `idx_blacklist_expires` (`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ══════════════════════════════════════════════════════════════════════════════
+-- PRE-SEEDED ENTERPRISE MASTER DATA (1NF, 2NF, 3NF ALIGNED)
+-- ══════════════════════════════════════════════════════════════════════════════
+
+-- Schema Version
+INSERT IGNORE INTO `_schema_version` (`version`, `description`)
+VALUES (10, 'Normalized 3NF schema for companies, designations, branches, shifts, and masters');
+
+-- Default Master Settings
+INSERT IGNORE INTO `master_settings` (`setting_key`, `setting_value`, `category`, `description`) VALUES
+  ('company_name', 'Soukhya Tech Solutions Ltd.', 'GENERAL', 'Global enterprise display name'),
+  ('hq_location', 'Bangalore Headquarters, India', 'GENERAL', 'Primary corporate headquarters location'),
+  ('timezone', 'Asia/Kolkata', 'GENERAL', 'Default system timezone'),
+  ('date_format', 'DD/MM/YYYY', 'GENERAL', 'Default date format across UI and exports'),
+  ('currency', 'INR (₹)', 'GENERAL', 'Corporate currency identifier'),
+  ('late_grace_mins', '15', 'ATTENDANCE', 'Permissible punch-in delay in minutes before marking Late'),
+  ('half_day_hrs', '4.0', 'ATTENDANCE', 'Minimum hours worked required for Half-Day presence'),
+  ('full_day_hrs', '8.0', 'ATTENDANCE', 'Standard hours worked required for Full-Day presence'),
+  ('punch_cooldown_mins', '5', 'ATTENDANCE', 'Cooldown buffer between consecutive punches to prevent duplicates'),
+  ('ot_threshold_mins', '30', 'ATTENDANCE', 'Minimum minutes worked past shift end before Overtime starts counting'),
+  ('face_match_threshold', '0.55', 'BIOMETRICS', 'AI Face Recognition Euclidean distance matching threshold (lower is stricter)'),
+  ('liveness_detection_enabled', 'true', 'BIOMETRICS', 'Enforce anti-spoofing liveness check during facial scan'),
+  ('multi_factor_required', 'false', 'BIOMETRICS', 'Require dual verification (Card/PIN + Face Scan)'),
+  ('session_timeout_mins', '30', 'SECURITY', 'Automatic administrator and user session inactivity timeout in minutes'),
+  ('pii_masking_enabled', 'true', 'SECURITY', 'Mask sensitive Aadhaar, PAN, and phone numbers in non-admin views'),
+  ('audit_retention_days', '180', 'SECURITY', 'Number of days before audit logs are eligible for archival');
+
+-- Pre-seeded Companies
+INSERT IGNORE INTO `companies` (`id`, `code`, `name`, `short_name`, `address`, `city`, `state`, `country`, `pincode`, `email`, `phone`, `active`) VALUES
+  ('COMP_KRIDE', 'KRIDE', 'Rail Infrastructure Development Company (Karnataka) Ltd', 'KRIDE', 'Samparka Soudha, Dr. Rajkumar Road, Rajajinagar', 'Bangalore', 'Karnataka', 'India', '560010', 'contact@kride.in', '+91 80 2296 9300', 1),
+  ('COMP_BMRCL', 'BMRCL', 'Bangalore Metro Rail Corporation Limited', 'BMRCL', 'BMTC Complex, Shanthinagar, K.H. Road', 'Bangalore', 'Karnataka', 'India', '560027', 'contact@bmrc.co.in', '+91 80 2296 9200', 1),
+  ('COMP_SOUKHYA', 'SOUKHYA', 'Soukhya Tech Solutions Ltd.', 'SOUKHYA', 'Outer Ring Road, Bellandur Eco-Space', 'Bangalore', 'Karnataka', 'India', '560103', 'support@soukhyatech.com', '+91 80 4099 8877', 1),
+  ('COMP_INFOPARK', 'INFOPARK', 'Infopark IT Enterprises Ltd.', 'INFOPARK', 'Whitefield Export Promotion Industrial Park', 'Bangalore', 'Karnataka', 'India', '560066', 'info@infoparkit.in', '+91 80 6712 3456', 1);
+
+-- Pre-seeded Standard Enterprise Departments
+INSERT IGNORE INTO `departments` (`id`, `code`, `name`, `division`, `location`, `active`) VALUES
+  ('DEP_ENG', 'ENG', 'Engineering & Product', 'Technology', 'Bangalore HQ', 1),
+  ('DEP_HR', 'HR', 'Human Resources', 'Corporate', 'Bangalore HQ', 1),
+  ('DEP_FIN', 'FIN', 'Finance & Accounts', 'Corporate', 'Bangalore HQ', 1),
+  ('DEP_OPS', 'OPS', '24x7 Operations & Support', 'Operations', 'Bangalore HQ', 1),
+  ('DEP_SALES', 'SALES', 'Sales & Marketing', 'Commercial', 'Bangalore HQ', 1),
+  ('DEP_IT', 'IT', 'IT Infrastructure & SecOps', 'Technology', 'Bangalore HQ', 1);
+
+-- Pre-seeded Designations
+INSERT IGNORE INTO `designations` (`id`, `code`, `name`, `dept_id`, `grade_level`, `description`, `active`) VALUES
+  ('DES_SE', 'SE', 'Software Engineer', 'DEP_ENG', 'L1', 'Full-stack software engineering', 1),
+  ('DES_SSE', 'SSE', 'Senior Software Engineer', 'DEP_ENG', 'L2', 'Senior architecture and backend systems', 1),
+  ('DES_TL', 'TL', 'Technical Lead', 'DEP_ENG', 'L3', 'Technical mentorship and delivery lead', 1),
+  ('DES_ARCH', 'ARCH', 'Principal Architect', 'DEP_ENG', 'L4', 'Enterprise system design & deep-tech', 1),
+  ('DES_HRE', 'HRE', 'HR Executive', 'DEP_HR', 'L1', 'Talent acquisition and onboarding', 1),
+  ('DES_HRM', 'HRM', 'HR Manager', 'DEP_HR', 'L3', 'People operations and statutory compliance', 1),
+  ('DES_ACC', 'ACC', 'Senior Accountant', 'DEP_FIN', 'L2', 'Corporate taxation and payroll audit', 1),
+  ('DES_FINM', 'FINM', 'Finance Manager', 'DEP_FIN', 'L3', 'Financial planning and budgeting', 1),
+  ('DES_OPSE', 'OPSE', 'Operations Executive', 'DEP_OPS', 'L1', 'Shift monitoring and customer support', 1),
+  ('DES_OPSL', 'OPSL', 'Operations Lead', 'DEP_OPS', 'L3', '24x7 site operations management', 1),
+  ('DES_SEM', 'SEM', 'Sales Executive', 'DEP_SALES', 'L1', 'Enterprise client relations', 1),
+  ('DES_SDIR', 'SDIR', 'Sales Director', 'DEP_SALES', 'L5', 'Commercial strategy and regional growth', 1),
+  ('DES_SYSADMIN', 'SYSADMIN', 'Lead Systems Administrator', 'DEP_IT', 'L3', 'Cloud infrastructure and networking', 1),
+  ('DES_SECOPS', 'SECOPS', 'SecOps & Security Analyst', 'DEP_IT', 'L2', 'Information security and audit vigilance', 1);
+
+-- Pre-seeded Geofences
+INSERT IGNORE INTO `geofences` (`id`, `code`, `name`, `latitude`, `longitude`, `radius_meters`, `enforcement_mode`, `active`) VALUES
+  ('GEO_HQ', 'BLR_HQ', 'Soukhya Tech Corporate HQ (Bangalore)', 12.9716000, 77.5946000, 150, 'STRICT', 1),
+  ('GEO_WFD', 'WFD_PARK', 'Whitefield Tech Campus (SEZ Unit)', 12.9698000, 77.7499000, 250, 'STRICT', 1),
+  ('GEO_MYS', 'MYS_PLANT', 'Mysore R&D and Manufacturing Center', 12.3051000, 76.6551000, 300, 'WARNING', 1),
+  ('GEO_REMOTE', 'FIELD_SALES', 'Client Onsite & Flexible Field Zone', 12.9716000, 77.5946000, 5000, 'WARNING', 1);
+
+-- Pre-seeded Branches / Locations
+INSERT IGNORE INTO `branches` (`id`, `code`, `name`, `address`, `city`, `state`, `country`, `pincode`, `geofence_id`, `active`) VALUES
+  ('BR_HQ', 'BLR_HQ', 'Bangalore Corporate Headquarters', 'Outer Ring Road, Bellandur Eco-Space', 'Bangalore', 'Karnataka', 'India', '560103', 'GEO_HQ', 1),
+  ('BR_WFD', 'WFD_PARK', 'Whitefield SEZ Tech Center', 'EPIP Zone, Whitefield', 'Bangalore', 'Karnataka', 'India', '560066', 'GEO_WFD', 1),
+  ('BR_MYS', 'MYS_PLANT', 'Mysore Development & Hardware Center', 'Hebbal Industrial Area', 'Mysore', 'Karnataka', 'India', '570016', 'GEO_MYS', 1),
+  ('BR_REM', 'REMOTE_FIELD', 'Field & Client Sites', 'Multi-City Onsite & Client Deployments', 'Bangalore', 'Karnataka', 'India', '560001', 'GEO_REMOTE', 1);
+
+-- Pre-seeded Shifts
+INSERT IGNORE INTO `shifts` (`id`, `name`, `code`, `start_time`, `end_time`, `break_start`, `break_end`, `break_mins`, `early_in_mins`, `late_grace_mins`, `early_out_mins`, `min_half_day_hrs`, `min_full_day_hrs`, `is_night_shift`, `color`) VALUES
+  ('SHIFT_GEN', 'General Day Shift', 'GEN', '09:00:00', '18:00:00', '13:00:00', '14:00:00', 60, 30, 15, 15, 4.00, 8.00, 0, '#00d4aa'),
+  ('SHIFT_MOR', 'Morning Early Shift', 'MOR', '06:00:00', '14:30:00', '10:00:00', '10:30:00', 30, 30, 15, 15, 4.00, 8.00, 0, '#4f8ef7'),
+  ('SHIFT_EVE', 'Evening Afternoon Shift', 'EVE', '14:00:00', '22:30:00', '18:00:00', '18:30:00', 30, 30, 15, 15, 4.00, 8.00, 0, '#f59e0b'),
+  ('SHIFT_NIT', 'Night Overnight Shift', 'NIT', '22:00:00', '06:30:00', '02:00:00', '02:30:00', 30, 30, 15, 15, 4.00, 8.00, 1, '#a855f7');
+
+-- Pre-seeded Department Shift Mappings
+INSERT IGNORE INTO `department_shifts` (`dept_id`, `default_shift_id`, `allowed_shifts`, `auto_apply`, `updated_by`) VALUES
+  ('DEP_ENG', 'SHIFT_GEN', '["SHIFT_GEN", "SHIFT_MOR"]', 1, 'system'),
+  ('DEP_HR', 'SHIFT_GEN', '["SHIFT_GEN"]', 1, 'system'),
+  ('DEP_FIN', 'SHIFT_GEN', '["SHIFT_GEN"]', 1, 'system'),
+  ('DEP_OPS', 'SHIFT_MOR', '["SHIFT_MOR", "SHIFT_EVE", "SHIFT_NIT"]', 1, 'system'),
+  ('DEP_SALES', 'SHIFT_GEN', '["SHIFT_GEN", "SHIFT_EVE"]', 1, 'system'),
+  ('DEP_IT', 'SHIFT_GEN', '["SHIFT_GEN", "SHIFT_NIT"]', 1, 'system');
+
+-- Pre-seeded Public Holidays (Karnataka Gazetted 2026)
+INSERT IGNORE INTO `public_holidays` (`title`, `holiday_date`, `holiday_type`, `applicable_state`, `applicable_location`, `description`) VALUES
+  ('Uttarayana Punyakala, Makara Sankranti', '2026-01-15', 'MANDATORY', 'Karnataka', 'All Locations', 'Harvest Festival / Makara Sankranti (Gazetted)'),
+  ('Republic Day', '2026-01-26', 'MANDATORY', 'Karnataka', 'All Locations', 'National Holiday - Republic Day of India'),
+  ('Ugadi Festival', '2026-03-19', 'MANDATORY', 'Karnataka', 'All Locations', 'Kannada New Year (Gazetted)'),
+  ('Khutub-E-Ramzan (Eid-ul-Fitr)', '2026-03-21', 'MANDATORY', 'Karnataka', 'All Locations', 'Eid-ul-Fitr Celebration (Gazetted)'),
+  ('Mahaveera Jayanthi', '2026-03-31', 'MANDATORY', 'Karnataka', 'All Locations', 'Birth anniversary of Bhagwan Mahaveer (Gazetted)'),
+  ('Good Friday', '2026-04-03', 'MANDATORY', 'Karnataka', 'All Locations', 'Christian Observance - Good Friday (Gazetted)'),
+  ('Dr. B.R. Ambedkar Jayanthi', '2026-04-14', 'MANDATORY', 'Karnataka', 'All Locations', 'Birth anniversary of Dr. B.R. Ambedkar (Gazetted)'),
+  ('Basava Jayanthi, Akshaya Tritiya', '2026-04-20', 'MANDATORY', 'Karnataka', 'All Locations', 'Birth anniversary of Jagadjyothi Basaveshwara (Gazetted)'),
+  ('May Day (International Labour Day)', '2026-05-01', 'MANDATORY', 'Karnataka', 'All Locations', 'Labour Day / Worker Rights Day (Gazetted)'),
+  ('Bakrid (Eid al-Adha)', '2026-05-28', 'MANDATORY', 'Karnataka', 'All Locations', 'Eid al-Adha Feast of Sacrifice (Gazetted)'),
+  ('Last Day of Muharram', '2026-06-26', 'MANDATORY', 'Karnataka', 'All Locations', 'Muharram Observance (Gazetted)'),
+  ('Independence Day', '2026-08-15', 'MANDATORY', 'Karnataka', 'All Locations', 'National Holiday - 79th Independence Day of India'),
+  ('Eid-Milad', '2026-08-26', 'MANDATORY', 'Karnataka', 'All Locations', 'Milad-un-Nabi (Gazetted)'),
+  ('Varasiddhi Vinayaka Vrata', '2026-09-14', 'MANDATORY', 'Karnataka', 'All Locations', 'Ganesh Chaturthi Festival (Gazetted)'),
+  ('Mahatma Gandhi Jayanthi', '2026-10-02', 'MANDATORY', 'Karnataka', 'All Locations', 'National Holiday - Birth anniversary of Mahatma Gandhi'),
+  ('Mahanavami / Ayudha Pooja', '2026-10-20', 'MANDATORY', 'Karnataka', 'All Locations', 'Ayudha Pooja Festival (Gazetted)'),
+  ('Vijayadashami (Dussehra)', '2026-10-21', 'MANDATORY', 'Karnataka', 'All Locations', 'Vijayadashami / Mysore Dasara Festival (Gazetted)'),
+  ('Kannada Rajyotsava', '2026-11-01', 'MANDATORY', 'Karnataka', 'All Locations', 'Karnataka State Formation Day (Gazetted)'),
+  ('Kanakadasa Jayanthi', '2026-11-10', 'MANDATORY', 'Karnataka', 'All Locations', 'Birth anniversary of Saint Kanakadasa (Gazetted)'),
+  ('Guru Nanak Jayanthi', '2026-11-27', 'MANDATORY', 'Karnataka', 'All Locations', 'Birth anniversary of Guru Nanak Dev (Gazetted)'),
+  ('Christmas Day', '2026-12-25', 'MANDATORY', 'Karnataka', 'All Locations', 'Christian Festival - Christmas Day (Gazetted)');
+
+-- Pre-seeded Employment Types
+INSERT IGNORE INTO `employment_types` (`id`, `code`, `title`, `description`, `probation_days`, `notice_period_days`, `pf_esi_eligible`, `active`) VALUES
+  ('ET_PERM', 'PERM', 'Permanent / Full-Time', 'Regular permanent employee with standard company benefits', 90, 30, 1, 1),
+  ('ET_PROB', 'PROB', 'Probationary Staff', 'New joiner under probation evaluation', 180, 15, 1, 1),
+  ('ET_CONT', 'CONT', 'Fixed-Term Contract', 'Contractual staff hired for fixed durations/deliverables', 0, 30, 1, 1),
+  ('ET_INTR', 'INTR', 'Intern / Trainee', 'Apprenticeship and university trainee roles', 0, 7, 0, 1),
+  ('ET_PTME', 'PTME', 'Part-Time Employee', 'Part-time hourly or flexible shift schedule', 0, 15, 0, 1),
+  ('ET_CONS', 'CONS', 'Consultant / Retainer', 'Professional external advisory or retainer engagement', 0, 15, 0, 1);
+
+-- Pre-seeded Employee Groups (Cohorts)
+INSERT IGNORE INTO `employee_cohort_groups` (`id`, `code`, `name`, `category`, `description`, `color`, `active`) VALUES
+  ('EGRP_EXEC', 'EXEC', 'Executive & Leadership Council', 'GOVERNANCE', 'Core strategic and executive operational team', '#8b5cf6', 1),
+  ('EGRP_SAFETY', 'SAFETY', 'Emergency & Workplace Safety Taskforce', 'COMPLIANCE', 'First-aid, fire safety, and emergency response leads', '#ef4444', 1),
+  ('EGRP_INNOV', 'INNOV', 'R&D Innovation & AI Lab', 'PROJECT', 'Deep-tech research and product incubation squad', '#00d4aa', 1),
+  ('EGRP_OPS', 'OPS_SWAT', '24x7 Tier-2 Rapid Support Team', 'OPERATIONAL', 'Critical response and production incident resolution', '#f59e0b', 1);
+
+-- Pre-seeded Work Codes
+INSERT IGNORE INTO `work_codes` (`id`, `code`, `name`, `category`, `description`, `billing_rate_multiplier`, `ot_eligible`, `active`) VALUES
+  ('WC_DEV', 'DEV_PROD', 'Core Engineering & Product Sprint', 'BILLABLE_PROJECT', 'Standard software engineering and product feature delivery', 1.00, 1, 1),
+  ('WC_CLIENT', 'CLIENT_IMP', 'Client Deployment & Onsite Integration', 'CLIENT_ONSITE', 'Customer site deployment, hardware commissioning & training', 1.25, 1, 1),
+  ('WC_OPS', 'OPS_RUN', '24x7 Infrastructure & Production Support', 'INTERNAL_OPS', 'Critical server uptime, SecOps and IT helpdesk response', 1.00, 1, 1),
+  ('WC_MAINT', 'FAC_MAINT', 'Biometric Hardware & Facility Maintenance', 'FACILITY_MAINT', 'Face terminal calibration, access gate servicing & repairs', 1.00, 1, 1),
+  ('WC_TRAIN', 'LND_SKILLS', 'Learning & Development / Certification', 'TRAINING_LD', 'Internal technical training and domain compliance programs', 1.00, 0, 1);
+
+-- Pre-seeded Leave Types
+INSERT IGNORE INTO `leave_types` (`id`, `code`, `name`, `category`, `description`, `paid`, `annual_quota_days`, `carry_forward_max`, `encashable`, `color`, `active`) VALUES
+  ('LT_CL', 'CL', 'Casual Leave (CL)', 'CASUAL', 'Short-notice personal leave for urgent private affairs', 1, 12.0, 0.0, 0, '#4f8ef7', 1),
+  ('LT_SL', 'SL', 'Sick / Medical Leave (SL)', 'SICK', 'Medical illness or health recovery leave', 1, 12.0, 6.0, 0, '#ef4444', 1),
+  ('LT_EL', 'EL', 'Earned / Privilege Leave (EL)', 'EARNED', 'Annual accrued vacation and privilege leave', 1, 18.0, 30.0, 1, '#10b981', 1),
+  ('LT_ML', 'ML', 'Maternity Leave (Statutory)', 'MATERNITY', 'Statutory 26-week paid maternity benefit under Indian Maternity Act', 1, 182.0, 0.0, 0, '#ec4899', 1),
+  ('LT_PL', 'PL', 'Paternity Leave', 'PATERNITY', 'Parental support leave for male employees on child birth', 1, 15.0, 0.0, 0, '#8b5cf6', 1),
+  ('LT_CO', 'COMP_OFF', 'Compensatory Off (Comp-Off)', 'COMP_OFF', 'Credit granted for approved overtime or weekend shifts worked', 1, 0.0, 10.0, 0, '#f59e0b', 1),
+  ('LT_LWP', 'LWP', 'Leave Without Pay / Loss of Pay', 'UNPAID', 'Authorized absence when all paid leave balances are exhausted', 0, 0.0, 0.0, 0, '#64748b', 1);
+
+-- Pre-seeded Shift Groups
+INSERT IGNORE INTO `shift_groups` (`id`, `name`, `code`, `rotation_type`, `description`, `color`, `shifts_sequence`, `active`) VALUES
+  ('SGRP_24X7', '24x7 Continuous Operations Rotation', 'ROT_24X7', 'WEEKLY', 'Three-shift rotational roster for support and operations engineers', '#4f8ef7', '["SHIFT_MOR", "SHIFT_EVE", "SHIFT_NIT"]', 1),
+  ('SGRP_GEN', 'Corporate General Working Group', 'CORP_GEN', 'FIXED', 'Standard Monday to Friday corporate schedule', '#00d4aa', '["SHIFT_GEN"]', 1);
+
+-- Default Administrator: admin / admin123 (SHA-256 username hash, Bcrypt password hash)
 INSERT IGNORE INTO `users` (`username`, `username_hash`, `username_display`, `password_hash`, `role`, `active`)
 VALUES (
   'admin',
@@ -615,4 +753,3 @@ VALUES (
 );
 
 SET FOREIGN_KEY_CHECKS = 1;
-
