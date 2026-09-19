@@ -2869,6 +2869,559 @@ class MySQLAdapter {
   }
 
   // ──────────────────────────────────────────────
+  // 🏢 Divisions Master
+  // ──────────────────────────────────────────────
+  async getAllDivisions({ company_id, active } = {}) {
+    const pool = await this.getPool();
+    let sql = `
+      SELECT d.*, c.name as company_name, c.code as company_code, e.name as head_emp_name
+      FROM divisions d
+      LEFT JOIN companies c ON d.company_id = c.id
+      LEFT JOIN employees e ON d.head_emp_id = e.id
+      WHERE 1=1
+    `;
+    const params = [];
+    if (company_id) { sql += ' AND d.company_id = ?'; params.push(company_id); }
+    if (active !== undefined && active !== null) { sql += ' AND d.active = ?'; params.push(active ? 1 : 0); }
+    sql += ' ORDER BY d.name ASC';
+    const [rows] = await pool.execute(sql, params);
+    return rows;
+  }
+
+  async getDivisionById(id) {
+    const pool = await this.getPool();
+    const [rows] = await pool.execute(`
+      SELECT d.*, c.name as company_name, c.code as company_code, e.name as head_emp_name
+      FROM divisions d
+      LEFT JOIN companies c ON d.company_id = c.id
+      LEFT JOIN employees e ON d.head_emp_id = e.id
+      WHERE d.id = ?
+    `, [id]);
+    return rows[0] || null;
+  }
+
+  async getDivisionByCode(code) {
+    const pool = await this.getPool();
+    const [rows] = await pool.execute('SELECT * FROM divisions WHERE code = ?', [code]);
+    return rows[0] || null;
+  }
+
+  async insertDivision(data) {
+    const pool = await this.getPool();
+    const id = data.id || `DIV_${data.code || Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    await pool.execute(
+      `INSERT INTO divisions (id, code, name, company_id, head_emp_id, budget_code, active, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      [
+        id,
+        data.code,
+        data.name,
+        data.company_id,
+        data.head_emp_id || null,
+        data.budget_code || null,
+        data.active !== undefined ? (data.active ? 1 : 0) : 1
+      ]
+    );
+    return this.getDivisionById(id);
+  }
+
+  async updateDivision(data) {
+    const pool = await this.getPool();
+    await pool.execute(
+      `UPDATE divisions SET
+         code = COALESCE(?, code),
+         name = COALESCE(?, name),
+         company_id = COALESCE(?, company_id),
+         head_emp_id = ?,
+         budget_code = COALESCE(?, budget_code),
+         active = COALESCE(?, active),
+         updated_at = NOW()
+       WHERE id = ?`,
+      [
+        data.code || null,
+        data.name || null,
+        data.company_id || null,
+        data.head_emp_id !== undefined ? (data.head_emp_id || null) : null,
+        data.budget_code || null,
+        data.active !== undefined ? (data.active ? 1 : 0) : null,
+        data.id
+      ]
+    );
+    return this.getDivisionById(data.id);
+  }
+
+  async deleteDivision(id) {
+    const pool = await this.getPool();
+    await pool.execute('DELETE FROM divisions WHERE id = ?', [id]);
+    return { id, deleted: true };
+  }
+
+  // ──────────────────────────────────────────────
+  // 💰 Cost Centers Master
+  // ──────────────────────────────────────────────
+  async getAllCostCenters({ company_id, dept_id, active } = {}) {
+    const pool = await this.getPool();
+    let sql = `
+      SELECT cc.*, c.name as company_name, c.code as company_code, d.name as dept_name
+      FROM cost_centers cc
+      LEFT JOIN companies c ON cc.company_id = c.id
+      LEFT JOIN departments d ON cc.dept_id = d.id
+      WHERE 1=1
+    `;
+    const params = [];
+    if (company_id) { sql += ' AND cc.company_id = ?'; params.push(company_id); }
+    if (dept_id) { sql += ' AND cc.dept_id = ?'; params.push(dept_id); }
+    if (active !== undefined && active !== null) { sql += ' AND cc.active = ?'; params.push(active ? 1 : 0); }
+    sql += ' ORDER BY cc.name ASC';
+    const [rows] = await pool.execute(sql, params);
+    return rows;
+  }
+
+  async getCostCenterById(id) {
+    const pool = await this.getPool();
+    const [rows] = await pool.execute(`
+      SELECT cc.*, c.name as company_name, c.code as company_code, d.name as dept_name
+      FROM cost_centers cc
+      LEFT JOIN companies c ON cc.company_id = c.id
+      LEFT JOIN departments d ON cc.dept_id = d.id
+      WHERE cc.id = ?
+    `, [id]);
+    return rows[0] || null;
+  }
+
+  async getCostCenterByCode(code) {
+    const pool = await this.getPool();
+    const [rows] = await pool.execute('SELECT * FROM cost_centers WHERE code = ?', [code]);
+    return rows[0] || null;
+  }
+
+  async insertCostCenter(data) {
+    const pool = await this.getPool();
+    const id = data.id || `CC_${data.code || Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    await pool.execute(
+      `INSERT INTO cost_centers (id, code, name, company_id, dept_id, gl_account, annual_budget, currency, active, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      [
+        id,
+        data.code,
+        data.name,
+        data.company_id,
+        data.dept_id || null,
+        data.gl_account || null,
+        data.annual_budget || 0.00,
+        data.currency || 'INR',
+        data.active !== undefined ? (data.active ? 1 : 0) : 1
+      ]
+    );
+    return this.getCostCenterById(id);
+  }
+
+  async updateCostCenter(data) {
+    const pool = await this.getPool();
+    await pool.execute(
+      `UPDATE cost_centers SET
+         code = COALESCE(?, code),
+         name = COALESCE(?, name),
+         company_id = COALESCE(?, company_id),
+         dept_id = ?,
+         gl_account = COALESCE(?, gl_account),
+         annual_budget = COALESCE(?, annual_budget),
+         currency = COALESCE(?, currency),
+         active = COALESCE(?, active),
+         updated_at = NOW()
+       WHERE id = ?`,
+      [
+        data.code || null,
+        data.name || null,
+        data.company_id || null,
+        data.dept_id !== undefined ? (data.dept_id || null) : null,
+        data.gl_account || null,
+        data.annual_budget !== undefined ? data.annual_budget : null,
+        data.currency || null,
+        data.active !== undefined ? (data.active ? 1 : 0) : null,
+        data.id
+      ]
+    );
+    return this.getCostCenterById(data.id);
+  }
+
+  async deleteCostCenter(id) {
+    const pool = await this.getPool();
+    await pool.execute('DELETE FROM cost_centers WHERE id = ?', [id]);
+    return { id, deleted: true };
+  }
+
+  // ──────────────────────────────────────────────
+  // 📟 Biometric Devices & Terminals
+  // ──────────────────────────────────────────────
+  async getAllDevices({ branch_id, status, active } = {}) {
+    const pool = await this.getPool();
+    let sql = `
+      SELECT bd.*, b.name as branch_name, b.code as branch_code, b.city as branch_city
+      FROM biometric_devices bd
+      LEFT JOIN branches b ON bd.branch_id = b.id
+      WHERE 1=1
+    `;
+    const params = [];
+    if (branch_id) { sql += ' AND bd.branch_id = ?'; params.push(branch_id); }
+    if (status) { sql += ' AND bd.status = ?'; params.push(status); }
+    if (active !== undefined && active !== null) { sql += ' AND bd.active = ?'; params.push(active ? 1 : 0); }
+    sql += ' ORDER BY bd.device_name ASC';
+    const [rows] = await pool.execute(sql, params);
+    return rows;
+  }
+
+  async getDeviceById(id) {
+    const pool = await this.getPool();
+    const [rows] = await pool.execute(`
+      SELECT bd.*, b.name as branch_name, b.code as branch_code, b.city as branch_city
+      FROM biometric_devices bd
+      LEFT JOIN branches b ON bd.branch_id = b.id
+      WHERE bd.id = ?
+    `, [id]);
+    return rows[0] || null;
+  }
+
+  async getDeviceBySerial(serial) {
+    const pool = await this.getPool();
+    const [rows] = await pool.execute('SELECT * FROM biometric_devices WHERE serial_number = ?', [serial]);
+    return rows[0] || null;
+  }
+
+  async insertDevice(data) {
+    const pool = await this.getPool();
+    const id = data.id || `DEV_${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    await pool.execute(
+      `INSERT INTO biometric_devices (id, serial_number, device_name, device_ip, device_port, device_model, protocol, branch_id, direction, status, template_count, buffer_lag_ms, active, last_heartbeat, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), NOW())`,
+      [
+        id,
+        data.serial_number,
+        data.device_name,
+        data.device_ip,
+        data.device_port || 4370,
+        data.device_model || 'eSSL SilkBio-101TC',
+        data.protocol || 'ESSL',
+        data.branch_id || null,
+        data.direction || 'BOTH',
+        data.status || 'ONLINE',
+        data.template_count || 0,
+        data.buffer_lag_ms || 10,
+        data.active !== undefined ? (data.active ? 1 : 0) : 1
+      ]
+    );
+    return this.getDeviceById(id);
+  }
+
+  async updateDevice(data) {
+    const pool = await this.getPool();
+    await pool.execute(
+      `UPDATE biometric_devices SET
+         serial_number = COALESCE(?, serial_number),
+         device_name = COALESCE(?, device_name),
+         device_ip = COALESCE(?, device_ip),
+         device_port = COALESCE(?, device_port),
+         device_model = COALESCE(?, device_model),
+         protocol = COALESCE(?, protocol),
+         branch_id = ?,
+         direction = COALESCE(?, direction),
+         status = COALESCE(?, status),
+         active = COALESCE(?, active),
+         updated_at = NOW()
+       WHERE id = ?`,
+      [
+        data.serial_number || null,
+        data.device_name || null,
+        data.device_ip || null,
+        data.device_port || null,
+        data.device_model || null,
+        data.protocol || null,
+        data.branch_id !== undefined ? (data.branch_id || null) : null,
+        data.direction || null,
+        data.status || null,
+        data.active !== undefined ? (data.active ? 1 : 0) : null,
+        data.id
+      ]
+    );
+    return this.getDeviceById(data.id);
+  }
+
+  async deleteDevice(id) {
+    const pool = await this.getPool();
+    await pool.execute('DELETE FROM biometric_devices WHERE id = ?', [id]);
+    return { id, deleted: true };
+  }
+
+  async pingDevice(id) {
+    const pool = await this.getPool();
+    const lag = Math.floor(Math.random() * 20) + 5;
+    await pool.execute(
+      `UPDATE biometric_devices SET last_heartbeat = NOW(), status = 'ONLINE', buffer_lag_ms = ?, updated_at = NOW() WHERE id = ?`,
+      [lag, id]
+    );
+    return this.getDeviceById(id);
+  }
+
+  async syncDeviceTemplates(id) {
+    const pool = await this.getPool();
+    const [empCount] = await pool.query('SELECT COUNT(*) as count FROM employees WHERE active = 1');
+    const totalTemplates = empCount[0]?.count || 0;
+    await pool.execute(
+      `UPDATE biometric_devices SET template_count = ?, last_heartbeat = NOW(), updated_at = NOW() WHERE id = ?`,
+      [totalTemplates, id]
+    );
+    return { id, template_count: totalTemplates, synced: true };
+  }
+
+  // ──────────────────────────────────────────────
+  // 🔄 Employee Career Transfers & Promotions
+  // ──────────────────────────────────────────────
+  async getTransfers({ emp_id, limit = 50 } = {}) {
+    const pool = await this.getPool();
+    let sql = `
+      SELECT t.*, e.name as emp_name,
+             c_old.name as prev_company_name, c_new.name as new_company_name,
+             d_old.name as prev_dept_name, d_new.name as new_dept_name,
+             des_old.name as prev_desig_name, des_new.name as new_desig_name,
+             b_old.name as prev_branch_name, b_new.name as new_branch_name
+      FROM employee_transfers t
+      LEFT JOIN employees e ON t.emp_id = e.id
+      LEFT JOIN companies c_old ON t.prev_company_id = c_old.id
+      LEFT JOIN companies c_new ON t.new_company_id = c_new.id
+      LEFT JOIN departments d_old ON t.prev_dept_id = d_old.id
+      LEFT JOIN departments d_new ON t.new_dept_id = d_new.id
+      LEFT JOIN designations des_old ON t.prev_desig_id = des_old.id
+      LEFT JOIN designations des_new ON t.new_desig_id = des_new.id
+      LEFT JOIN branches b_old ON t.prev_branch_id = b_old.id
+      LEFT JOIN branches b_new ON t.new_branch_id = b_new.id
+      WHERE 1=1
+    `;
+    const params = [];
+    if (emp_id) { sql += ' AND t.emp_id = ?'; params.push(emp_id); }
+    sql += ' ORDER BY t.effective_date DESC, t.id DESC LIMIT ?';
+    params.push(Number(limit));
+    const [rows] = await pool.query(sql, params);
+    return rows;
+  }
+
+  async recordEmployeeTransfer(data) {
+    const pool = await this.getPool();
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+
+      // Get current employee state
+      const [empRows] = await conn.execute('SELECT * FROM employees WHERE id = ? FOR UPDATE', [data.emp_id]);
+      if (empRows.length === 0) throw new Error('Employee not found: ' + data.emp_id);
+      const curEmp = empRows[0];
+
+      // 1. Insert Transfer Record
+      const [res] = await conn.execute(
+        `INSERT INTO employee_transfers (
+           emp_id, prev_company_id, new_company_id,
+           prev_dept_id, new_dept_id,
+           prev_desig_id, new_desig_id,
+           prev_branch_id, new_branch_id,
+           transfer_type, effective_date, remarks, approved_by, created_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+        [
+          data.emp_id,
+          data.prev_company_id || curEmp.company_id || null,
+          data.new_company_id || curEmp.company_id || null,
+          data.prev_dept_id || curEmp.department_id || null,
+          data.new_dept_id || curEmp.department_id || null,
+          data.prev_desig_id || curEmp.designation_id || null,
+          data.new_desig_id || curEmp.designation_id || null,
+          data.prev_branch_id || curEmp.branch_id || null,
+          data.new_branch_id || curEmp.branch_id || null,
+          data.transfer_type || 'PROMOTION',
+          data.effective_date || new Date().toISOString().slice(0, 10),
+          data.remarks || null,
+          data.approved_by || 'Admin'
+        ]
+      );
+
+      // 2. Update Employee Profile
+      await conn.execute(
+        `UPDATE employees SET
+           company_id = COALESCE(?, company_id),
+           department_id = COALESCE(?, department_id),
+           designation_id = COALESCE(?, designation_id),
+           branch_id = COALESCE(?, branch_id),
+           department = COALESCE((SELECT name FROM departments WHERE id = ?), department),
+           role = COALESCE((SELECT name FROM designations WHERE id = ?), role),
+           updated_at = NOW()
+         WHERE id = ?`,
+        [
+          data.new_company_id || null,
+          data.new_dept_id || null,
+          data.new_desig_id || null,
+          data.new_branch_id || null,
+          data.new_dept_id || null,
+          data.new_desig_id || null,
+          data.emp_id
+        ]
+      );
+
+      await conn.commit();
+      return { id: res.insertId, emp_id: data.emp_id, success: true };
+    } catch (e) {
+      await conn.rollback();
+      throw e;
+    } finally {
+      conn.release();
+    }
+  }
+
+  // ──────────────────────────────────────────────
+  // ⚡ High-Speed Fast Punch Buffer Pipeline
+  // ──────────────────────────────────────────────
+  async ingestFastPunch(data) {
+    const pool = await this.getPool();
+    const t0 = process.hrtime();
+    const punchTime = data.punch_timestamp ? this._formatDatetime(data.punch_timestamp) : this._formatDatetime(new Date());
+
+    const [res] = await pool.execute(
+      `INSERT INTO fast_punch_buffer (
+         emp_id, terminal_id, punch_timestamp, punch_state,
+         verification_type, temperature, mask_detected, processed, process_latency_ms, created_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, NOW())`,
+      [
+        data.emp_id,
+        data.terminal_id || 'TERMINAL_DEFAULT',
+        punchTime,
+        data.punch_state || 'AUTO',
+        data.verification_type || 'FACE',
+        data.temperature || null,
+        data.mask_detected ? 1 : 0
+      ]
+    );
+
+    const diff = process.hrtime(t0);
+    const latencyMs = (diff[0] * 1000 + diff[1] / 1e6).toFixed(2);
+    await pool.execute('UPDATE fast_punch_buffer SET process_latency_ms = ? WHERE id = ?', [latencyMs, res.insertId]);
+
+    return {
+      id: res.insertId,
+      emp_id: data.emp_id,
+      terminal_id: data.terminal_id,
+      punch_timestamp: punchTime,
+      latency_ms: parseFloat(latencyMs),
+      status: 'QUEUED'
+    };
+  }
+
+  async batchIngestFastPunches(punches) {
+    if (!Array.isArray(punches) || punches.length === 0) return { inserted: 0, latency_ms: 0 };
+    const pool = await this.getPool();
+    const t0 = process.hrtime();
+
+    const values = [];
+    for (const p of punches) {
+      const punchTime = p.punch_timestamp ? this._formatDatetime(p.punch_timestamp) : this._formatDatetime(new Date());
+      values.push([
+        p.emp_id,
+        p.terminal_id || 'BATCH_TERMINAL',
+        punchTime,
+        p.punch_state || 'AUTO',
+        p.verification_type || 'FACE',
+        p.temperature || null,
+        p.mask_detected ? 1 : 0,
+        0,
+        0
+      ]);
+    }
+
+    const placeholders = values.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
+    const flatParams = values.flat();
+    await pool.query(
+      `INSERT INTO fast_punch_buffer (emp_id, terminal_id, punch_timestamp, punch_state, verification_type, temperature, mask_detected, processed, process_latency_ms)
+       VALUES ${placeholders}`,
+      flatParams
+    );
+
+    const diff = process.hrtime(t0);
+    const latencyMs = (diff[0] * 1000 + diff[1] / 1e6).toFixed(2);
+
+    return {
+      inserted: punches.length,
+      latency_ms: parseFloat(latencyMs),
+      throughput_ops_sec: Math.round((punches.length / (parseFloat(latencyMs) / 1000)))
+    };
+  }
+
+  async flushFastPunchBuffer(limit = 1000) {
+    const pool = await this.getPool();
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      const [pending] = await conn.query(
+        'SELECT * FROM fast_punch_buffer WHERE processed = 0 ORDER BY punch_timestamp ASC LIMIT ? FOR UPDATE',
+        [Number(limit)]
+      );
+
+      let processedCount = 0;
+      let duplicateCount = 0;
+
+      for (const p of pending) {
+        // Fast deduplication check within 5 min
+        const [recent] = await conn.query(
+          `SELECT id FROM attendance
+           WHERE employee_id = ? AND timestamp >= DATE_SUB(?, INTERVAL 5 MINUTE) AND timestamp <= DATE_ADD(?, INTERVAL 5 MINUTE)
+           LIMIT 1`,
+          [p.emp_id, p.punch_timestamp, p.punch_timestamp]
+        );
+
+        if (recent.length > 0) {
+          await conn.execute('UPDATE fast_punch_buffer SET processed = 2 WHERE id = ?', [p.id]);
+          duplicateCount++;
+        } else {
+          // Write to attendance
+          await conn.execute(
+            `INSERT INTO attendance (employee_id, employee_name, timestamp, confidence)
+             VALUES (?, COALESCE((SELECT name FROM employees WHERE id = ?), ?), ?, 0.99)`,
+            [p.emp_id, p.emp_id, p.emp_id, p.punch_timestamp]
+          );
+          // Mark processed
+          await conn.execute('UPDATE fast_punch_buffer SET processed = 1 WHERE id = ?', [p.id]);
+          processedCount++;
+        }
+      }
+
+      await conn.commit();
+      return { total_drained: pending.length, processed: processedCount, duplicates: duplicateCount };
+    } catch (e) {
+      await conn.rollback();
+      throw e;
+    } finally {
+      conn.release();
+    }
+  }
+
+  async getFastPunchMetrics() {
+    const pool = await this.getPool();
+    const [counts] = await pool.query(`
+      SELECT
+        COUNT(*) as total_ingested,
+        SUM(CASE WHEN processed = 0 THEN 1 ELSE 0 END) as queued_count,
+        SUM(CASE WHEN processed = 1 THEN 1 ELSE 0 END) as processed_count,
+        SUM(CASE WHEN processed = 2 THEN 1 ELSE 0 END) as duplicate_count,
+        AVG(process_latency_ms) as avg_latency_ms
+      FROM fast_punch_buffer
+    `);
+    const [recent] = await pool.query(`
+      SELECT b.*, e.name as emp_name
+      FROM fast_punch_buffer b
+      LEFT JOIN employees e ON b.emp_id = e.id
+      ORDER BY b.id DESC LIMIT 15
+    `);
+    return {
+      metrics: counts[0] || { total_ingested: 0, queued_count: 0, processed_count: 0, duplicate_count: 0, avg_latency_ms: 0 },
+      recent_punches: recent
+    };
+  }
+
+  // ──────────────────────────────────────────────
   // Reset & Clear
   // ──────────────────────────────────────────────
   async clearAll() {

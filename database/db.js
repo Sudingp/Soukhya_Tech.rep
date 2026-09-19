@@ -514,6 +514,94 @@ const stmts = {
   },
   deleteOutdoorEntry: {
     run: (id) => mysqlAdapter.deleteOutdoorEntry(id)
+  },
+
+  // ── 🏢 Divisions Master ──
+  getAllDivisions: {
+    all: (filter) => mysqlAdapter.getAllDivisions(filter)
+  },
+  getDivisionById: {
+    get: (id) => mysqlAdapter.getDivisionById(id)
+  },
+  getDivisionByCode: {
+    get: (code) => mysqlAdapter.getDivisionByCode(code)
+  },
+  insertDivision: {
+    run: (data) => mysqlAdapter.insertDivision(data)
+  },
+  updateDivision: {
+    run: (data) => mysqlAdapter.updateDivision(data)
+  },
+  deleteDivision: {
+    run: (id) => mysqlAdapter.deleteDivision(id)
+  },
+
+  // ── 💰 Cost Centers Master ──
+  getAllCostCenters: {
+    all: (filter) => mysqlAdapter.getAllCostCenters(filter)
+  },
+  getCostCenterById: {
+    get: (id) => mysqlAdapter.getCostCenterById(id)
+  },
+  getCostCenterByCode: {
+    get: (code) => mysqlAdapter.getCostCenterByCode(code)
+  },
+  insertCostCenter: {
+    run: (data) => mysqlAdapter.insertCostCenter(data)
+  },
+  updateCostCenter: {
+    run: (data) => mysqlAdapter.updateCostCenter(data)
+  },
+  deleteCostCenter: {
+    run: (id) => mysqlAdapter.deleteCostCenter(id)
+  },
+
+  // ── 📟 Biometric Devices & Edge Terminals ──
+  getAllDevices: {
+    all: (filter) => mysqlAdapter.getAllDevices(filter)
+  },
+  getDeviceById: {
+    get: (id) => mysqlAdapter.getDeviceById(id)
+  },
+  getDeviceBySerial: {
+    get: (serial) => mysqlAdapter.getDeviceBySerial(serial)
+  },
+  insertDevice: {
+    run: (data) => mysqlAdapter.insertDevice(data)
+  },
+  updateDevice: {
+    run: (data) => mysqlAdapter.updateDevice(data)
+  },
+  deleteDevice: {
+    run: (id) => mysqlAdapter.deleteDevice(id)
+  },
+  pingDevice: {
+    run: (id) => mysqlAdapter.pingDevice(id)
+  },
+  syncDeviceTemplates: {
+    run: (id) => mysqlAdapter.syncDeviceTemplates(id)
+  },
+
+  // ── 🔄 Employee Career Transfers & Promotions ──
+  getTransfers: {
+    all: (filter) => mysqlAdapter.getTransfers(filter)
+  },
+  recordEmployeeTransfer: {
+    run: (data) => mysqlAdapter.recordEmployeeTransfer(data)
+  },
+
+  // ── ⚡ High-Speed Fast Punch Buffer ──
+  ingestFastPunch: {
+    run: (data) => mysqlAdapter.ingestFastPunch(data)
+  },
+  batchIngestFastPunches: {
+    run: (punches) => mysqlAdapter.batchIngestFastPunches(punches)
+  },
+  flushFastPunchBuffer: {
+    run: (limit) => mysqlAdapter.flushFastPunchBuffer(limit)
+  },
+  getFastPunchMetrics: {
+    get: () => mysqlAdapter.getFastPunchMetrics()
   }
 };
 

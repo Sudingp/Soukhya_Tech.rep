@@ -1953,6 +1953,373 @@ app.delete('/api/branches/:id', authenticate, requireRoles('ADMIN'), async (req,
 });
 
 // ══════════════════════════════════════════════
+// 🏢 DIVISIONS APIS
+// ══════════════════════════════════════════════
+const divisionSchema = Joi.object({
+  code: Joi.string().min(2).max(30).required(),
+  name: Joi.string().min(2).max(150).required(),
+  company_id: Joi.string().required(),
+  head_emp_id: Joi.string().allow('', null).optional(),
+  budget_code: Joi.string().allow('', null).max(50).optional(),
+  active: Joi.boolean().default(true)
+});
+
+app.get('/api/divisions', authenticate, async (req, res) => {
+  try {
+    const { company_id, active } = req.query;
+    const divisions = await stmts.getAllDivisions.all({
+      company_id: company_id || null,
+      active: active !== undefined ? active === 'true' || active === '1' : null
+    });
+    ok(res, { divisions });
+  } catch (e) {
+    console.error('[GET /api/divisions]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch divisions: ' + e.message, 500);
+  }
+});
+
+app.post('/api/divisions', authenticate, requireRoles('ADMIN', 'HR'), async (req, res) => {
+  try {
+    const { error, value } = divisionSchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const existing = await stmts.getDivisionByCode.get(value.code);
+    if (existing) return err(res, 'CONFLICT', 'Division with this code already exists', 409);
+
+    const result = await stmts.insertDivision.run(value);
+    await auditLog({ table: 'divisions', recordId: result.id, action: 'INSERT', newVals: value, req });
+    ok(res, { message: 'Division created successfully', id: result.id, division: result }, 201);
+  } catch (e) {
+    console.error('[POST /api/divisions]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to create division: ' + e.message, 500);
+  }
+});
+
+app.put('/api/divisions/:id', authenticate, requireRoles('ADMIN', 'HR'), async (req, res) => {
+  try {
+    const { error, value } = divisionSchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const existing = await stmts.getDivisionById.get(req.params.id);
+    if (!existing) return err(res, 'NOT_FOUND', 'Division not found', 404);
+
+    const updated = await stmts.updateDivision.run({ ...value, id: req.params.id });
+    await auditLog({ table: 'divisions', recordId: req.params.id, action: 'UPDATE', oldVals: existing, newVals: value, req });
+    ok(res, { message: 'Division updated successfully', division: updated });
+  } catch (e) {
+    console.error('[PUT /api/divisions/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to update division: ' + e.message, 500);
+  }
+});
+
+app.delete('/api/divisions/:id', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const existing = await stmts.getDivisionById.get(req.params.id);
+    if (!existing) return err(res, 'NOT_FOUND', 'Division not found', 404);
+
+    await stmts.deleteDivision.run(req.params.id);
+    await auditLog({ table: 'divisions', recordId: req.params.id, action: 'DELETE', oldVals: existing, req });
+    ok(res, { message: 'Division deleted successfully' });
+  } catch (e) {
+    console.error('[DELETE /api/divisions/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to delete division: ' + e.message, 500);
+  }
+});
+
+// ══════════════════════════════════════════════
+// 💰 COST CENTERS APIS
+// ══════════════════════════════════════════════
+const costCenterSchema = Joi.object({
+  code: Joi.string().min(2).max(30).required(),
+  name: Joi.string().min(2).max(150).required(),
+  company_id: Joi.string().required(),
+  dept_id: Joi.string().allow('', null).optional(),
+  gl_account: Joi.string().allow('', null).max(50).optional(),
+  annual_budget: Joi.number().min(0).default(0.0),
+  currency: Joi.string().max(10).default('INR'),
+  active: Joi.boolean().default(true)
+});
+
+app.get('/api/cost-centers', authenticate, async (req, res) => {
+  try {
+    const { company_id, dept_id, active } = req.query;
+    const costCenters = await stmts.getAllCostCenters.all({
+      company_id: company_id || null,
+      dept_id: dept_id || null,
+      active: active !== undefined ? active === 'true' || active === '1' : null
+    });
+    ok(res, { cost_centers: costCenters });
+  } catch (e) {
+    console.error('[GET /api/cost-centers]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch cost centers: ' + e.message, 500);
+  }
+});
+
+app.post('/api/cost-centers', authenticate, requireRoles('ADMIN', 'HR'), async (req, res) => {
+  try {
+    const { error, value } = costCenterSchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const existing = await stmts.getCostCenterByCode.get(value.code);
+    if (existing) return err(res, 'CONFLICT', 'Cost center with this code already exists', 409);
+
+    const result = await stmts.insertCostCenter.run(value);
+    await auditLog({ table: 'cost_centers', recordId: result.id, action: 'INSERT', newVals: value, req });
+    ok(res, { message: 'Cost center created successfully', id: result.id, cost_center: result }, 201);
+  } catch (e) {
+    console.error('[POST /api/cost-centers]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to create cost center: ' + e.message, 500);
+  }
+});
+
+app.put('/api/cost-centers/:id', authenticate, requireRoles('ADMIN', 'HR'), async (req, res) => {
+  try {
+    const { error, value } = costCenterSchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const existing = await stmts.getCostCenterById.get(req.params.id);
+    if (!existing) return err(res, 'NOT_FOUND', 'Cost center not found', 404);
+
+    const updated = await stmts.updateCostCenter.run({ ...value, id: req.params.id });
+    await auditLog({ table: 'cost_centers', recordId: req.params.id, action: 'UPDATE', oldVals: existing, newVals: value, req });
+    ok(res, { message: 'Cost center updated successfully', cost_center: updated });
+  } catch (e) {
+    console.error('[PUT /api/cost-centers/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to update cost center: ' + e.message, 500);
+  }
+});
+
+app.delete('/api/cost-centers/:id', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const existing = await stmts.getCostCenterById.get(req.params.id);
+    if (!existing) return err(res, 'NOT_FOUND', 'Cost center not found', 404);
+
+    await stmts.deleteCostCenter.run(req.params.id);
+    await auditLog({ table: 'cost_centers', recordId: req.params.id, action: 'DELETE', oldVals: existing, req });
+    ok(res, { message: 'Cost center deleted successfully' });
+  } catch (e) {
+    console.error('[DELETE /api/cost-centers/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to delete cost center: ' + e.message, 500);
+  }
+});
+
+// ══════════════════════════════════════════════
+// 📟 BIOMETRIC DEVICES & EDGE TERMINALS APIS
+// ══════════════════════════════════════════════
+const deviceSchema = Joi.object({
+  serial_number: Joi.string().min(2).max(50).required(),
+  device_name: Joi.string().min(2).max(100).required(),
+  device_ip: Joi.string().max(45).required(),
+  device_port: Joi.number().integer().min(1).max(65535).default(4370),
+  device_model: Joi.string().max(50).default('eSSL SilkBio-101TC'),
+  protocol: Joi.string().valid('ZKEM', 'HIKVISION', 'ESSL', 'ANVIZ', 'REST_API').default('ESSL'),
+  branch_id: Joi.string().allow('', null).optional(),
+  direction: Joi.string().valid('IN', 'OUT', 'BOTH').default('BOTH'),
+  status: Joi.string().valid('ONLINE', 'OFFLINE', 'SYNCING', 'ERROR').default('ONLINE'),
+  active: Joi.boolean().default(true)
+});
+
+app.get('/api/devices', authenticate, async (req, res) => {
+  try {
+    const { branch_id, status, active } = req.query;
+    const devices = await stmts.getAllDevices.all({
+      branch_id: branch_id || null,
+      status: status || null,
+      active: active !== undefined ? active === 'true' || active === '1' : null
+    });
+    ok(res, { devices });
+  } catch (e) {
+    console.error('[GET /api/devices]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch devices: ' + e.message, 500);
+  }
+});
+
+app.post('/api/devices', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { error, value } = deviceSchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const existing = await stmts.getDeviceBySerial.get(value.serial_number);
+    if (existing) return err(res, 'CONFLICT', 'Device with this serial number already exists', 409);
+
+    const result = await stmts.insertDevice.run(value);
+    await auditLog({ table: 'biometric_devices', recordId: result.id, action: 'INSERT', newVals: value, req });
+    ok(res, { message: 'Biometric device registered successfully', id: result.id, device: result }, 201);
+  } catch (e) {
+    console.error('[POST /api/devices]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to register device: ' + e.message, 500);
+  }
+});
+
+app.put('/api/devices/:id', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const { error, value } = deviceSchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const existing = await stmts.getDeviceById.get(req.params.id);
+    if (!existing) return err(res, 'NOT_FOUND', 'Device not found', 404);
+
+    const updated = await stmts.updateDevice.run({ ...value, id: req.params.id });
+    await auditLog({ table: 'biometric_devices', recordId: req.params.id, action: 'UPDATE', oldVals: existing, newVals: value, req });
+    ok(res, { message: 'Biometric device updated successfully', device: updated });
+  } catch (e) {
+    console.error('[PUT /api/devices/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to update device: ' + e.message, 500);
+  }
+});
+
+app.delete('/api/devices/:id', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const existing = await stmts.getDeviceById.get(req.params.id);
+    if (!existing) return err(res, 'NOT_FOUND', 'Device not found', 404);
+
+    await stmts.deleteDevice.run(req.params.id);
+    await auditLog({ table: 'biometric_devices', recordId: req.params.id, action: 'DELETE', oldVals: existing, req });
+    ok(res, { message: 'Biometric device removed successfully' });
+  } catch (e) {
+    console.error('[DELETE /api/devices/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to remove device: ' + e.message, 500);
+  }
+});
+
+app.post('/api/devices/:id/ping', authenticate, async (req, res) => {
+  try {
+    const existing = await stmts.getDeviceById.get(req.params.id);
+    if (!existing) return err(res, 'NOT_FOUND', 'Device not found', 404);
+
+    const pinged = await stmts.pingDevice.run(req.params.id);
+    ok(res, { message: 'Ping successful', device: pinged });
+  } catch (e) {
+    console.error('[POST /api/devices/:id/ping]', e);
+    err(res, 'INTERNAL_ERROR', 'Ping failed: ' + e.message, 500);
+  }
+});
+
+app.post('/api/devices/:id/sync-templates', authenticate, requireRoles('ADMIN', 'HR'), async (req, res) => {
+  try {
+    const existing = await stmts.getDeviceById.get(req.params.id);
+    if (!existing) return err(res, 'NOT_FOUND', 'Device not found', 404);
+
+    const synced = await stmts.syncDeviceTemplates.run(req.params.id);
+    ok(res, { message: 'Templates synchronized successfully to device memory', ...synced });
+  } catch (e) {
+    console.error('[POST /api/devices/:id/sync-templates]', e);
+    err(res, 'INTERNAL_ERROR', 'Template sync failed: ' + e.message, 500);
+  }
+});
+
+// ══════════════════════════════════════════════
+// 🔄 EMPLOYEE CAREER TRANSFERS & PROMOTIONS APIS
+// ══════════════════════════════════════════════
+const transferSchema = Joi.object({
+  emp_id: Joi.string().required(),
+  prev_company_id: Joi.string().allow('', null).optional(),
+  new_company_id: Joi.string().allow('', null).optional(),
+  prev_dept_id: Joi.string().allow('', null).optional(),
+  new_dept_id: Joi.string().allow('', null).optional(),
+  prev_desig_id: Joi.string().allow('', null).optional(),
+  new_desig_id: Joi.string().allow('', null).optional(),
+  prev_branch_id: Joi.string().allow('', null).optional(),
+  new_branch_id: Joi.string().allow('', null).optional(),
+  transfer_type: Joi.string().valid('PROMOTION', 'DEPARTMENT_TRANSFER', 'BRANCH_RELOCATION', 'LATERAL_MOVE', 'RE_DESIGNATION').default('PROMOTION'),
+  effective_date: Joi.string().regex(/^\d{4}-\d{2}-\d{2}$/).required(),
+  remarks: Joi.string().allow('', null).optional(),
+  approved_by: Joi.string().allow('', null).optional()
+});
+
+app.get('/api/transfers', authenticate, async (req, res) => {
+  try {
+    const { emp_id, limit } = req.query;
+    const transfers = await stmts.getTransfers.all({
+      emp_id: emp_id || null,
+      limit: limit ? parseInt(limit, 10) : 50
+    });
+    ok(res, { transfers });
+  } catch (e) {
+    console.error('[GET /api/transfers]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch transfers: ' + e.message, 500);
+  }
+});
+
+app.post('/api/transfers', authenticate, requireRoles('ADMIN', 'HR'), async (req, res) => {
+  try {
+    const { error, value } = transferSchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const result = await stmts.recordEmployeeTransfer.run({
+      ...value,
+      approved_by: req.user?.username || 'admin'
+    });
+    await auditLog({ table: 'employee_transfers', recordId: String(result.id), action: 'INSERT', newVals: value, req });
+    ok(res, { message: 'Employee career transfer/promotion executed and recorded', ...result }, 201);
+  } catch (e) {
+    console.error('[POST /api/transfers]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to process transfer: ' + e.message, 500);
+  }
+});
+
+// ══════════════════════════════════════════════
+// ⚡ HIGH-SPEED FAST PUNCH BUFFER & LIVE PIPELINE
+// ══════════════════════════════════════════════
+const punchIngestSchema = Joi.object({
+  emp_id: Joi.string().required(),
+  terminal_id: Joi.string().default('EDGE_TERMINAL_01'),
+  punch_timestamp: Joi.string().optional(),
+  punch_state: Joi.string().valid('CHECK_IN', 'CHECK_OUT', 'BREAK_IN', 'BREAK_OUT', 'AUTO').default('AUTO'),
+  verification_type: Joi.string().valid('FACE', 'FINGERPRINT', 'CARD', 'PASSCODE', 'GPS_MOBILE').default('FACE'),
+  temperature: Joi.number().min(30).max(45).allow(null).optional(),
+  mask_detected: Joi.boolean().default(false)
+});
+
+app.post('/api/punch-buffer/ingest', async (req, res) => {
+  try {
+    const { error, value } = punchIngestSchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const result = await stmts.ingestFastPunch.run(value);
+    ok(res, result, 201);
+  } catch (e) {
+    console.error('[POST /api/punch-buffer/ingest]', e);
+    err(res, 'INTERNAL_ERROR', 'Fast punch ingestion error: ' + e.message, 500);
+  }
+});
+
+app.post('/api/punch-buffer/batch-ingest', async (req, res) => {
+  try {
+    const punches = Array.isArray(req.body) ? req.body : req.body.punches;
+    if (!Array.isArray(punches) || punches.length === 0) {
+      return err(res, 'VALIDATION_ERROR', 'Expected a non-empty punches array', 400);
+    }
+    const result = await stmts.batchIngestFastPunches.run(punches);
+    ok(res, { message: `Batch of ${result.inserted} punches ingested into buffer`, ...result }, 201);
+  } catch (e) {
+    console.error('[POST /api/punch-buffer/batch-ingest]', e);
+    err(res, 'INTERNAL_ERROR', 'Batch punch ingestion error: ' + e.message, 500);
+  }
+});
+
+app.post('/api/punch-buffer/flush', authenticate, requireRoles('ADMIN', 'HR'), async (req, res) => {
+  try {
+    const limit = req.body?.limit ? parseInt(req.body.limit, 10) : 1000;
+    const result = await stmts.flushFastPunchBuffer.run(limit);
+    ok(res, { message: 'Punch buffer drained and processed to attendance logs', ...result });
+  } catch (e) {
+    console.error('[POST /api/punch-buffer/flush]', e);
+    err(res, 'INTERNAL_ERROR', 'Punch buffer flush error: ' + e.message, 500);
+  }
+});
+
+app.get('/api/punch-buffer/metrics', authenticate, async (req, res) => {
+  try {
+    const data = await stmts.getFastPunchMetrics.get();
+    ok(res, data);
+  } catch (e) {
+    console.error('[GET /api/punch-buffer/metrics]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to retrieve punch buffer metrics: ' + e.message, 500);
+  }
+});
+
+// ══════════════════════════════════════════════
 // 🏢 DEPARTMENTS APIS
 // ══════════════════════════════════════════════
 const departmentSchema = Joi.object({
