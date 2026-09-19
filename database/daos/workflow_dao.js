@@ -1,6 +1,6 @@
 /**
  * database/daos/workflow_dao.js
- * Workflow DAO (Overtime Register, Leave Ledger & Balances, Outdoor Duty) (MySQL 8.4 LTS)
+ * Workflow DAO (Overtime Register, Leave Ledger & Balances, Outdoor Duty) (MySQL 8.4 LTS) (<500 lines)
  */
 
 class WorkflowDAO {
@@ -9,7 +9,7 @@ class WorkflowDAO {
   }
 
   // ── Overtime Register ──
-  async getOtRecords({ emp_id = '', ot_date = '', status = '', page = 1, size = 20 } = {}) {
+  async getOtRecords({ emp_id = '', ot_date = '', status = '', page = 1, size = 50 } = {}) {
     const pool = await this.getPool();
     let sql = `
       SELECT o.*, e.name as emp_name, e.department, s.name as shift_name
@@ -27,13 +27,15 @@ class WorkflowDAO {
     const [countRows] = await pool.query(countSql, params);
     const total = countRows[0]?.total || 0;
 
-    const limit = Math.max(1, parseInt(size, 10) || 20);
+    const limit = Math.max(1, parseInt(size, 10) || 50);
     const offset = (Math.max(1, parseInt(page, 10) || 1) - 1) * limit;
     sql += ' ORDER BY o.ot_date DESC, o.id DESC LIMIT ? OFFSET ?';
     params.push(limit, offset);
 
     const [rows] = await pool.query(sql, params);
     return {
+      total,
+      rows,
       records: rows,
       pagination: { total, page: Number(page), size: Number(size), total_pages: Math.ceil(total / limit) }
     };
@@ -105,32 +107,35 @@ class WorkflowDAO {
         calculated++;
       }
     }
-    return { targetDate, calculated };
+    return { targetDate, calculated, multiplier: 1.5, rate_type: 'STANDARD_DAY' };
   }
 
   // ── Leave Types ──
   async getLeaveTypes() {
     const pool = await this.getPool();
-    const [rows] = await pool.query('SELECT * FROM leave_types ORDER BY code ASC');
+    const [rows] = await pool.query('SELECT *, annual_quota_days as annual_quota FROM leave_types ORDER BY code ASC');
     return rows;
   }
 
   async getLeaveTypeById(id) {
     const pool = await this.getPool();
-    const [rows] = await pool.execute('SELECT * FROM leave_types WHERE id = ? LIMIT 1', [id]);
+    const [rows] = await pool.execute('SELECT *, annual_quota_days as annual_quota FROM leave_types WHERE id = ? LIMIT 1', [id]);
     return rows[0] || null;
   }
 
   async insertLeaveType(data) {
     const pool = await this.getPool();
     const id = data.id || `LT_${data.code.toUpperCase()}`;
+    const paid = data.paid !== undefined ? (data.paid ? 1 : 0) : (data.is_paid !== undefined ? (data.is_paid ? 1 : 0) : 1);
+    const encashable = data.encashable !== undefined ? (data.encashable ? 1 : 0) : (data.is_encashable !== undefined ? (data.is_encashable ? 1 : 0) : 0);
+    const quota = data.annual_quota_days !== undefined ? data.annual_quota_days : (data.annual_quota !== undefined ? data.annual_quota : 12.0);
     await pool.execute(`
-      INSERT INTO leave_types (id, code, name, annual_quota, carry_forward_max, is_encashable, is_paid, color, active, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+      INSERT INTO leave_types (id, code, name, category, description, paid, annual_quota_days, carry_forward_max, encashable, color, active, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
     `, [
-      id, data.code, data.name, data.annual_quota || 12.0,
-      data.carry_forward_max || 0.0, data.is_encashable ? 1 : 0,
-      data.is_paid ? 1 : 0, data.color || '#4f8ef7',
+      id, data.code, data.name, data.category || 'CASUAL',
+      data.description || null, paid, quota,
+      data.carry_forward_max || 0.0, encashable, data.color || '#4f8ef7',
       data.active !== undefined ? (data.active ? 1 : 0) : 1
     ]);
     return this.getLeaveTypeById(id);
@@ -138,18 +143,30 @@ class WorkflowDAO {
 
   async updateLeaveType(data) {
     const pool = await this.getPool();
+    const paid = data.paid !== undefined ? (data.paid ? 1 : 0) : (data.is_paid !== undefined ? (data.is_paid ? 1 : 0) : null);
+    const encashable = data.encashable !== undefined ? (data.encashable ? 1 : 0) : (data.is_encashable !== undefined ? (data.is_encashable ? 1 : 0) : null);
+    const quota = data.annual_quota_days !== undefined ? data.annual_quota_days : (data.annual_quota !== undefined ? data.annual_quota : null);
     await pool.execute(`
       UPDATE leave_types SET
         name = COALESCE(?, name),
-        annual_quota = COALESCE(?, annual_quota),
+        category = COALESCE(?, category),
+        description = COALESCE(?, description),
+        paid = COALESCE(?, paid),
+        annual_quota_days = COALESCE(?, annual_quota_days),
         carry_forward_max = COALESCE(?, carry_forward_max),
-        is_encashable = COALESCE(?, is_encashable),
-        is_paid = COALESCE(?, is_paid),
+        encashable = COALESCE(?, encashable),
         color = COALESCE(?, color),
         active = COALESCE(?, active),
         updated_at = NOW()
       WHERE id = ?
-    `, [data.name || null, data.annual_quota !== undefined ? data.annual_quota : null, data.carry_forward_max !== undefined ? data.carry_forward_max : null, data.is_encashable !== undefined ? (data.is_encashable ? 1 : 0) : null, data.is_paid !== undefined ? (data.is_paid ? 1 : 0) : null, data.color || null, data.active !== undefined ? (data.active ? 1 : 0) : null, data.id]);
+    `, [
+      data.name || null, data.category || null, data.description || null,
+      paid, quota,
+      data.carry_forward_max !== undefined ? data.carry_forward_max : null,
+      encashable, data.color || null,
+      data.active !== undefined ? (data.active ? 1 : 0) : null,
+      data.id
+    ]);
     return this.getLeaveTypeById(data.id);
   }
 
@@ -184,7 +201,10 @@ class WorkflowDAO {
 
     const [rows] = await pool.query(sql, params);
     return {
+      total,
       leaves: rows,
+      entries: rows,
+      rows,
       pagination: { total, page: Number(page), size: Number(size), total_pages: Math.ceil(total / limit) }
     };
   }
@@ -248,13 +268,14 @@ class WorkflowDAO {
 
     return leaveTypes.map(lt => {
       const used = usedMap[lt.id] || 0.0;
-      const quota = parseFloat(lt.annual_quota) || 0.0;
+      const quota = parseFloat(lt.annual_quota_days || lt.annual_quota) || 0.0;
       return {
         leave_type_id: lt.id,
         code: lt.code,
         name: lt.name,
         color: lt.color,
         annual_quota: quota,
+        annual_quota_days: quota,
         used_days: used,
         available_days: Math.max(0.0, quota - used)
       };
@@ -285,7 +306,9 @@ class WorkflowDAO {
 
     const [rows] = await pool.query(sql, params);
     return {
+      total,
       entries: rows,
+      rows,
       pagination: { total, page: Number(page), size: Number(size), total_pages: Math.ceil(total / limit) }
     };
   }

@@ -1,6 +1,6 @@
 /**
  * database/daos/department_dao.js
- * Department and Department Shift Policy Management DAO (MySQL 8.4 LTS)
+ * Department and Department Shift Policy Management DAO (MySQL 8.4 LTS) (<500 lines)
  */
 
 class DepartmentDAO {
@@ -15,7 +15,7 @@ class DepartmentDAO {
              COUNT(emp.id) as employee_count
       FROM departments d
       LEFT JOIN employees e ON d.head_emp_id = e.id
-      LEFT JOIN employees emp ON d.id = emp.department_id AND emp.status = 'Active'
+      LEFT JOIN employees emp ON (d.id = emp.department_id OR d.name = emp.department) AND emp.status = 'Active'
       GROUP BY d.id
       ORDER BY d.name ASC
     `);
@@ -74,56 +74,74 @@ class DepartmentDAO {
   async getDepartmentShiftPolicies() {
     const pool = await this.getPool();
     const [rows] = await pool.query(`
-      SELECT ds.*, d.name as department_name, d.code as department_code,
+      SELECT ds.*, ds.dept_id as department_id, d.name as department_name, d.code as department_code,
              s.name as default_shift_name, s.code as default_shift_code
       FROM department_shifts ds
-      JOIN departments d ON ds.department_id = d.id
+      JOIN departments d ON ds.dept_id = d.id
       JOIN shifts s ON ds.default_shift_id = s.id
       ORDER BY d.name ASC
     `);
-    return rows;
+    return rows.map(r => {
+      try {
+        r.allowed_shifts = typeof r.allowed_shifts === 'string' ? JSON.parse(r.allowed_shifts) : r.allowed_shifts;
+      } catch (_) {}
+      return r;
+    });
   }
 
-  async getDepartmentShiftPolicy(department_id) {
+  async getDepartmentShiftPolicy(dept_id) {
     const pool = await this.getPool();
     const [rows] = await pool.execute(`
-      SELECT ds.*, d.name as department_name, s.name as default_shift_name
+      SELECT ds.*, ds.dept_id as department_id, d.name as department_name, s.name as default_shift_name
       FROM department_shifts ds
-      JOIN departments d ON ds.department_id = d.id
+      JOIN departments d ON ds.dept_id = d.id
       JOIN shifts s ON ds.default_shift_id = s.id
-      WHERE ds.department_id = ?
+      WHERE ds.dept_id = ?
       LIMIT 1
-    `, [department_id]);
+    `, [dept_id]);
+    if (rows[0]) {
+      try {
+        rows[0].allowed_shifts = typeof rows[0].allowed_shifts === 'string' ? JSON.parse(rows[0].allowed_shifts) : rows[0].allowed_shifts;
+      } catch (_) {}
+    }
     return rows[0] || null;
   }
 
   async setDepartmentShiftPolicy(data) {
     const pool = await this.getPool();
+    const deptId = data.dept_id || data.department_id || data.id;
+    const allowed = Array.isArray(data.allowed_shifts) ? JSON.stringify(data.allowed_shifts) : (data.allowed_shifts || JSON.stringify(['SHIFT_GEN']));
     await pool.execute(`
-      INSERT INTO department_shifts (department_id, default_shift_id, allow_shift_change, requires_approval, created_at, updated_at)
-      VALUES (?, ?, ?, ?, NOW(), NOW())
+      INSERT INTO department_shifts (dept_id, default_shift_id, allowed_shifts, auto_apply, updated_at)
+      VALUES (?, ?, ?, ?, NOW())
       ON DUPLICATE KEY UPDATE
         default_shift_id = VALUES(default_shift_id),
-        allow_shift_change = VALUES(allow_shift_change),
-        requires_approval = VALUES(requires_approval),
+        allowed_shifts = VALUES(allowed_shifts),
+        auto_apply = VALUES(auto_apply),
         updated_at = NOW()
     `, [
-      data.department_id, data.default_shift_id,
-      data.allow_shift_change !== undefined ? (data.allow_shift_change ? 1 : 0) : 1,
-      data.requires_approval !== undefined ? (data.requires_approval ? 1 : 0) : 1
+      deptId, data.default_shift_id || 'SHIFT_GEN',
+      allowed,
+      data.auto_apply !== undefined ? (data.auto_apply ? 1 : 0) : 1
     ]);
-    return this.getDepartmentShiftPolicy(data.department_id);
+    return this.getDepartmentShiftPolicy(deptId);
   }
 
-  async applyDepartmentShiftToEmployees(department_id, shift_id) {
+  async applyDepartmentShiftToEmployees(dept_id, shift_id) {
     const pool = await this.getPool();
+    const targetDeptId = dept_id;
+    let targetShift = shift_id;
+    if (!targetShift) {
+      const policy = await this.getDepartmentShiftPolicy(targetDeptId);
+      targetShift = policy?.default_shift_id || 'SHIFT_GEN';
+    }
     const [result] = await pool.execute(`
       UPDATE employees SET
         primary_shift_id = ?,
         updated_at = NOW()
-      WHERE department_id = ? AND status = 'Active'
-    `, [shift_id, department_id]);
-    return { department_id, shift_id, updated_employees: result.affectedRows };
+      WHERE (department_id = ? OR department = (SELECT name FROM departments WHERE id = ?)) AND status = 'Active'
+    `, [targetShift, targetDeptId, targetDeptId]);
+    return { dept_id: targetDeptId, shift_id: targetShift, updated_employees: result.affectedRows };
   }
 }
 

@@ -1,6 +1,6 @@
 /**
  * routes/attendance_routes.js
- * Attendance Punch, Real-Time Stats, Cooldown, and Regularization Endpoints
+ * Attendance Punch, Real-Time Stats, Cooldown, and Regularization Endpoints (<500 lines)
  */
 
 const express = require('express');
@@ -17,7 +17,7 @@ const punchSchema = Joi.object({
   role: Joi.string().allow('', null).optional(),
   status: Joi.string().valid('Present', 'Late').default('Present'),
   timestamp: Joi.string().optional()
-});
+}).unknown(true);
 
 // Single punch check-in
 router.post('/', async (req, res) => {
@@ -59,7 +59,7 @@ router.post('/', async (req, res) => {
       user_agent: req.headers['user-agent'] || 'Browser'
     });
 
-    await auditLog({ table: 'attendance', recordId: result.lastInsertRowid, action: 'INSERT', newVals: value, req });
+    await auditLog({ table: 'attendance', recordId: String(result.lastInsertRowid), action: 'INSERT', newVals: value, req });
 
     res.status(201).json({
       success: true,
@@ -83,21 +83,84 @@ router.get('/recent', authenticate, async (req, res) => {
   }
 });
 
-router.get('/log', authenticate, async (req, res) => {
+const handleGetLogs = async (req, res) => {
   try {
-    const { page, size, startDate, endDate, emp_id, status, dept } = req.query;
+    const { page, size, limit, startDate, endDate, emp_id, status, dept } = req.query;
     const result = await stmts.getAttendanceLogs.all({
       page: parseInt(page, 10) || 1,
-      size: parseInt(size, 10) || 20,
+      size: parseInt(limit || size, 10) || 20,
       startDate, endDate, emp_id, status, dept
     });
-    res.json({ success: true, ...result });
+    res.json({
+      success: true,
+      total: result.pagination.total,
+      count: result.attendance_logs.length,
+      rows: result.attendance_logs,
+      attendance_logs: result.attendance_logs,
+      pagination: result.pagination
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message }, request_id: req.id });
+  }
+};
+
+router.get('/log', authenticate, handleGetLogs);
+router.get('/attendance-log', authenticate, handleGetLogs);
+
+router.get('/attendance-log/stats', authenticate, async (req, res) => {
+  try {
+    const stats = await stmts.getStats.get();
+    res.json({
+      success: true,
+      stats: {
+        total_punches: stats.total_employees || stats.totalEmployees,
+        on_time_count: stats.on_time_today || stats.onTimeToday,
+        late_count: stats.late_today || stats.lateToday,
+        present_count: stats.present_today || stats.presentToday,
+        absent_count: stats.absent_today || stats.absentToday,
+        total_employees: stats.total_employees || stats.totalEmployees
+      },
+      ...stats
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message }, request_id: req.id });
   }
 });
 
-router.put('/log/:id/regularize', authenticate, requireRoles('ADMIN', 'HR'), async (req, res) => {
+const handleRegularizePunch = async (req, res) => {
+  try {
+    const { emp_id, timestamp, status = 'Present', reason = 'Regularized' } = req.body;
+    let emp = await stmts.getEmployeeById.get(emp_id);
+    const name = emp?.name || emp_id;
+    const dept = emp?.department || 'Operations';
+    const role = emp?.role || 'Staff';
+
+    const result = await stmts.insertAtt.run({
+      emp_id,
+      name,
+      dept,
+      role,
+      timestamp,
+      status,
+      logged_by: `Regularized: ${reason}`,
+      ip_address: req.ip || '127.0.0.1',
+      user_agent: req.headers['user-agent'] || 'System'
+    });
+    await auditLog({ table: 'attendance', recordId: String(result.lastInsertRowid), action: 'INSERT', newVals: req.body, req });
+    res.json({
+      success: true,
+      message: 'Attendance regularized successfully',
+      attendance: { att_id: result.lastInsertRowid, id: result.lastInsertRowid, emp_id, status, timestamp, reason }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message }, request_id: req.id });
+  }
+};
+
+router.post('/attendance-log/regularize', authenticate, requireRoles('ADMIN', 'HR'), handleRegularizePunch);
+router.post('/regularize', authenticate, requireRoles('ADMIN', 'HR'), handleRegularizePunch);
+
+const handleUpdateRegularize = async (req, res) => {
   try {
     const { status = 'Present', reason = 'Regularized by Manager' } = req.body;
     const updated = await stmts.regularizeAttendance.run(req.params.id, {
@@ -110,7 +173,10 @@ router.put('/log/:id/regularize', authenticate, requireRoles('ADMIN', 'HR'), asy
   } catch (err) {
     res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message }, request_id: req.id });
   }
-});
+};
+
+router.put('/log/:id/regularize', authenticate, requireRoles('ADMIN', 'HR'), handleUpdateRegularize);
+router.put('/attendance-log/:id/regularize', authenticate, requireRoles('ADMIN', 'HR'), handleUpdateRegularize);
 
 router.get('/stats', authenticate, async (req, res) => {
   try {

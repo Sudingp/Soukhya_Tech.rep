@@ -39,14 +39,15 @@ class ShiftDAO {
     const id = data.id || `SHIFT_${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
     await pool.execute(`
       INSERT INTO shifts (
-        id, code, name, start_time, end_time, break_duration_mins,
-        grace_period_mins, half_day_mins, full_day_mins, is_night_shift,
+        id, code, name, start_time, end_time, break_mins,
+        late_grace_mins, min_half_day_hrs, min_full_day_hrs, is_night_shift,
         color, active, created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
     `, [
       id, data.code, data.name, data.start_time, data.end_time,
-      data.break_duration_mins || 60, data.grace_period_mins || 15,
-      data.half_day_mins || 240, data.full_day_mins || 480,
+      data.break_mins || data.break_duration_mins || 60,
+      data.late_grace_mins || data.grace_period_mins || 15,
+      data.min_half_day_hrs || 4.0, data.min_full_day_hrs || 8.0,
       data.is_night_shift ? 1 : 0, data.color || '#4f8ef7',
       data.active !== undefined ? (data.active ? 1 : 0) : 1
     ]);
@@ -60,10 +61,10 @@ class ShiftDAO {
         name = COALESCE(?, name),
         start_time = COALESCE(?, start_time),
         end_time = COALESCE(?, end_time),
-        break_duration_mins = COALESCE(?, break_duration_mins),
-        grace_period_mins = COALESCE(?, grace_period_mins),
-        half_day_mins = COALESCE(?, half_day_mins),
-        full_day_mins = COALESCE(?, full_day_mins),
+        break_mins = COALESCE(?, break_mins),
+        late_grace_mins = COALESCE(?, late_grace_mins),
+        min_half_day_hrs = COALESCE(?, min_half_day_hrs),
+        min_full_day_hrs = COALESCE(?, min_full_day_hrs),
         is_night_shift = COALESCE(?, is_night_shift),
         color = COALESCE(?, color),
         active = COALESCE(?, active),
@@ -71,10 +72,10 @@ class ShiftDAO {
       WHERE id = ?
     `, [
       data.name || null, data.start_time || null, data.end_time || null,
-      data.break_duration_mins !== undefined ? data.break_duration_mins : null,
-      data.grace_period_mins !== undefined ? data.grace_period_mins : null,
-      data.half_day_mins !== undefined ? data.half_day_mins : null,
-      data.full_day_mins !== undefined ? data.full_day_mins : null,
+      data.break_mins !== undefined ? data.break_mins : (data.break_duration_mins !== undefined ? data.break_duration_mins : null),
+      data.late_grace_mins !== undefined ? data.late_grace_mins : (data.grace_period_mins !== undefined ? data.grace_period_mins : null),
+      data.min_half_day_hrs !== undefined ? data.min_half_day_hrs : null,
+      data.min_full_day_hrs !== undefined ? data.min_full_day_hrs : null,
       data.is_night_shift !== undefined ? (data.is_night_shift ? 1 : 0) : null,
       data.color || null, data.active !== undefined ? (data.active ? 1 : 0) : null,
       data.id
@@ -92,43 +93,48 @@ class ShiftDAO {
   async getShiftCalendar({ month = '', year = '' } = {}) {
     const pool = await this.getPool();
     let sql = `
-      SELECT c.*, s.name as shift_name, s.code as shift_code, s.color as shift_color
+      SELECT c.cal_id, c.cal_date, c.cal_date as calendar_date, c.day_type,
+             c.default_shift_id, c.default_shift_id as shift_id,
+             c.title, c.title as holiday_name, c.is_recurring, c.updated_by, c.updated_at,
+             s.name as shift_name, s.code as shift_code, s.color as shift_color
       FROM shift_calendar_days c
-      LEFT JOIN shifts s ON c.shift_id = s.id
+      LEFT JOIN shifts s ON c.default_shift_id = s.id
       WHERE 1=1
     `;
     const params = [];
     if (month) {
-      sql += ' AND c.calendar_date LIKE ?';
+      sql += ' AND c.cal_date LIKE ?';
       params.push(`${month}%`);
     } else if (year) {
-      sql += ' AND c.calendar_date LIKE ?';
+      sql += ' AND c.cal_date LIKE ?';
       params.push(`${year}%`);
     }
-    sql += ' ORDER BY c.calendar_date ASC';
+    sql += ' ORDER BY c.cal_date ASC';
     const [rows] = await pool.query(sql, params);
     return rows;
   }
 
   async setCalendarDay(data) {
     const pool = await this.getPool();
+    const calDate = data.cal_date || data.calendar_date;
+    const shiftId = data.default_shift_id || data.shift_id || null;
+    const title = data.title || data.holiday_name || data.note || null;
     await pool.execute(`
-      INSERT INTO shift_calendar_days (calendar_date, day_type, shift_id, holiday_name, note, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, NOW(), NOW())
+      INSERT INTO shift_calendar_days (cal_date, day_type, default_shift_id, title, updated_at)
+      VALUES (?, ?, ?, ?, NOW())
       ON DUPLICATE KEY UPDATE
         day_type = VALUES(day_type),
-        shift_id = VALUES(shift_id),
-        holiday_name = VALUES(holiday_name),
-        note = VALUES(note),
+        default_shift_id = VALUES(default_shift_id),
+        title = VALUES(title),
         updated_at = NOW()
-    `, [data.calendar_date, data.day_type || 'WORK', data.shift_id || null, data.holiday_name || null, data.note || null]);
-    const [rows] = await pool.execute('SELECT * FROM shift_calendar_days WHERE calendar_date = ?', [data.calendar_date]);
+    `, [calDate, data.day_type || 'WORK', shiftId, title]);
+    const [rows] = await pool.execute('SELECT *, cal_date as calendar_date FROM shift_calendar_days WHERE cal_date = ?', [calDate]);
     return rows[0] || null;
   }
 
   async deleteCalendarDay(calendar_date) {
     const pool = await this.getPool();
-    await pool.execute('DELETE FROM shift_calendar_days WHERE calendar_date = ?', [calendar_date]);
+    await pool.execute('DELETE FROM shift_calendar_days WHERE cal_date = ?', [calendar_date]);
     return { calendar_date, deleted: true };
   }
 
@@ -170,10 +176,9 @@ class ShiftDAO {
   async getShiftGroups({ active = null } = {}) {
     const pool = await this.getPool();
     let sql = `
-      SELECT g.*, s.name as default_shift_name, s.code as default_shift_code,
+      SELECT g.*,
              COUNT(m.emp_id) as member_count
       FROM shift_groups g
-      LEFT JOIN shifts s ON g.default_shift_id = s.id
       LEFT JOIN shift_group_members m ON g.id = m.group_id AND m.active = 1
       WHERE 1=1
     `;
@@ -184,24 +189,36 @@ class ShiftDAO {
     }
     sql += ' GROUP BY g.id ORDER BY g.name ASC';
     const [rows] = await pool.query(sql, params);
-    return rows;
+    return rows.map(r => {
+      try {
+        r.shifts_sequence = typeof r.shifts_sequence === 'string' ? JSON.parse(r.shifts_sequence) : r.shifts_sequence;
+      } catch (_) {}
+      return r;
+    });
   }
 
   async getShiftGroupById(id) {
     const pool = await this.getPool();
     const [rows] = await pool.execute('SELECT * FROM shift_groups WHERE id = ? LIMIT 1', [id]);
+    if (rows[0]) {
+      try {
+        rows[0].shifts_sequence = typeof rows[0].shifts_sequence === 'string' ? JSON.parse(rows[0].shifts_sequence) : rows[0].shifts_sequence;
+      } catch (_) {}
+    }
     return rows[0] || null;
   }
 
   async insertShiftGroup(data) {
     const pool = await this.getPool();
     const id = data.id || `GRP_${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    const seq = Array.isArray(data.shifts_sequence) ? JSON.stringify(data.shifts_sequence) : (data.shifts_sequence || JSON.stringify(['SHIFT_GEN']));
     await pool.execute(`
-      INSERT INTO shift_groups (id, code, name, description, default_shift_id, rotation_type, active, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+      INSERT INTO shift_groups (id, code, name, description, rotation_type, color, shifts_sequence, active, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
     `, [
       id, data.code, data.name, data.description || null,
-      data.default_shift_id || 'SHIFT_GEN', data.rotation_type || 'FIXED',
+      data.rotation_type || 'FIXED', data.color || '#4f8ef7',
+      seq,
       data.active !== undefined ? (data.active ? 1 : 0) : 1
     ]);
     return this.getShiftGroupById(id);
@@ -209,18 +226,22 @@ class ShiftDAO {
 
   async updateShiftGroup(data) {
     const pool = await this.getPool();
+    const seq = Array.isArray(data.shifts_sequence) ? JSON.stringify(data.shifts_sequence) : (data.shifts_sequence !== undefined ? data.shifts_sequence : null);
     await pool.execute(`
       UPDATE shift_groups SET
         name = COALESCE(?, name),
         description = COALESCE(?, description),
-        default_shift_id = COALESCE(?, default_shift_id),
         rotation_type = COALESCE(?, rotation_type),
+        color = COALESCE(?, color),
+        shifts_sequence = COALESCE(?, shifts_sequence),
         active = COALESCE(?, active),
         updated_at = NOW()
       WHERE id = ?
     `, [
-      data.name || null, data.description || null, data.default_shift_id || null,
-      data.rotation_type || null, data.active !== undefined ? (data.active ? 1 : 0) : null,
+      data.name || null, data.description || null,
+      data.rotation_type || null, data.color || null,
+      seq,
+      data.active !== undefined ? (data.active ? 1 : 0) : null,
       data.id
     ]);
     return this.getShiftGroupById(data.id);

@@ -1,6 +1,6 @@
 /**
  * routes/department_routes.js
- * Department Master and Department Shift Policies Endpoints
+ * Department Master and Department Shift Policies Endpoints (<500 lines)
  */
 
 const express = require('express');
@@ -16,7 +16,7 @@ const deptSchema = Joi.object({
   division: Joi.string().allow('', null).optional(),
   head_emp_id: Joi.string().allow('', null).optional(),
   active: Joi.boolean().default(true)
-});
+}).unknown(true);
 
 // ── Departments CRUD ──
 router.get('/departments', authenticate, async (req, res) => {
@@ -66,31 +66,39 @@ router.delete('/departments/:id', authenticate, requireRoles('ADMIN'), async (re
 router.get('/department-shifts', authenticate, async (req, res) => {
   try {
     const policies = await stmts.getDepartmentShiftPolicies.all();
-    res.json({ success: true, count: policies.length, policies });
+    res.json({ success: true, count: policies.length, configs: policies, policies });
   } catch (err) {
     res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message }, request_id: req.id });
   }
 });
 
-router.post('/department-shifts', authenticate, requireRoles('ADMIN', 'HR'), async (req, res) => {
+const handleSetDeptShift = async (req, res) => {
   try {
-    const result = await stmts.setDepartmentShiftPolicy.run(req.body);
-    await auditLog({ table: 'department_shifts', recordId: req.body.department_id, action: 'INSERT', newVals: req.body, req });
-    res.status(201).json({ success: true, message: 'Department shift policy saved', policy: result });
+    const deptId = req.params.id || req.body.dept_id || req.body.department_id;
+    const result = await stmts.setDepartmentShiftPolicy.run({ ...req.body, dept_id: deptId });
+    await auditLog({ table: 'department_shifts', recordId: deptId, action: 'UPDATE', newVals: req.body, req });
+    res.json({ success: true, message: 'Department shift policy saved', policy: result, config: result });
   } catch (err) {
     res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message }, request_id: req.id });
   }
-});
+};
 
-router.post('/department-shifts/apply', authenticate, requireRoles('ADMIN', 'HR'), async (req, res) => {
+router.put('/department-shifts/:id', authenticate, requireRoles('ADMIN', 'HR'), handleSetDeptShift);
+router.post('/department-shifts', authenticate, requireRoles('ADMIN', 'HR'), handleSetDeptShift);
+
+const handleApplyDeptShift = async (req, res) => {
   try {
-    const { department_id, shift_id } = req.body;
-    const result = await stmts.applyDepartmentShiftToEmployees.run(department_id, shift_id);
-    await auditLog({ table: 'department_shifts', recordId: department_id, action: 'UPDATE', newVals: req.body, req });
+    const { dept_id, department_id, shift_id } = req.body;
+    const targetDeptId = dept_id || department_id;
+    const result = await stmts.applyDepartmentShiftToEmployees.run(targetDeptId, shift_id);
+    await auditLog({ table: 'department_shifts', recordId: targetDeptId, action: 'UPDATE', newVals: req.body, req });
     res.json({ success: true, message: 'Applied department shift policy to employees', ...result });
   } catch (err) {
     res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message }, request_id: req.id });
   }
-});
+};
+
+router.post('/department-shifts/apply-to-employees', authenticate, requireRoles('ADMIN', 'HR'), handleApplyDeptShift);
+router.post('/department-shifts/apply', authenticate, requireRoles('ADMIN', 'HR'), handleApplyDeptShift);
 
 module.exports = router;

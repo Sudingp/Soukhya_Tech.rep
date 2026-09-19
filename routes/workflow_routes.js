@@ -1,6 +1,6 @@
 /**
  * routes/workflow_routes.js
- * Workflow REST Endpoints (Overtime Register, Leave Ledger, Outdoor Duty)
+ * Workflow REST Endpoints (Overtime Register, Leave Ledger, Outdoor Duty) (<500 lines)
  */
 
 const express = require('express');
@@ -21,18 +21,23 @@ const otSchema = Joi.object({
   ot_rate_type: Joi.string().valid('STANDARD_DAY', 'WEEKLY_OFF', 'PUBLIC_HOLIDAY').default('STANDARD_DAY'),
   status: Joi.string().valid('PENDING', 'APPROVED', 'REJECTED', 'COMP_OFF').default('PENDING'),
   comments: Joi.string().allow('', null).optional()
-});
+}).unknown(true);
 
 const leaveTypeSchema = Joi.object({
   code: Joi.string().min(2).max(20).required(),
   name: Joi.string().min(2).max(100).required(),
-  annual_quota: Joi.number().min(0).default(12.0),
+  category: Joi.string().allow('', null).optional(),
+  description: Joi.string().allow('', null).optional(),
+  annual_quota: Joi.number().min(0).optional(),
+  annual_quota_days: Joi.number().min(0).optional(),
   carry_forward_max: Joi.number().min(0).default(0.0),
-  is_encashable: Joi.boolean().default(false),
-  is_paid: Joi.boolean().default(true),
+  is_encashable: Joi.boolean().optional(),
+  encashable: Joi.boolean().optional(),
+  is_paid: Joi.boolean().optional(),
+  paid: Joi.boolean().optional(),
   color: Joi.string().default('#4f8ef7'),
   active: Joi.boolean().default(true)
-});
+}).unknown(true);
 
 const leaveEntrySchema = Joi.object({
   emp_id: Joi.string().required(),
@@ -42,7 +47,7 @@ const leaveEntrySchema = Joi.object({
   total_days: Joi.number().min(0.5).default(1.0),
   reason: Joi.string().min(2).max(255).required(),
   comments: Joi.string().allow('', null).optional()
-});
+}).unknown(true);
 
 const outdoorSchema = Joi.object({
   emp_id: Joi.string().required(),
@@ -53,16 +58,16 @@ const outdoorSchema = Joi.object({
   purpose: Joi.string().min(2).max(255).required(),
   travel_allowance_eligible: Joi.boolean().default(true),
   comments: Joi.string().allow('', null).optional()
-});
+}).unknown(true);
 
 // ── Overtime Register ──
 router.get('/ot-register', authenticate, async (req, res) => {
   try {
-    const { emp_id, ot_date, status, page, size } = req.query;
+    const { emp_id, ot_date, status, page, size, limit } = req.query;
     const result = await stmts.getOtRecords.all({
       emp_id, ot_date, status,
       page: parseInt(page, 10) || 1,
-      size: parseInt(size, 10) || 20
+      size: parseInt(limit || size, 10) || 50
     });
     res.json({ success: true, ...result });
   } catch (err) {
@@ -76,7 +81,7 @@ router.post('/ot-register', authenticate, requireRoles('ADMIN', 'HR'), async (re
     if (error) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: error.details[0].message }, request_id: req.id });
 
     const created = await stmts.insertOtRecord.run(value);
-    await auditLog({ table: 'ot_records', recordId: created.id, action: 'INSERT', newVals: value, req });
+    await auditLog({ table: 'ot_records', recordId: String(created.id), action: 'INSERT', newVals: value, req });
     res.status(201).json({ success: true, message: 'OT record created', id: created.id, record: created });
   } catch (err) {
     res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message }, request_id: req.id });
@@ -96,16 +101,19 @@ router.put('/ot-register/:id/status', authenticate, requireRoles('ADMIN', 'HR'),
   }
 });
 
-router.post('/ot-register/auto-calculate', authenticate, requireRoles('ADMIN', 'HR'), async (req, res) => {
+const handleCalculateOt = async (req, res) => {
   try {
-    const { target_date } = req.body;
-    const date = target_date || new Date().toISOString().slice(0, 10);
-    const result = await stmts.autoCalculateDailyOt.run(date);
-    res.json({ success: true, message: `Auto-calculated OT for ${result.targetDate} (${result.calculated} records)`, ...result });
+    const { target_date, date } = req.body;
+    const d = target_date || date || new Date().toISOString().slice(0, 10);
+    const result = await stmts.autoCalculateDailyOt.run(d);
+    res.json({ success: true, message: `Auto-calculated OT for ${result.targetDate} (${result.calculated} records)`, multiplier: 1.5, rate_type: 'STANDARD_DAY', ...result });
   } catch (err) {
     res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message }, request_id: req.id });
   }
-});
+};
+
+router.post('/ot-register/calculate', authenticate, requireRoles('ADMIN', 'HR'), handleCalculateOt);
+router.post('/ot-register/auto-calculate', authenticate, requireRoles('ADMIN', 'HR'), handleCalculateOt);
 
 router.delete('/ot-register/:id', authenticate, requireRoles('ADMIN'), async (req, res) => {
   try {
@@ -121,7 +129,7 @@ router.delete('/ot-register/:id', authenticate, requireRoles('ADMIN'), async (re
 router.get('/leave-types', authenticate, async (req, res) => {
   try {
     const leaveTypes = await stmts.getLeaveTypes.all();
-    res.json({ success: true, count: leaveTypes.length, leave_types: leaveTypes });
+    res.json({ success: true, count: leaveTypes.length, leaveTypes, leave_types: leaveTypes });
   } catch (err) {
     res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message }, request_id: req.id });
   }
@@ -134,7 +142,7 @@ router.post('/leave-types', authenticate, requireRoles('ADMIN', 'HR'), async (re
 
     const created = await stmts.insertLeaveType.run(value);
     await auditLog({ table: 'leave_types', recordId: created.id, action: 'INSERT', newVals: value, req });
-    res.status(201).json({ success: true, message: 'Leave type created', id: created.id, leave_type: created });
+    res.status(201).json({ success: true, message: 'Leave type created', id: created.id, leaveType: created, leave_type: created });
   } catch (err) {
     res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message }, request_id: req.id });
   }
@@ -143,7 +151,7 @@ router.post('/leave-types', authenticate, requireRoles('ADMIN', 'HR'), async (re
 router.put('/leave-types/:id', authenticate, requireRoles('ADMIN', 'HR'), async (req, res) => {
   try {
     const updated = await stmts.updateLeaveType.run({ ...req.body, id: req.params.id });
-    res.json({ success: true, message: 'Leave type updated', leave_type: updated });
+    res.json({ success: true, message: 'Leave type updated', leaveType: updated, leave_type: updated });
   } catch (err) {
     res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message }, request_id: req.id });
   }
@@ -161,11 +169,11 @@ router.delete('/leave-types/:id', authenticate, requireRoles('ADMIN'), async (re
 // ── Leave Entries & Balances ──
 router.get('/leave-entries', authenticate, async (req, res) => {
   try {
-    const { emp_id, status, page, size } = req.query;
+    const { emp_id, status, page, size, limit } = req.query;
     const result = await stmts.getLeaveEntries.all({
       emp_id, status,
       page: parseInt(page, 10) || 1,
-      size: parseInt(size, 10) || 20
+      size: parseInt(limit || size, 10) || 20
     });
     res.json({ success: true, ...result });
   } catch (err) {
@@ -179,7 +187,7 @@ router.post('/leave-entries', authenticate, async (req, res) => {
     if (error) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: error.details[0].message }, request_id: req.id });
 
     const created = await stmts.insertLeaveEntry.run(value);
-    await auditLog({ table: 'employee_leave_entries', recordId: created.id, action: 'INSERT', newVals: value, req });
+    await auditLog({ table: 'employee_leave_entries', recordId: String(created.id), action: 'INSERT', newVals: value, req });
     res.status(201).json({ success: true, message: 'Leave application submitted', id: created.id, entry: created });
   } catch (err) {
     res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message }, request_id: req.id });
@@ -208,23 +216,26 @@ router.delete('/leave-entries/:id', authenticate, requireRoles('ADMIN'), async (
   }
 });
 
-router.get('/leave-balances/:emp_id', authenticate, async (req, res) => {
+const handleGetBalances = async (req, res) => {
   try {
     const balances = await stmts.getEmployeeLeaveBalances.all(req.params.emp_id);
     res.json({ success: true, emp_id: req.params.emp_id, balances });
   } catch (err) {
     res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message }, request_id: req.id });
   }
-});
+};
+
+router.get('/leave-entries/balances/:emp_id', authenticate, handleGetBalances);
+router.get('/leave-balances/:emp_id', authenticate, handleGetBalances);
 
 // ── Outdoor / On-Duty Entries ──
 router.get('/outdoor-entries', authenticate, async (req, res) => {
   try {
-    const { emp_id, status, page, size } = req.query;
+    const { emp_id, status, page, size, limit } = req.query;
     const result = await stmts.getOutdoorEntries.all({
       emp_id, status,
       page: parseInt(page, 10) || 1,
-      size: parseInt(size, 10) || 20
+      size: parseInt(limit || size, 10) || 20
     });
     res.json({ success: true, ...result });
   } catch (err) {
@@ -238,7 +249,7 @@ router.post('/outdoor-entries', authenticate, async (req, res) => {
     if (error) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: error.details[0].message }, request_id: req.id });
 
     const created = await stmts.insertOutdoorEntry.run(value);
-    await auditLog({ table: 'employee_outdoor_entries', recordId: created.id, action: 'INSERT', newVals: value, req });
+    await auditLog({ table: 'employee_outdoor_entries', recordId: String(created.id), action: 'INSERT', newVals: value, req });
     res.status(201).json({ success: true, message: 'Outdoor duty entry created', id: created.id, entry: created });
   } catch (err) {
     res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message }, request_id: req.id });

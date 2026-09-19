@@ -1,6 +1,6 @@
 /**
  * database/daos/roster_dao.js
- * Shift Roster Matrix Generation and Employee Schedule Overrides DAO (MySQL 8.4 LTS)
+ * Shift Roster Matrix Generation and Employee Schedule Overrides DAO (MySQL 8.4 LTS) (<500 lines)
  */
 
 class RosterDAO {
@@ -8,13 +8,13 @@ class RosterDAO {
     this.getPool = poolProvider;
   }
 
-  async getRosterMatrix({ month = '', department_id = '', branch_id = '', shift_id = '', page = 1, size = 50 } = {}) {
+  async getRosterMatrix({ month = '', department_id = '', branch_id = '', shift_id = '', search = '', page = 1, size = 50 } = {}) {
     const pool = await this.getPool();
-    const currentMonth = month || new Date().toISOString().slice(0, 7);
+    const currentMonth = (month && typeof month === 'string') ? month : new Date().toISOString().slice(0, 7);
 
     // 1. Get filtered employees
     let empSql = `
-      SELECT e.id, e.name, e.department, e.department_id, e.role, e.branch_id, e.primary_shift_id,
+      SELECT e.id, e.id as emp_id, e.name, e.department, e.department_id, e.role, e.branch_id, e.primary_shift_id,
              b.name as branch_name, s.name as primary_shift_name
       FROM employees e
       LEFT JOIN branches b ON e.branch_id = b.id
@@ -34,6 +34,10 @@ class RosterDAO {
       empSql += ' AND e.primary_shift_id = ?';
       empParams.push(shift_id);
     }
+    if (search) {
+      empSql += ' AND (e.id LIKE ? OR e.name LIKE ?)';
+      empParams.push(`%${search}%`, `%${search}%`);
+    }
 
     const countSql = `SELECT COUNT(*) as total FROM (${empSql}) as sub`;
     const [countRows] = await pool.query(countSql, empParams);
@@ -46,7 +50,7 @@ class RosterDAO {
 
     const [employees] = await pool.query(empSql, empParams);
     if (employees.length === 0) {
-      return { month: currentMonth, daysInMonth: 30, roster: [], pagination: { total: 0, page, size } };
+      return { month: currentMonth, daysInMonth: 30, roster: [], employees: [], pagination: { total: 0, page, size } };
     }
 
     // 2. Get roster entries for these employees in this month
@@ -68,8 +72,10 @@ class RosterDAO {
     const rosterMap = {};
     for (const r of rosterRows) {
       if (!rosterMap[r.emp_id]) rosterMap[r.emp_id] = {};
-      const dayNum = parseInt(r.roster_date.toISOString().slice(8, 10), 10);
-      rosterMap[r.emp_id][dayNum] = {
+      const rawDate = r.roster_date;
+      const dateStr = typeof rawDate === 'string' ? rawDate.slice(0, 10) : (rawDate instanceof Date ? rawDate.toISOString().slice(0, 10) : String(rawDate).slice(0, 10));
+      const dayNum = parseInt(dateStr.slice(8, 10), 10);
+      const slotData = {
         roster_id: r.roster_id,
         shift_id: r.shift_id,
         shift_code: r.shift_code || 'GEN',
@@ -79,9 +85,12 @@ class RosterDAO {
         source: r.source,
         note: r.note
       };
+      rosterMap[r.emp_id][dayNum] = slotData;
+      rosterMap[r.emp_id][dateStr] = slotData;
     }
 
     const roster = employees.map(emp => ({
+      id: emp.id,
       emp_id: emp.id,
       name: emp.name,
       department: emp.department,
@@ -95,6 +104,7 @@ class RosterDAO {
       month: currentMonth,
       daysInMonth,
       roster,
+      employees: roster,
       pagination: { total, page: Number(page), size: Number(size), total_pages: Math.ceil(total / limit) }
     };
   }
@@ -125,7 +135,10 @@ class RosterDAO {
 
   async autoGenerateMonthlyRoster({ monthStr, department_id = null, overwrite = false }) {
     const pool = await this.getPool();
-    const currentMonth = monthStr || new Date().toISOString().slice(0, 7);
+    let currentMonth = monthStr;
+    if (!currentMonth || typeof currentMonth !== 'string' || !currentMonth.includes('-')) {
+      currentMonth = new Date().toISOString().slice(0, 7);
+    }
     const [year, mon] = currentMonth.split('-').map(Number);
     const daysInMonth = new Date(year, mon, 0).getDate();
 
@@ -140,12 +153,13 @@ class RosterDAO {
 
     // 2. Get calendar day overrides (e.g. holidays, weekly offs)
     const [calendarDays] = await pool.query(
-      'SELECT calendar_date, day_type, shift_id, holiday_name FROM shift_calendar_days WHERE calendar_date LIKE ?',
+      'SELECT cal_date, cal_date as calendar_date, day_type, default_shift_id as shift_id, title as holiday_name FROM shift_calendar_days WHERE cal_date LIKE ?',
       [`${currentMonth}%`]
     );
     const calMap = {};
     for (const c of calendarDays) {
-      const dStr = typeof c.calendar_date === 'string' ? c.calendar_date.slice(0, 10) : c.calendar_date.toISOString().slice(0, 10);
+      const rawDate = c.cal_date || c.calendar_date;
+      const dStr = typeof rawDate === 'string' ? rawDate.slice(0, 10) : (rawDate instanceof Date ? rawDate.toISOString().slice(0, 10) : String(rawDate).slice(0, 10));
       calMap[dStr] = c;
     }
 
@@ -202,7 +216,7 @@ class RosterDAO {
       createdSlots += batchValues.length / 6;
     }
 
-    return { month: currentMonth, employeeCount: employees.length, createdSlots };
+    return { month: currentMonth, employeeCount: employees.length, createdSlots, total_slots: createdSlots };
   }
 
   async deleteRosterEntry(roster_id) {

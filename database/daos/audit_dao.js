@@ -1,6 +1,6 @@
 /**
  * database/daos/audit_dao.js
- * Audit Logs and Master Settings Persistence DAO (MySQL 8.4 LTS)
+ * Audit Logs and Master Settings Persistence DAO (MySQL 8.4 LTS) (<500 lines)
  */
 
 class AuditDAO {
@@ -47,41 +47,32 @@ class AuditDAO {
 
   async getMasterSettings() {
     const pool = await this.getPool();
-    const [rows] = await pool.query('SELECT * FROM master_settings ORDER BY id ASC LIMIT 1');
-    if (rows.length > 0) return rows[0];
-
-    // Seed default settings if empty
-    await pool.execute(`
-      INSERT INTO master_settings (id, company_name, auto_approval_enabled, daily_ot_cap_hours, late_grace_minutes, weekly_off_pattern, ip_whitelist_enabled, biometric_threshold, active, created_at, updated_at)
-      VALUES (1, 'Soukhya Tech Enterprise HQ', 1, 4.00, 15, 'SUN_ONLY', 0, 0.60, 1, NOW(), NOW())
-      ON DUPLICATE KEY UPDATE id=1
-    `);
-    const [defRows] = await pool.query('SELECT * FROM master_settings WHERE id = 1');
-    return defRows[0];
+    const [rows] = await pool.query('SELECT setting_key, setting_value, category, description FROM master_settings');
+    const dict = {};
+    for (const r of rows) {
+      let val = r.setting_value;
+      if (val === 'true') val = true;
+      else if (val === 'false') val = false;
+      else if (!isNaN(val) && val.trim() !== '') val = Number(val);
+      dict[r.setting_key] = val;
+    }
+    return dict;
   }
 
   async updateMasterSettings(data) {
     const pool = await this.getPool();
-    await pool.execute(`
-      UPDATE master_settings SET
-        company_name = COALESCE(?, company_name),
-        auto_approval_enabled = COALESCE(?, auto_approval_enabled),
-        daily_ot_cap_hours = COALESCE(?, daily_ot_cap_hours),
-        late_grace_minutes = COALESCE(?, late_grace_minutes),
-        weekly_off_pattern = COALESCE(?, weekly_off_pattern),
-        ip_whitelist_enabled = COALESCE(?, ip_whitelist_enabled),
-        biometric_threshold = COALESCE(?, biometric_threshold),
-        updated_at = NOW()
-      WHERE id = 1
-    `, [
-      data.company_name || null,
-      data.auto_approval_enabled !== undefined ? (data.auto_approval_enabled ? 1 : 0) : null,
-      data.daily_ot_cap_hours !== undefined ? data.daily_ot_cap_hours : null,
-      data.late_grace_minutes !== undefined ? data.late_grace_minutes : null,
-      data.weekly_off_pattern || null,
-      data.ip_whitelist_enabled !== undefined ? (data.ip_whitelist_enabled ? 1 : 0) : null,
-      data.biometric_threshold !== undefined ? data.biometric_threshold : null
-    ]);
+    for (const [k, v] of Object.entries(data)) {
+      if (v === undefined || v === null) continue;
+      const strVal = typeof v === 'object' ? JSON.stringify(v) : String(v);
+      await pool.execute(`
+        INSERT INTO master_settings (setting_key, setting_value, updated_by, updated_at)
+        VALUES (?, ?, 'admin', NOW())
+        ON DUPLICATE KEY UPDATE
+          setting_value = VALUES(setting_value),
+          updated_by = 'admin',
+          updated_at = NOW()
+      `, [k, strVal]);
+    }
     return this.getMasterSettings();
   }
 }

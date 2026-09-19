@@ -28,7 +28,11 @@ class AttendanceDAO {
     const pool = await this.getPool();
     const [rows] = await pool.execute(`
       SELECT att_id FROM attendance
-      WHERE emp_id = ? AND timestamp >= CURDATE() AND timestamp < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+      WHERE emp_id = ? AND (
+        (timestamp >= CURDATE() AND timestamp < DATE_ADD(CURDATE(), INTERVAL 1 DAY))
+        OR (timestamp >= DATE_SUB(NOW(), INTERVAL 24 HOUR))
+        OR (timestamp >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 24 HOUR))
+      )
       LIMIT 1
     `, [emp_id]);
     return rows[0] || null;
@@ -116,10 +120,15 @@ class AttendanceDAO {
 
     return {
       totalEmployees: totalEmp,
+      total_employees: totalEmp,
       presentToday: present,
+      present_today: present,
       absentToday: absent,
-      onTimeToday: todayCount[0]?.on_time || 0,
-      lateToday: todayCount[0]?.late_count || 0
+      absent_today: absent,
+      onTimeToday: Number(todayCount[0]?.on_time || 0),
+      on_time_today: Number(todayCount[0]?.on_time || 0),
+      lateToday: Number(todayCount[0]?.late_count || 0),
+      late_today: Number(todayCount[0]?.late_count || 0)
     };
   }
 

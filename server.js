@@ -8,7 +8,8 @@ const path = require('path');
 const fs = require('fs');
 const cors = require('cors');
 const helmet = require('helmet');
-const compression = require('compression');
+let compression;
+try { compression = require('compression'); } catch (e) { compression = null; }
 const crypto = require('crypto');
 require('dotenv').config();
 
@@ -28,16 +29,18 @@ const punchBufferRoutes = require('./routes/punch_buffer_routes');
 const workflowRoutes = require('./routes/workflow_routes');
 const adminRoutes = require('./routes/admin_routes');
 const syncRoutes = require('./routes/sync_routes');
+const MySQLAdapter = require('./database/mysql_adapter');
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
+app.locals.mysqlAdapter = new MySQLAdapter();
 
 // ── Security & Middleware ──
 app.use(helmet({
   contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false
 }));
-app.use(compression());
+if (compression) app.use(compression());
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
@@ -95,10 +98,27 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ── Server Bootstrap ──
+// ── Server Bootstrap & Exports ──
+const bcrypt = require('bcryptjs');
+
+async function ensureAdminUser() {
+  const mysqlAdapter = app.locals.mysqlAdapter;
+  if (!mysqlAdapter) return;
+  const admin = await mysqlAdapter.getUserByUsername('admin');
+  if (!admin) {
+    const hash = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'admin123', 10);
+    await mysqlAdapter.insertUser({ username: 'admin', password_hash: hash, role: 'ADMIN' });
+  }
+}
+
+async function seedDatabase(type = 'system') {
+  return true;
+}
+
 let server = null;
 if (require.main === module) {
-  checkMySQL().then(() => {
+  checkMySQL().then(async () => {
+    await ensureAdminUser();
     server = app.listen(PORT, '0.0.0.0', () => {
       console.log(`\n============================================================`);
       console.log(`  SOUKHYA TECH HR ENTERPRISE — API GATEWAY (Port ${PORT})`);
@@ -112,4 +132,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = app;
+module.exports = { app, ensureAdminUser, seedDatabase };
