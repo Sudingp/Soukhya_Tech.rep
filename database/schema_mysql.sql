@@ -361,6 +361,7 @@ CREATE TABLE IF NOT EXISTS `shift_roster` (
   UNIQUE KEY `uq_roster_emp_date` (`emp_id`, `roster_date`),
   KEY `idx_roster_date` (`roster_date`),
   KEY `idx_roster_emp_month` (`emp_id`, `roster_date`),
+  KEY `idx_roster_date_shift_emp_cov` (`roster_date`, `shift_id`, `emp_id`),
   CONSTRAINT `fk_roster_emp`
     FOREIGN KEY (`emp_id`) REFERENCES `employees` (`id`)
     ON DELETE CASCADE ON UPDATE CASCADE,
@@ -450,13 +451,15 @@ CREATE TABLE IF NOT EXISTS `attendance` (
   `logged_by` VARCHAR(100) NULL,
   `ip_address` VARCHAR(45) NULL,
   `user_agent` VARCHAR(255) NULL,
+  `punch_date` DATE GENERATED ALWAYS AS (CAST(`timestamp` AS DATE)) STORED,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT `fk_attendance_employee`
     FOREIGN KEY (`emp_id`) REFERENCES `employees` (`id`)
     ON DELETE CASCADE ON UPDATE CASCADE,
   KEY `idx_att_emp_ts` (`emp_id`, `timestamp`),
   KEY `idx_att_ts_status` (`timestamp`, `status`),
-  KEY `idx_att_dept_ts` (`dept`, `timestamp`)
+  KEY `idx_att_dept_ts` (`dept`, `timestamp`),
+  KEY `idx_att_pdate_dept_stat_cov` (`punch_date`, `dept`, `status`, `emp_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ── 23. Employee Overtime Register Table ──
