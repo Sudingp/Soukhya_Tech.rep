@@ -391,7 +391,7 @@ router.delete('/work-codes/:id', authenticate, requireRoles('ADMIN'), async (req
 router.get('/public-holidays', authenticate, async (req, res) => {
   try {
     const holidays = await stmts.getPublicHolidays.all({ year: req.query.year });
-    const mandatoryCount = holidays.filter(h => h.holiday_type === 'GAZETTED' || h.is_mandatory || h.holiday_type === 'STATE_GAZETTED').length;
+    const mandatoryCount = holidays.filter(h => h.holiday_type === 'MANDATORY' || h.holiday_type === 'GAZETTED' || h.is_mandatory || h.holiday_type === 'STATE_GAZETTED').length;
     res.json({ success: true, count: holidays.length, mandatory_count: mandatoryCount, holidays });
   } catch (err) {
     res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message }, request_id: req.id });

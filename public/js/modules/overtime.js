@@ -112,16 +112,10 @@ function renderLeaveEntriesTable(entries) {
   }
 
   tbody.innerHTML = entries.map(le => {
-    let statusBadge = '';
-    if (le.status === 'APPROVED') {
-      statusBadge = '<span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3); font-size:10px; padding:2px 6px">✓ APPROVED</span>';
-    } else if (le.status === 'PENDING') {
-      statusBadge = '<span class="badge" style="background:rgba(245,158,11,0.15); color:#f59e0b; border:1px solid rgba(245,158,11,0.3); font-size:10px; padding:2px 6px">⏳ PENDING</span>';
-    } else if (le.status === 'REJECTED') {
-      statusBadge = '<span class="badge" style="background:rgba(239,68,68,0.15); color:#ef4444; border:1px solid rgba(239,68,68,0.3); font-size:10px; padding:2px 6px">✕ REJECTED</span>';
-    } else {
-      statusBadge = `<span class="badge" style="background:rgba(107,118,145,0.15); color:var(--mu); font-size:10px; padding:2px 6px">${escapeHtml(le.status)}</span>`;
-    }
+    let statusBadge = `<span class="badge" style="background:rgba(107,118,145,0.15); color:var(--mu); font-size:10px; padding:2px 6px">${escapeHtml(le.status)}</span>`;
+    if (le.status === 'APPROVED') statusBadge = '<span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3); font-size:10px; padding:2px 6px">✓ APPROVED</span>';
+    else if (le.status === 'PENDING') statusBadge = '<span class="badge" style="background:rgba(245,158,11,0.15); color:#f59e0b; border:1px solid rgba(245,158,11,0.3); font-size:10px; padding:2px 6px">⏳ PENDING</span>';
+    else if (le.status === 'REJECTED') statusBadge = '<span class="badge" style="background:rgba(239,68,68,0.15); color:#ef4444; border:1px solid rgba(239,68,68,0.3); font-size:10px; padding:2px 6px">✕ REJECTED</span>';
 
     const typeColor = le.color || '#00d4aa';
     const typeBadge = `<span class="badge" style="background:${typeColor}22; color:${typeColor}; border:1px solid ${typeColor}55; font-size:11px; font-weight:700">${escapeHtml(le.leave_type_name || le.leave_type_id)}</span>`;
@@ -129,24 +123,12 @@ function renderLeaveEntriesTable(entries) {
     return `
       <tr style="border-bottom:1px solid var(--br); transition:background 0.15s">
         <td style="padding:10px">${typeBadge}</td>
-        <td style="padding:10px">
-          <div style="font-weight:600; color:var(--tx)">${escapeHtml(le.emp_name || le.emp_id)}</div>
-          <div style="font-size:10.5px; color:var(--mu)">ID: ${escapeHtml(le.emp_id)} • ${escapeHtml(le.department || 'Operations')}</div>
-        </td>
-        <td style="padding:10px; font-family:var(--mo); font-size:11.5px; color:var(--tx)">
-          ${le.start_date} <span style="color:var(--mu)">➔</span> ${le.end_date}
-        </td>
-        <td style="padding:10px; text-align:center; font-weight:700; color:var(--tx)">
-          ${le.total_days} days
-        </td>
-        <td style="padding:10px; font-size:11px; color:var(--tx); max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${escapeHtml(le.reason || '')}">
-          ${escapeHtml(le.reason || 'Personal Leave')}
-        </td>
+        <td style="padding:10px"><div style="font-weight:600; color:var(--tx)">${escapeHtml(le.emp_name || le.emp_id)}</div><div style="font-size:10.5px; color:var(--mu)">ID: ${escapeHtml(le.emp_id)} • ${escapeHtml(le.department || 'Operations')}</div></td>
+        <td style="padding:10px; font-family:var(--mo); font-size:11.5px; color:var(--tx)">${le.start_date} <span style="color:var(--mu)">➔</span> ${le.end_date}</td>
+        <td style="padding:10px; text-align:center; font-weight:700; color:var(--tx)">${le.total_days} days</td>
+        <td style="padding:10px; font-size:11px; color:var(--tx); max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${escapeHtml(le.reason || '')}">${escapeHtml(le.reason || 'Personal Leave')}</td>
         <td style="padding:10px; text-align:center">${statusBadge}</td>
-        <td style="padding:10px; font-size:11px; color:var(--mu)">
-          ${le.approved_by ? `<div style="color:var(--tx)">By: <strong>${escapeHtml(le.approved_by)}</strong></div>` : ''}
-          ${le.comments ? `<div style="font-style:italic">"${escapeHtml(le.comments)}"</div>` : '<span style="color:var(--mu)">-</span>'}
-        </td>
+        <td style="padding:10px; font-size:11px; color:var(--mu)">${le.approved_by ? `<div style="color:var(--tx)">By: <strong>${escapeHtml(le.approved_by)}</strong></div>` : ''}${le.comments ? `<div style="font-style:italic">"${escapeHtml(le.comments)}"</div>` : '-'}</td>
         <td style="padding:10px; text-align:right; white-space:nowrap">
           ${le.status === 'PENDING' ? `
             <button class="btn bsm" style="font-size:10.5px; padding:2px 6px; color:#10b981; border-color:#10b981; margin-right:4px" onclick="updateLeaveEntryStatus('${le.id}', 'APPROVED')">✓ Approve</button>
@@ -154,8 +136,7 @@ function renderLeaveEntriesTable(entries) {
           ` : ''}
           <button class="btn bsm" style="font-size:10.5px; padding:2px 6px; color:var(--err); border-color:var(--err)" onclick="deleteLeaveEntryAction('${le.id}')">🗑️</button>
         </td>
-      </tr>
-    `;
+      </tr>`;
   }).join('');
 }
 
@@ -173,7 +154,7 @@ function resetLeaveFilters() {
   loadLeaveEntriesGrid(1);
 }
 
-function openApplyLeaveModal() {
+async function openApplyLeaveModal() {
   const m = document.getElementById('leave-entry-form-modal');
   if (!m) return;
   m.style.display = 'flex';
@@ -200,12 +181,116 @@ function openApplyLeaveModal() {
     });
   }
 
+  // Load and populate official Government & High Court holidays dropdown
+  await populateHolidayDropdownForLeave();
+
   const todayStr = new Date().toISOString().slice(0, 10);
   document.getElementById('la-start-date').value = todayStr;
   document.getElementById('la-end-date').value = todayStr;
   document.getElementById('la-total-days').value = '1.0';
   document.getElementById('la-reason').value = '';
   document.getElementById('la-comments').value = '';
+  const hInfo = document.getElementById('la-holiday-info');
+  if (hInfo) hInfo.style.display = 'none';
+}
+
+async function populateHolidayDropdownForLeave() {
+  const hSel = document.getElementById('la-holiday-id');
+  if (!hSel) return;
+
+  if (!cachedPublicHolidays || cachedPublicHolidays.length === 0) {
+    try {
+      const res = await api('/public-holidays?year=2026');
+      if (res && res.success && Array.isArray(res.data?.holidays)) {
+        cachedPublicHolidays = res.data.holidays;
+      }
+    } catch (_) {}
+  }
+
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  let html = '<option value="">-- Apply custom dates or choose an official holiday --</option>';
+
+  const mandatory = (cachedPublicHolidays || []).filter(h => h.holiday_type === 'MANDATORY');
+  if (mandatory.length > 0) {
+    html += '<optgroup label="🏛️ General / Gazetted Holidays (2026)">';
+    mandatory.forEach(h => {
+      const d = new Date(h.holiday_date + 'T00:00:00');
+      const dStr = `${d.getDate()} ${months[d.getMonth()]} (${days[d.getDay()]})`;
+      html += `<option value="${h.id}">📅 ${dStr} — ${escapeHtml(h.title)}</option>`;
+    });
+    html += '</optgroup>';
+  }
+
+  const restricted = (cachedPublicHolidays || []).filter(h => h.holiday_type === 'RESTRICTED');
+  if (restricted.length > 0) {
+    html += '<optgroup label="🌴 Restricted / Optional Holidays (2026)">';
+    restricted.forEach(h => {
+      const d = new Date(h.holiday_date + 'T00:00:00');
+      const dStr = `${d.getDate()} ${months[d.getMonth()]} (${days[d.getDay()]})`;
+      html += `<option value="${h.id}">🌴 ${dStr} — ${escapeHtml(h.title)} [RH]</option>`;
+    });
+    html += '</optgroup>';
+  }
+
+  const company = (cachedPublicHolidays || []).filter(h => h.holiday_type === 'COMPANY_DECLARED');
+  if (company.length > 0) {
+    html += '<optgroup label="🏢 Company Declared Holidays">';
+    company.forEach(h => {
+      const d = new Date(h.holiday_date + 'T00:00:00');
+      const dStr = `${d.getDate()} ${months[d.getMonth()]} (${days[d.getDay()]})`;
+      html += `<option value="${h.id}">🏢 ${dStr} — ${escapeHtml(h.title)}</option>`;
+    });
+    html += '</optgroup>';
+  }
+
+  hSel.innerHTML = html;
+}
+
+function onHolidaySelectedForLeave() {
+  const hSel = document.getElementById('la-holiday-id');
+  const hInfo = document.getElementById('la-holiday-info');
+  if (!hSel) return;
+
+  const hId = parseInt(hSel.value, 10);
+  if (!hId) {
+    if (hInfo) hInfo.style.display = 'none';
+    return;
+  }
+
+  const holiday = (cachedPublicHolidays || []).find(h => Number(h.id) === hId);
+  if (!holiday) return;
+
+  const dateStr = typeof holiday.holiday_date === 'string' ? holiday.holiday_date.slice(0, 10) : new Date(holiday.holiday_date).toISOString().slice(0, 10);
+
+  const startInp = document.getElementById('la-start-date');
+  const endInp = document.getElementById('la-end-date');
+  const daysInp = document.getElementById('la-total-days');
+  const reasonInp = document.getElementById('la-reason');
+  const ltSel = document.getElementById('la-type-id');
+
+  if (startInp) startInp.value = dateStr;
+  if (endInp) endInp.value = dateStr;
+  if (daysInp) daysInp.value = '1.0';
+
+  if (holiday.holiday_type === 'RESTRICTED') {
+    if (reasonInp) reasonInp.value = `Restricted Holiday: ${holiday.title}`;
+    if (ltSel) {
+      const rhOpt = Array.from(ltSel.options).find(o => o.value === 'LT_RH' || o.text.includes('(RH)') || o.value.includes('RH'));
+      if (rhOpt) {
+        ltSel.value = rhOpt.value;
+      }
+    }
+  } else {
+    if (reasonInp) reasonInp.value = `Official Holiday: ${holiday.title}`;
+  }
+
+  if (hInfo) {
+    const typeLabel = holiday.holiday_type === 'MANDATORY' ? '🏛️ Gazetted General Holiday' : (holiday.holiday_type === 'RESTRICTED' ? '🌴 Restricted / Optional Holiday (RH)' : '🏢 Company Holiday');
+    hInfo.innerHTML = `✅ <strong>${escapeHtml(holiday.title)}</strong> (${dateStr}) • <span style="color:var(--ac)">${typeLabel}</span>`;
+    hInfo.style.display = 'block';
+  }
 }
 
 function closeApplyLeaveModal() {
@@ -380,9 +465,7 @@ async function loadEmployeeLeaveBalances() {
                     <div style="font-weight:700; font-size:13px; color:var(--tx)">${escapeHtml(b.name || b.leave_type_name || b.leave_type_id)}</div>
                     <div style="font-family:var(--mo); font-size:10.5px; color:var(--mu)">${escapeHtml(b.code || b.leave_type_code || '')}</div>
                   </div>
-                  <span class="badge" style="background:${b.paid ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)'}; color:${b.paid ? '#10b981' : '#ef4444'}; font-size:10px">
-                    ${b.paid ? 'PAID' : 'UNPAID'}
-                  </span>
+                  <span class="badge" style="background:${b.paid ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)'}; color:${b.paid ? '#10b981' : '#ef4444'}; font-size:10px">${b.paid ? 'PAID' : 'UNPAID'}</span>
                 </div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:11px; margin-bottom:10px">
                   <div><span style="color:var(--mu)">Quota:</span> <strong>${quota}d</strong></div>
@@ -392,11 +475,9 @@ async function loadEmployeeLeaveBalances() {
                   <span style="font-size:11px; color:var(--mu)">Available Balance:</span>
                   <span style="font-size:15px; font-weight:800; color:${remainingColor}">${avail}d</span>
                 </div>
-              </div>
-            `;
+              </div>`;
           }).join('')}
-        </div>
-      `;
+        </div>`;
     } else {
       container.innerHTML = '<div style="text-align:center; padding:30px; color:var(--er)">Failed to fetch balance ledger.</div>';
     }

@@ -334,6 +334,13 @@ async function openShiftDayModal(dateStr, currentDayType, currentShiftId, curren
     `).join('');
   }
 
+  // Populate holiday presets
+  const holSelect = document.getElementById('sd-holiday-select');
+  if (holSelect && Array.isArray(cachedPublicHolidays)) {
+    holSelect.innerHTML = '<option value="">-- Choose from 2026 Karnataka Holidays --</option>' +
+      cachedPublicHolidays.map(h => `<option value="${escapeHtml(h.title)}">${h.holiday_date.slice(5)} - ${escapeHtml(h.title)} (${h.holiday_type})</option>`).join('');
+  }
+
   onShiftDayTypeChange();
   modal.style.display = 'flex';
 }
@@ -346,8 +353,20 @@ function closeShiftDayModal() {
 function onShiftDayTypeChange() {
   const dayType = document.getElementById('sd-day-type')?.value;
   const shiftGroup = document.getElementById('sd-shift-group');
+  const holGroup = document.getElementById('sd-holiday-group');
   if (shiftGroup) {
     shiftGroup.style.display = (dayType === 'WORK' || dayType === 'HALF_DAY') ? 'block' : 'none';
+  }
+  if (holGroup) {
+    holGroup.style.display = (dayType === 'HOLIDAY') ? 'block' : 'none';
+  }
+}
+
+function onShiftDayHolidaySelect() {
+  const holSelect = document.getElementById('sd-holiday-select');
+  const titleInp = document.getElementById('sd-title');
+  if (holSelect && titleInp && holSelect.value) {
+    titleInp.value = holSelect.value;
   }
 }
 

@@ -377,6 +377,7 @@ window.loadCalendarMonth = loadCalendarMonth;
 window.openShiftDayModal = openShiftDayModal;
 window.closeShiftDayModal = closeShiftDayModal;
 window.onShiftDayTypeChange = onShiftDayTypeChange;
+window.onShiftDayHolidaySelect = onShiftDayHolidaySelect;
 window.saveShiftDayOverride = saveShiftDayOverride;
 window.openShiftCalendarPatternModal = openShiftCalendarPatternModal;
 window.closeShiftPatternModal = closeShiftPatternModal;
