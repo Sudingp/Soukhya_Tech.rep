@@ -1201,6 +1201,2337 @@
     </div>
   </div>
 
+  <!-- ── MASTER CONFIGURATION SETTINGS MODAL ── -->
+  <div id="master-settings-modal" class="modal-overlay" style="display:none; z-index:9998;">
+    <div class="modal-box animate-zoom" style="max-width:740px; width:95%; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.85); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:14px 20px; background:linear-gradient(135deg, #161b27, #1a2234)">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:20px">⚙️</span>
+          <div>
+            <span class="modal-title" style="font-size:15px; font-weight:700; color:var(--tx)">Master Configuration Settings</span>
+            <div style="font-size:11px; color:var(--mu)">Global enterprise rules, attendance policies & AI biometrics controls</div>
+          </div>
+        </div>
+        <button class="modal-close-x" onclick="closeMasterSettingsModal()">✕</button>
+      </div>
+
+      <!-- Settings Navigation Tabs -->
+      <div class="ms-tabs-bar" style="display:flex; gap:4px; padding:8px 16px; background:var(--s2); border-bottom:1px solid var(--br); overflow-x:auto">
+        <button class="ms-tab-btn active" id="ms-tab-btn-general" onclick="switchMasterSettingsTab('general')">🏢 General</button>
+        <button class="ms-tab-btn" id="ms-tab-btn-attendance" onclick="switchMasterSettingsTab('attendance')">⏱️ Attendance Rules</button>
+        <button class="ms-tab-btn" id="ms-tab-btn-biometrics" onclick="switchMasterSettingsTab('biometrics')">🤖 AI & Biometrics</button>
+        <button class="ms-tab-btn" id="ms-tab-btn-security" onclick="switchMasterSettingsTab('security')">🔒 Security & Policy</button>
+      </div>
+
+      <!-- Settings Body Container -->
+      <div class="modal-body" style="padding:20px; overflow-y:auto; flex:1">
+        <form id="master-settings-form" onsubmit="saveMasterSettings(event)">
+          <!-- Tab 1: General -->
+          <div id="ms-tab-general" class="ms-tab-content active">
+            <div class="ms-grid">
+              <div class="fg">
+                <label class="fl">Company Name</label>
+                <input class="fi" id="ms-company_name" placeholder="Soukhya Tech Solutions Ltd." />
+              </div>
+              <div class="fg">
+                <label class="fl">Headquarters Location</label>
+                <input class="fi" id="ms-hq_location" placeholder="Bangalore Headquarters, India" />
+              </div>
+              <div class="fg">
+                <label class="fl">System Timezone</label>
+                <select class="fi" id="ms-timezone">
+                  <option value="Asia/Kolkata">Asia/Kolkata (IST +5:30)</option>
+                  <option value="UTC">UTC (Universal Coordinated Time)</option>
+                  <option value="America/New_York">America/New_York (EST/EDT)</option>
+                  <option value="Europe/London">Europe/London (GMT/BST)</option>
+                  <option value="Asia/Dubai">Asia/Dubai (GST +4:00)</option>
+                  <option value="Asia/Singapore">Asia/Singapore (SGT +8:00)</option>
+                </select>
+              </div>
+              <div class="fg">
+                <label class="fl">Default Date Format</label>
+                <select class="fi" id="ms-date_format">
+                  <option value="DD/MM/YYYY">DD/MM/YYYY (e.g. 18/09/2026)</option>
+                  <option value="YYYY-MM-DD">YYYY-MM-DD (e.g. 2026-09-18)</option>
+                  <option value="MM/DD/YYYY">MM/DD/YYYY (e.g. 09/18/2026)</option>
+                </select>
+              </div>
+              <div class="fg">
+                <label class="fl">Default Currency</label>
+                <input class="fi" id="ms-currency" placeholder="INR (₹)" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 2: Attendance Rules -->
+          <div id="ms-tab-attendance" class="ms-tab-content" style="display:none">
+            <div class="ms-grid">
+              <div class="fg">
+                <label class="fl">Late Punch Grace Period (Minutes)</label>
+                <input type="number" min="0" max="180" class="fi" id="ms-late_grace_mins" placeholder="15" />
+                <span class="ms-hint">Permissible punch-in delay before marking status as 'Late'.</span>
+              </div>
+              <div class="fg">
+                <label class="fl">Punch Cooldown Buffer (Minutes)</label>
+                <input type="number" min="1" max="60" class="fi" id="ms-punch_cooldown_mins" placeholder="5" />
+                <span class="ms-hint">Buffer between consecutive punches to prevent duplicate logging.</span>
+              </div>
+              <div class="fg">
+                <label class="fl">Full-Day Work Standard (Hours)</label>
+                <input type="number" step="0.5" min="1" max="24" class="fi" id="ms-full_day_hrs" placeholder="8.0" />
+                <span class="ms-hint">Minimum required work hours for full-day attendance credit.</span>
+              </div>
+              <div class="fg">
+                <label class="fl">Half-Day Work Cutoff (Hours)</label>
+                <input type="number" step="0.5" min="1" max="12" class="fi" id="ms-half_day_hrs" placeholder="4.0" />
+                <span class="ms-hint">Minimum required work hours for half-day credit.</span>
+              </div>
+              <div class="fg">
+                <label class="fl">Overtime (OT) Threshold (Minutes)</label>
+                <input type="number" min="0" max="300" class="fi" id="ms-ot_threshold_mins" placeholder="30" />
+                <span class="ms-hint">Minutes worked past shift end before OT starts calculating.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 3: Biometrics & AI -->
+          <div id="ms-tab-biometrics" class="ms-tab-content" style="display:none">
+            <div class="fg" style="margin-bottom:18px">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px">
+                <label class="fl" style="margin:0">Face Match Distance Threshold</label>
+                <span id="ms-face_match_val" style="font-family:var(--mo); color:var(--ac); font-weight:700">0.55</span>
+              </div>
+              <input type="range" min="0.30" max="0.75" step="0.01" class="fi-range" id="ms-face_match_threshold" oninput="document.getElementById('ms-face_match_val').textContent = this.value" />
+              <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--mu); margin-top:3px">
+                <span>0.30 (Ultra Strict)</span>
+                <span>0.55 (Recommended)</span>
+                <span>0.75 (Lenient)</span>
+              </div>
+            </div>
+
+            <div class="ms-toggle-card">
+              <div>
+                <div style="font-weight:600; color:var(--tx)">Anti-Spoofing Liveness Check</div>
+                <div style="font-size:11px; color:var(--mu)">Analyze texture & motion to reject punches taken from printed photos or mobile screens.</div>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="ms-liveness_detection_enabled" />
+                <span class="slider round"></span>
+              </label>
+            </div>
+
+            <div class="ms-toggle-card" style="margin-top:12px">
+              <div>
+                <div style="font-weight:600; color:var(--tx)">Multi-Factor Punch Enforcement</div>
+                <div style="font-size:11px; color:var(--mu)">Require RFID Card Number or PIN verification along with Facial Recognition.</div>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="ms-multi_factor_required" />
+                <span class="slider round"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Tab 4: Security & Policy -->
+          <div id="ms-tab-security" class="ms-tab-content" style="display:none">
+            <div class="ms-grid">
+              <div class="fg">
+                <label class="fl">Session Inactivity Timeout (Minutes)</label>
+                <input type="number" min="5" max="1440" class="fi" id="ms-session_timeout_mins" placeholder="30" />
+                <span class="ms-hint">Auto log-off active sessions after period of inactivity.</span>
+              </div>
+              <div class="fg">
+                <label class="fl">Audit Trail Retention (Days)</label>
+                <input type="number" min="30" max="3650" class="fi" id="ms-audit_retention_days" placeholder="180" />
+                <span class="ms-hint">Days to preserve system audit logs before archival.</span>
+              </div>
+            </div>
+
+            <div class="ms-toggle-card" style="margin-top:14px">
+              <div>
+                <div style="font-weight:600; color:var(--tx)">Mask Sensitive Employee PII</div>
+                <div style="font-size:11px; color:var(--mu)">Automatically mask Aadhaar, PAN, and phone numbers in non-administrative views.</div>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="ms-pii_masking_enabled" />
+                <span class="slider round"></span>
+              </label>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="modal-ftr" style="padding:12px 20px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center">
+        <button type="button" class="btn bsm" onclick="resetMasterSettingsDefaults()">Reset to Defaults</button>
+        <div style="display:flex; gap:8px">
+          <button type="button" class="btn bsm" onclick="closeMasterSettingsModal()">Cancel</button>
+          <button type="button" class="btn btnp bsm" id="ms-save-btn" onclick="saveMasterSettings(event)">💾 Save Changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SHIFT DETAILS MASTER MODAL ── -->
+  <div id="shift-details-modal" class="modal-overlay" style="display:none; z-index:9998;">
+    <div class="modal-box animate-zoom" style="max-width:860px; width:95%; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.85); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:14px 20px; background:linear-gradient(135deg, #161b27, #1a2234); display:flex; justify-content:space-between; align-items:center">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:20px">⏱️</span>
+          <div>
+            <span class="modal-title" style="font-size:15px; font-weight:700; color:var(--tx)">Shift Details Master</span>
+            <div style="font-size:11px; color:var(--mu)">Configure enterprise work shifts, break windows & tolerance policies</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px">
+          <button type="button" class="btn btnp bsm" onclick="openAddShiftModal()">+ Add New Shift</button>
+          <button class="modal-close-x" onclick="closeShiftDetailsModal()">✕</button>
+        </div>
+      </div>
+
+      <div class="modal-body" style="padding:16px 20px; overflow-y:auto; flex:1">
+        <div style="overflow-x:auto">
+          <table class="gt" style="width:100%; border-collapse:collapse; font-size:11.5px">
+            <thead>
+              <tr style="border-bottom:1px solid var(--br); color:var(--mu); background:var(--s2)">
+                <th style="padding:8px 10px; text-align:left">Shift Code</th>
+                <th style="padding:8px 10px; text-align:left">Shift Name</th>
+                <th style="padding:8px 10px; text-align:center">Work Timings</th>
+                <th style="padding:8px 10px; text-align:center">Break</th>
+                <th style="padding:8px 10px; text-align:center">Grace In</th>
+                <th style="padding:8px 10px; text-align:center">Night Shift</th>
+                <th style="padding:8px 10px; text-align:right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="shifts-tbody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="modal-ftr" style="padding:10px 20px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center">
+        <span id="shifts-count-label" style="font-size:11px; color:var(--mu)">Loading shifts...</span>
+        <button type="button" class="btn bsm" onclick="closeShiftDetailsModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ADD / EDIT SHIFT FORM MODAL ── -->
+  <div id="shift-form-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:540px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:14px 18px; background:linear-gradient(135deg, #161b27, #1e2438)">
+        <span class="modal-title" id="shift-form-title" style="font-size:14px; font-weight:700">Add New Shift</span>
+        <button class="modal-close-x" onclick="closeShiftFormModal()">✕</button>
+      </div>
+
+      <div class="modal-body" style="padding:18px">
+        <form id="shift-crud-form" onsubmit="saveShiftForm(event)">
+          <input type="hidden" id="sf-id" value="" />
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr; gap:12px">
+            <div class="fg">
+              <label class="fl">Shift Code *</label>
+              <input class="fi" id="sf-code" placeholder="GEN" required maxlength="20" style="text-transform:uppercase" />
+            </div>
+            <div class="fg">
+              <label class="fl">Shift Color Tag</label>
+              <div style="display:flex; align-items:center; gap:8px">
+                <input type="color" id="sf-color" value="#00d4aa" style="height:32px; width:44px; padding:2px; background:transparent; border:1px solid var(--br); border-radius:4px; cursor:pointer" />
+                <span id="sf-color-preview" style="font-size:11px; font-family:var(--mo); color:var(--mu)">#00d4aa</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="fg" style="margin-top:10px">
+            <label class="fl">Shift Name *</label>
+            <input class="fi" id="sf-name" placeholder="General Day Shift" required maxlength="100" />
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr; gap:12px; margin-top:10px">
+            <div class="fg">
+              <label class="fl">Start Time (24h) *</label>
+              <input type="time" class="fi" id="sf-start_time" required value="09:00" />
+            </div>
+            <div class="fg">
+              <label class="fl">End Time (24h) *</label>
+              <input type="time" class="fi" id="sf-end_time" required value="18:00" />
+            </div>
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-top:10px">
+            <div class="fg">
+              <label class="fl">Break Start</label>
+              <input type="time" class="fi" id="sf-break_start" value="13:00" />
+            </div>
+            <div class="fg">
+              <label class="fl">Break End</label>
+              <input type="time" class="fi" id="sf-break_end" value="14:00" />
+            </div>
+            <div class="fg">
+              <label class="fl">Break (Mins)</label>
+              <input type="number" class="fi" id="sf-break_mins" value="60" min="0" max="240" />
+            </div>
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-top:10px">
+            <div class="fg">
+              <label class="fl">Early In (Mins)</label>
+              <input type="number" class="fi" id="sf-early_in_mins" value="30" min="0" max="180" />
+            </div>
+            <div class="fg">
+              <label class="fl">Late Grace (Mins)</label>
+              <input type="number" class="fi" id="sf-late_grace_mins" value="15" min="0" max="180" />
+            </div>
+            <div class="fg">
+              <label class="fl">Early Out (Mins)</label>
+              <input type="number" class="fi" id="sf-early_out_mins" value="15" min="0" max="180" />
+            </div>
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr; gap:12px; margin-top:10px">
+            <div class="fg">
+              <label class="fl">Full-Day Min (Hrs)</label>
+              <input type="number" step="0.5" class="fi" id="sf-min_full_day_hrs" value="8.0" min="1" max="24" />
+            </div>
+            <div class="fg">
+              <label class="fl">Half-Day Min (Hrs)</label>
+              <input type="number" step="0.5" class="fi" id="sf-min_half_day_hrs" value="4.0" min="1" max="12" />
+            </div>
+          </div>
+
+          <div class="ms-toggle-card" style="margin-top:12px; padding:8px 12px">
+            <div>
+              <div style="font-weight:600; font-size:12px; color:var(--tx)">🌙 Overnight / Night Shift</div>
+              <div style="font-size:10px; color:var(--mu)">Shift spans across midnight to the next day.</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="sf-is_night_shift" />
+              <span class="slider round"></span>
+            </label>
+          </div>
+        </form>
+      </div>
+
+      <div class="modal-ftr" style="padding:12px 18px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:flex-end; gap:8px">
+        <button type="button" class="btn bsm" onclick="closeShiftFormModal()">Cancel</button>
+        <button type="button" class="btn btnp bsm" id="sf-save-btn" onclick="saveShiftForm(event)">💾 Save Shift</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SHIFT CALENDAR MASTER MODAL ── -->
+  <div id="shift-calendar-modal" class="modal-overlay" style="display:none; z-index:9998;">
+    <div class="modal-box animate-zoom" style="max-width:1040px; width:96%; max-height:92vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.85); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:14px 20px; background:linear-gradient(135deg, #161b27, #1a2234); display:flex; justify-content:space-between; align-items:center">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:22px">📅</span>
+          <div>
+            <span class="modal-title" style="font-size:15px; font-weight:700; color:var(--tx)">Shift Calendar Master</span>
+            <div style="font-size:11px; color:var(--mu)">Monthly schedule planner, weekly off configuration & holiday manager</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px">
+          <button type="button" class="btn bsm" style="border-color:var(--ac); color:var(--ac)" onclick="openShiftCalendarPatternModal()">⚡ Apply Weekly Off Pattern</button>
+          <button class="modal-close-x" onclick="closeShiftCalendarModal()">✕</button>
+        </div>
+      </div>
+
+      <!-- Calendar Toolbar -->
+      <div style="padding:10px 20px; background:var(--s2); border-bottom:1px solid var(--br); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px">
+        <div style="display:flex; align-items:center; gap:8px">
+          <button class="btn bsm" onclick="navCalendarMonth(-1)">◀ Prev</button>
+          <select id="cal-month-select" class="fs" style="padding:4px 8px; font-size:12px; font-weight:600" onchange="loadCalendarMonth()">
+            <option value="1">January</option>
+            <option value="2">February</option>
+            <option value="3">March</option>
+            <option value="4">April</option>
+            <option value="5">May</option>
+            <option value="6">June</option>
+            <option value="7">July</option>
+            <option value="8">August</option>
+            <option value="9">September</option>
+            <option value="10">October</option>
+            <option value="11">November</option>
+            <option value="12">December</option>
+          </select>
+          <select id="cal-year-select" class="fs" style="padding:4px 8px; font-size:12px; font-weight:600" onchange="loadCalendarMonth()">
+            <option value="2025">2025</option>
+            <option value="2026">2026</option>
+            <option value="2027">2027</option>
+            <option value="2028">2028</option>
+          </select>
+          <button class="btn bsm" onclick="navCalendarMonth(1)">Next ▶</button>
+          <button class="btn bsm" style="font-size:11px" onclick="setCalendarToToday()">Today</button>
+        </div>
+
+        <div id="cal-stats-summary" style="display:flex; gap:12px; font-size:11.5px">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Calendar Days Grid -->
+      <div class="modal-body" style="padding:16px 20px; overflow-y:auto; flex:1">
+        <div style="display:grid; grid-template-columns: repeat(7, 1fr); gap:8px; margin-bottom:8px; text-align:center; font-weight:700; font-size:11px; color:var(--mu)">
+          <div style="color:#ef4444">SUN</div>
+          <div>MON</div>
+          <div>TUE</div>
+          <div>WED</div>
+          <div>THU</div>
+          <div>FRI</div>
+          <div style="color:#f59e0b">SAT</div>
+        </div>
+        <div id="cal-days-grid" style="display:grid; grid-template-columns: repeat(7, 1fr); gap:8px">
+          <!-- Dynamically populated 35-42 day cells -->
+        </div>
+      </div>
+
+      <div class="modal-ftr" style="padding:10px 20px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center">
+        <span style="font-size:11px; color:var(--mu)">💡 Click on any day to customize shift assignment or mark holiday / weekly off.</span>
+        <button type="button" class="btn bsm" onclick="closeShiftCalendarModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SHIFT DAY OVERRIDE MODAL ── -->
+  <div id="shift-day-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:440px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br)">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438)">
+        <span class="modal-title" id="sd-modal-title" style="font-size:13.5px; font-weight:700">Edit Calendar Day</span>
+        <button class="modal-close-x" onclick="closeShiftDayModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <form id="sd-form" onsubmit="saveShiftDayOverride(event)">
+          <input type="hidden" id="sd-date" />
+          <div class="fg" style="margin-bottom:12px">
+            <label class="fl">Date</label>
+            <input class="fi" id="sd-date-display" readonly style="background:var(--s2); font-weight:600; color:var(--ac)" />
+          </div>
+          <div class="fg" style="margin-bottom:12px">
+            <label class="fl">Day Classification *</label>
+            <select class="fs" id="sd-day-type" onchange="onShiftDayTypeChange()" required>
+              <option value="WORK">Regular Workday (Working)</option>
+              <option value="WEEKLY_OFF">Weekly Off (Off Day)</option>
+              <option value="HOLIDAY">Public Holiday (Off Day)</option>
+              <option value="HALF_DAY">Half Day Working</option>
+            </select>
+          </div>
+          <div class="fg" id="sd-shift-group" style="margin-bottom:12px">
+            <label class="fl">Default Work Shift</label>
+            <select class="fs" id="sd-shift-select">
+              <!-- Dynamically populated from shifts -->
+            </select>
+          </div>
+          <div class="fg" style="margin-bottom:12px">
+            <label class="fl">Title / Description</label>
+            <input class="fi" id="sd-title" placeholder="e.g. Regular Workday, Diwali, Foundation Day" maxlength="100" />
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px">
+            <button type="button" class="btn bsm" onclick="closeShiftDayModal()">Cancel</button>
+            <button type="submit" class="btn btnp bsm">💾 Save Override</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SHIFT CALENDAR PATTERN APPLY MODAL ── -->
+  <div id="shift-pattern-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:460px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br)">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438)">
+        <span class="modal-title" style="font-size:13.5px; font-weight:700">Apply Weekly Off Pattern</span>
+        <button class="modal-close-x" onclick="closeShiftPatternModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <form id="sp-form" onsubmit="applyCalendarPatternSubmit(event)">
+          <div class="fg" style="margin-bottom:12px">
+            <label class="fl">Target Month & Year</label>
+            <div style="display:flex; gap:8px">
+              <select id="sp-month" class="fs" style="flex:1"></select>
+              <select id="sp-year" class="fs" style="flex:1"></select>
+            </div>
+          </div>
+          <div class="fg" style="margin-bottom:12px">
+            <label class="fl">Weekly Off Rule</label>
+            <select id="sp-pattern-type" class="fs">
+              <option value="SUN_AND_ALT_SAT">Sundays & Alternate Saturdays (2nd & 4th) Off</option>
+              <option value="SUN_ONLY">All Sundays Only Off</option>
+              <option value="SUN_AND_ALL_SAT">All Saturdays & Sundays Off (5-Day Week)</option>
+            </select>
+          </div>
+          <div class="fg" style="margin-bottom:14px">
+            <label class="fl">Default Working Shift for Workdays</label>
+            <select id="sp-default-shift" class="fs"></select>
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:8px">
+            <button type="button" class="btn bsm" onclick="closeShiftPatternModal()">Cancel</button>
+            <button type="submit" class="btn btnp bsm">⚡ Apply Pattern</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SHIFT GROUP MASTER MODAL ── -->
+  <div id="shift-group-modal" class="modal-overlay" style="display:none; z-index:9998;">
+    <div class="modal-box animate-zoom" style="max-width:960px; width:96%; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.85); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:14px 20px; background:linear-gradient(135deg, #161b27, #1a2234); display:flex; justify-content:space-between; align-items:center">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:22px">👥</span>
+          <div>
+            <span class="modal-title" style="font-size:15px; font-weight:700; color:var(--tx)">Shift Group Master</span>
+            <div style="font-size:11px; color:var(--mu)">Organize employee cohorts and configure automatic shift rotation cycles</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px">
+          <button type="button" class="btn btnp bsm" onclick="openAddShiftGroupModal()">+ Add Shift Group</button>
+          <button class="modal-close-x" onclick="closeShiftGroupModal()">✕</button>
+        </div>
+      </div>
+
+      <div class="modal-body" style="padding:16px 20px; overflow-y:auto; flex:1">
+        <div id="shift-groups-container" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:14px">
+          <!-- Dynamically populated group cards -->
+        </div>
+      </div>
+
+      <div class="modal-ftr" style="padding:10px 20px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center">
+        <span id="shift-groups-count-label" style="font-size:11px; color:var(--mu)">Loading shift groups...</span>
+        <button type="button" class="btn bsm" onclick="closeShiftGroupModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ADD / EDIT SHIFT GROUP FORM MODAL ── -->
+  <div id="shift-group-form-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:540px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438)">
+        <span class="modal-title" id="sg-form-title" style="font-size:14px; font-weight:700">Add Shift Group</span>
+        <button class="modal-close-x" onclick="closeShiftGroupFormModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <form id="sg-form" onsubmit="saveShiftGroupForm(event)">
+          <input type="hidden" id="sg-id" />
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr; gap:12px">
+            <div class="fg">
+              <label class="fl">Group Code *</label>
+              <input class="fi" id="sg-code" placeholder="OPS_A" required maxlength="20" style="text-transform:uppercase" />
+            </div>
+            <div class="fg">
+              <label class="fl">Color Tag</label>
+              <div style="display:flex; align-items:center; gap:8px">
+                <input type="color" id="sg-color" value="#4f8ef7" style="height:32px; width:44px; padding:2px; background:transparent; border:1px solid var(--br); border-radius:4px; cursor:pointer" />
+                <span id="sg-color-preview" style="font-size:11px; font-family:var(--mo); color:var(--mu)">#4f8ef7</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="fg" style="margin-top:10px">
+            <label class="fl">Group Name *</label>
+            <input class="fi" id="sg-name" placeholder="24x7 Operations Cohort Alpha" required maxlength="100" />
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr; gap:10px; margin-top:10px">
+            <div class="fg">
+              <label class="fl">Rotation Frequency *</label>
+              <select class="fs" id="sg-rotation-type" required>
+                <option value="FIXED">Fixed (No Rotation)</option>
+                <option value="WEEKLY">Weekly Rotation (Rotates every 7 days)</option>
+                <option value="BI_WEEKLY">Bi-Weekly Rotation (Rotates every 14 days)</option>
+                <option value="MONTHLY">Monthly Rotation (Rotates each month)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="fg" style="margin-top:10px">
+            <label class="fl">Shift Rotation Sequence (In Order) *</label>
+            <div id="sg-sequence-selector" style="display:flex; flex-wrap:wrap; gap:8px; background:var(--s2); padding:10px; border-radius:6px; border:1px solid var(--br)">
+              <!-- Dynamically populated shift checkboxes/chips -->
+            </div>
+          </div>
+
+          <div class="fg" style="margin-top:10px">
+            <label class="fl">Description</label>
+            <input class="fi" id="sg-desc" placeholder="Operational coverage schedule notes" maxlength="255" />
+          </div>
+
+          <div class="ms-toggle-card" style="margin-top:12px; padding:8px 12px">
+            <div>
+              <div style="font-weight:600; font-size:12px; color:var(--tx)">Active Status</div>
+              <div style="font-size:10px; color:var(--mu)">Active groups appear in Roster and assignment selectors.</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="sg-active" checked />
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px">
+            <button type="button" class="btn bsm" onclick="closeShiftGroupFormModal()">Cancel</button>
+            <button type="submit" class="btn btnp bsm">💾 Save Group</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SHIFT GROUP MEMBERS MANAGER MODAL ── -->
+  <div id="shift-group-members-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:760px; width:94%; max-height:88vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br)">
+      <div class="modal-hdr" style="padding:14px 20px; background:linear-gradient(135deg, #161b27, #1e2438); display:flex; justify-content:space-between; align-items:center">
+        <div>
+          <span class="modal-title" id="sgm-title" style="font-size:14px; font-weight:700">Manage Group Members</span>
+          <div id="sgm-subtitle" style="font-size:11px; color:var(--mu)">Assign employees to this shift group</div>
+        </div>
+        <button class="modal-close-x" onclick="closeShiftGroupMembersModal()">✕</button>
+      </div>
+
+      <!-- Filter Controls -->
+      <div style="padding:10px 18px; background:var(--s2); border-bottom:1px solid var(--br); display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+        <input type="text" id="sgm-search" class="fi" placeholder="🔍 Search employee name or ID..." style="flex:1; min-width:180px; padding:6px 10px; font-size:11.5px" oninput="filterGroupMembersList()" />
+        <select id="sgm-dept-filter" class="fs" style="padding:6px 10px; font-size:11.5px" onchange="filterGroupMembersList()">
+          <option value="">All Departments</option>
+        </select>
+        <button type="button" class="btn bsm" onclick="selectAllGroupMembers(true)">Select All</button>
+        <button type="button" class="btn bsm" onclick="selectAllGroupMembers(false)">Clear</button>
+      </div>
+
+      <div class="modal-body" style="padding:14px 18px; overflow-y:auto; flex:1">
+        <table class="gt" style="width:100%; border-collapse:collapse; font-size:11.5px">
+          <thead>
+            <tr style="border-bottom:1px solid var(--br); color:var(--mu)">
+              <th style="padding:6px; width:36px; text-align:center">Select</th>
+              <th style="padding:6px; text-align:left">Emp ID</th>
+              <th style="padding:6px; text-align:left">Employee Name</th>
+              <th style="padding:6px; text-align:left">Department</th>
+              <th style="padding:6px; text-align:left">Role</th>
+            </tr>
+          </thead>
+          <tbody id="sgm-tbody">
+            <!-- Dynamically populated employee checklist -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-ftr" style="padding:12px 18px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center">
+        <span id="sgm-selected-count" style="font-size:11px; font-weight:600; color:var(--ac)">0 employees selected</span>
+        <div style="display:flex; gap:8px">
+          <button type="button" class="btn bsm" onclick="closeShiftGroupMembersModal()">Cancel</button>
+          <button type="button" class="btn btnp bsm" onclick="saveShiftGroupMembers()">💾 Save Member Assignments</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SHIFT ROSTER MASTER MATRIX MODAL ── -->
+  <div id="shift-roster-modal" class="modal-overlay" style="display:none; z-index:9998;">
+    <div class="modal-box animate-zoom" style="max-width:98vw; width:98%; max-height:94vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1a2234); display:flex; justify-content:space-between; align-items:center">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:22px">📋</span>
+          <div>
+            <span class="modal-title" style="font-size:15px; font-weight:700; color:var(--tx)">Shift Roster Matrix</span>
+            <div style="font-size:11px; color:var(--mu)">Interactive employee shift assignment schedule & monthly rotation grid</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px">
+          <button type="button" class="btn bsm" style="border-color:var(--ac); color:var(--ac)" onclick="openShiftRosterAutoModal()">⚡ Auto-Generate Roster</button>
+          <button type="button" class="btn btnp bsm" onclick="openShiftRosterAssignModal()">➕ Bulk Assign Shift</button>
+          <button class="modal-close-x" onclick="closeShiftRosterModal()">✕</button>
+        </div>
+      </div>
+
+      <!-- Filters & Month Selection Toolbar -->
+      <div style="padding:8px 16px; background:var(--s2); border-bottom:1px solid var(--br); display:flex; gap:10px; align-items:center; flex-wrap:wrap; font-size:11.5px">
+        <div style="display:flex; align-items:center; gap:6px">
+          <label style="font-weight:600; color:var(--mu)">Month:</label>
+          <input type="month" id="roster-month-picker" class="fi" style="padding:4px 8px; font-size:11.5px" onchange="loadShiftRosterMatrix()" />
+        </div>
+        <div style="display:flex; align-items:center; gap:6px">
+          <label style="font-weight:600; color:var(--mu)">Department:</label>
+          <select id="roster-dept-filter" class="fs" style="padding:4px 8px; font-size:11.5px" onchange="loadShiftRosterMatrix()">
+            <option value="">All Departments</option>
+          </select>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px">
+          <label style="font-weight:600; color:var(--mu)">Shift Group:</label>
+          <select id="roster-group-filter" class="fs" style="padding:4px 8px; font-size:11.5px" onchange="loadShiftRosterMatrix()">
+            <option value="">All Groups</option>
+          </select>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px; flex:1; min-width:180px">
+          <input type="text" id="roster-search-input" class="fi" placeholder="🔍 Search employee..." style="padding:4px 8px; font-size:11.5px; width:100%" oninput="debounceRosterSearch()" />
+        </div>
+        <button class="btn bsm" onclick="loadShiftRosterMatrix()">🔄 Refresh</button>
+      </div>
+
+      <!-- Roster Matrix Table View -->
+      <div class="modal-body" style="padding:0; overflow:auto; flex:1; background:var(--bg)">
+        <table id="roster-matrix-table" class="gt" style="width:100%; border-collapse:separate; border-spacing:0; font-size:11px">
+          <thead id="roster-table-thead" style="position:sticky; top:0; z-index:10; background:var(--s2)">
+            <!-- Dynamically populated header days -->
+          </thead>
+          <tbody id="roster-table-tbody">
+            <!-- Dynamically populated employee matrix rows -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-ftr" style="padding:8px 16px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center">
+        <div style="display:flex; gap:14px; font-size:10.5px; align-items:center">
+          <span style="color:var(--mu)">Legend:</span>
+          <span><span style="display:inline-block; width:10px; height:10px; background:#00d4aa; border-radius:2px; vertical-align:middle"></span> GEN (General)</span>
+          <span><span style="display:inline-block; width:10px; height:10px; background:#4f8ef7; border-radius:2px; vertical-align:middle"></span> MOR (Morning)</span>
+          <span><span style="display:inline-block; width:10px; height:10px; background:#f59e0b; border-radius:2px; vertical-align:middle"></span> EVE (Evening)</span>
+          <span><span style="display:inline-block; width:10px; height:10px; background:#a855f7; border-radius:2px; vertical-align:middle"></span> NIT (Night)</span>
+          <span><span style="display:inline-block; width:10px; height:10px; background:#64748b; border-radius:2px; vertical-align:middle"></span> WO (Weekly Off)</span>
+          <span><span style="display:inline-block; width:10px; height:10px; background:#ef4444; border-radius:2px; vertical-align:middle"></span> HOL (Holiday)</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px">
+          <span id="roster-footer-stats" style="font-size:11px; color:var(--mu)">Loading roster...</span>
+          <button type="button" class="btn bsm" onclick="closeShiftRosterModal()">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SHIFT ROSTER AUTO-GENERATE MODAL ── -->
+  <div id="shift-roster-auto-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:440px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br)">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438)">
+        <span class="modal-title" style="font-size:13.5px; font-weight:700">Auto-Generate Monthly Roster</span>
+        <button class="modal-close-x" onclick="closeShiftRosterAutoModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <form id="sra-form" onsubmit="executeAutoGenerateRoster(event)">
+          <div class="fg" style="margin-bottom:12px">
+            <label class="fl">Target Month</label>
+            <input type="month" id="sra-month" class="fi" required />
+          </div>
+          <div class="fg" style="margin-bottom:12px">
+            <label class="fl">Department Filter (Optional)</label>
+            <select id="sra-dept" class="fs">
+              <option value="">All Departments</option>
+            </select>
+          </div>
+          <div class="fg" style="margin-bottom:12px">
+            <label class="fl">Shift Group Filter (Optional)</label>
+            <select id="sra-group" class="fs">
+              <option value="">All Groups</option>
+            </select>
+          </div>
+          <div class="ms-toggle-card" style="margin-top:12px; padding:8px 12px">
+            <div>
+              <div style="font-weight:600; font-size:12px; color:var(--tx)">Overwrite Existing Schedules</div>
+              <div style="font-size:10px; color:var(--mu)">Recalculate and replace any manual entries for the target month.</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="sra-overwrite" checked />
+              <span class="slider round"></span>
+            </label>
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px">
+            <button type="button" class="btn bsm" onclick="closeShiftRosterAutoModal()">Cancel</button>
+            <button type="submit" class="btn btnp bsm">⚡ Generate Schedule</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SHIFT ROSTER BULK ASSIGN MODAL ── -->
+  <div id="shift-roster-assign-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:480px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br)">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438)">
+        <span class="modal-title" style="font-size:13.5px; font-weight:700">Bulk Assign Shift</span>
+        <button class="modal-close-x" onclick="closeShiftRosterAssignModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <form id="sras-form" onsubmit="executeBulkAssignRoster(event)">
+          <div class="fg" style="margin-bottom:10px">
+            <label class="fl">Target Employees *</label>
+            <select id="sras-emp-select" class="fs" multiple style="height:100px; padding:4px" required>
+              <!-- Populated dynamically -->
+            </select>
+            <div style="font-size:10px; color:var(--mu); margin-top:2px">Hold Ctrl / Cmd to select multiple employees</div>
+          </div>
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Start Date *</label>
+              <input type="date" id="sras-start-date" class="fi" required />
+            </div>
+            <div class="fg">
+              <label class="fl">End Date *</label>
+              <input type="date" id="sras-end-date" class="fi" required />
+            </div>
+          </div>
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Day Type *</label>
+              <select id="sras-day-type" class="fs" onchange="onRosterBulkDayTypeChange()">
+                <option value="WORK">Workday (Assign Shift)</option>
+                <option value="WEEKLY_OFF">Weekly Off</option>
+                <option value="HOLIDAY">Holiday</option>
+                <option value="LEAVE">Leave</option>
+                <option value="OUTDOOR">Outdoor Duty</option>
+              </select>
+            </div>
+            <div class="fg" id="sras-shift-wrap">
+              <label class="fl">Target Shift *</label>
+              <select id="sras-shift-id" class="fs">
+                <!-- Dynamically populated -->
+              </select>
+            </div>
+          </div>
+          <div class="fg" style="margin-bottom:14px">
+            <label class="fl">Note / Assignment Reason</label>
+            <input type="text" id="sras-note" class="fi" placeholder="e.g. Critical Release Night Coverage" maxlength="255" />
+          </div>
+          <div class="modal-ftr" style="padding:10px 0 0 0; background:transparent; border-top:1px solid var(--br); display:flex; justify-content:flex-end; gap:8px">
+            <button type="button" class="btn bsm" onclick="closeShiftRosterAssignModal()">Cancel</button>
+            <button type="submit" class="btn btnp bsm">💾 Apply Shift Assignment</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 🏢 DEPARTMENTS MASTER MODAL ── -->
+  <div id="departments-modal" class="modal-overlay" style="display:none; z-index:9998;">
+    <div class="modal-box animate-zoom" style="max-width:920px; width:96%; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.85); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:14px 20px; background:linear-gradient(135deg, #161b27, #1a2234); display:flex; justify-content:space-between; align-items:center">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:22px">🏢</span>
+          <div>
+            <span class="modal-title" style="font-size:15px; font-weight:700; color:var(--tx)">Departments Master</span>
+            <div style="font-size:11px; color:var(--mu)">Configure organizational units, divisions, heads & employee headcount</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px">
+          <button type="button" class="btn btnp bsm" onclick="openAddDepartmentModal()">+ Add Department</button>
+          <button class="modal-close-x" onclick="closeDepartmentsModal()">✕</button>
+        </div>
+      </div>
+
+      <div class="modal-body" style="padding:16px 20px; overflow-y:auto; flex:1">
+        <table class="gt" style="width:100%; border-collapse:collapse; font-size:11.5px">
+          <thead>
+            <tr style="border-bottom:1px solid var(--br); color:var(--mu); background:var(--s2)">
+              <th style="padding:8px 10px; text-align:left">Dept Code</th>
+              <th style="padding:8px 10px; text-align:left">Department Name</th>
+              <th style="padding:8px 10px; text-align:left">Division</th>
+              <th style="padding:8px 10px; text-align:left">Department Head</th>
+              <th style="padding:8px 10px; text-align:left">Location</th>
+              <th style="padding:8px 10px; text-align:center">Employees</th>
+              <th style="padding:8px 10px; text-align:right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="departments-tbody">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-ftr" style="padding:10px 20px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center">
+        <span id="departments-count-label" style="font-size:11px; color:var(--mu)">Loading departments...</span>
+        <button type="button" class="btn bsm" onclick="closeDepartmentsModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ADD / EDIT DEPARTMENT FORM MODAL ── -->
+  <div id="dept-form-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:500px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438)">
+        <span class="modal-title" id="dept-form-title" style="font-size:14px; font-weight:700">Add Department</span>
+        <button class="modal-close-x" onclick="closeDeptFormModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <form id="dept-form" onsubmit="saveDepartmentForm(event)">
+          <input type="hidden" id="df-id" />
+          <div class="ms-grid" style="grid-template-columns: 1fr 2fr; gap:10px">
+            <div class="fg">
+              <label class="fl">Dept Code *</label>
+              <input class="fi" id="df-code" placeholder="ENG" required maxlength="20" style="text-transform:uppercase" />
+            </div>
+            <div class="fg">
+              <label class="fl">Department Name *</label>
+              <input class="fi" id="df-name" placeholder="Engineering & Product" required maxlength="100" />
+            </div>
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px">
+            <div class="fg">
+              <label class="fl">Division</label>
+              <input class="fi" id="df-division" placeholder="Technology" value="Technology" maxlength="50" />
+            </div>
+            <div class="fg">
+              <label class="fl">Location</label>
+              <input class="fi" id="df-location" placeholder="Bangalore HQ" value="Bangalore HQ" maxlength="100" />
+            </div>
+          </div>
+
+          <div class="fg" style="margin-top:10px">
+            <label class="fl">Department Head / Manager</label>
+            <select class="fs" id="df-head-emp">
+              <option value="">None / Unassigned</option>
+            </select>
+          </div>
+
+          <div class="ms-toggle-card" style="margin-top:12px; padding:8px 12px">
+            <div>
+              <div style="font-weight:600; font-size:12px; color:var(--tx)">Active Status</div>
+              <div style="font-size:10px; color:var(--mu)">Active departments appear in employee filters & registration.</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="df-active" checked />
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px">
+            <button type="button" class="btn bsm" onclick="closeDeptFormModal()">Cancel</button>
+            <button type="submit" class="btn btnp bsm">💾 Save Department</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 🔄 DEPARTMENTS SHIFTS MODAL ── -->
+  <div id="dept-shifts-modal" class="modal-overlay" style="display:none; z-index:9998;">
+    <div class="modal-box animate-zoom" style="max-width:960px; width:96%; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.85); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:14px 20px; background:linear-gradient(135deg, #161b27, #1a2234); display:flex; justify-content:space-between; align-items:center">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:22px">🔄</span>
+          <div>
+            <span class="modal-title" style="font-size:15px; font-weight:700; color:var(--tx)">Department Shifts Configuration</span>
+            <div style="font-size:11px; color:var(--mu)">Map default shift assignments and allowed shift pools for each department</div>
+          </div>
+        </div>
+        <button class="modal-close-x" onclick="closeDeptShiftsModal()">✕</button>
+      </div>
+
+      <div class="modal-body" style="padding:16px 20px; overflow-y:auto; flex:1">
+        <table class="gt" style="width:100%; border-collapse:collapse; font-size:11.5px">
+          <thead>
+            <tr style="border-bottom:1px solid var(--br); color:var(--mu); background:var(--s2)">
+              <th style="padding:8px 10px; text-align:left">Department</th>
+              <th style="padding:8px 10px; text-align:left">Default Shift Policy</th>
+              <th style="padding:8px 10px; text-align:left">Allowed Shifts Pool</th>
+              <th style="padding:8px 10px; text-align:center">Auto-Apply</th>
+              <th style="padding:8px 10px; text-align:right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="dept-shifts-tbody">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-ftr" style="padding:10px 20px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center">
+        <span style="font-size:11px; color:var(--mu)">💡 Default shift policies automatically populate employee schedules when no rotational group is set.</span>
+        <button type="button" class="btn bsm" onclick="closeDeptShiftsModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 🏖️ PUBLIC HOLIDAYS MODAL (KARNATAKA GAZETTE) ── -->
+  <div id="public-holidays-modal" class="modal-overlay" style="display:none; z-index:9998;">
+    <div class="modal-box animate-zoom" style="max-width:980px; width:96%; max-height:92vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.85); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:14px 20px; background:linear-gradient(135deg, #161b27, #1a2234); display:flex; justify-content:space-between; align-items:center">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:22px">🏖️</span>
+          <div>
+            <span class="modal-title" style="font-size:15px; font-weight:700; color:var(--tx)">Public Holidays Master (Karnataka Gazette Reference)</span>
+            <div style="font-size:11px; color:var(--mu)">Official Karnataka State Gazetted holidays, national holidays & company day-offs</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px">
+          <button type="button" class="btn bsm" style="border-color:#f59e0b; color:#f59e0b" onclick="importKarnatakaGazetteHolidays()">⚡ Import Karnataka Gazette</button>
+          <button type="button" class="btn bsm" style="border-color:var(--ac); color:var(--ac)" onclick="syncHolidaysWithShiftCalendar()">🔄 Sync to Shift Calendar</button>
+          <button type="button" class="btn btnp bsm" onclick="openAddHolidayModal()">+ Add Holiday</button>
+          <button class="modal-close-x" onclick="closePublicHolidaysModal()">✕</button>
+        </div>
+      </div>
+
+      <!-- Filters Toolbar -->
+      <div style="padding:10px 18px; background:var(--s2); border-bottom:1px solid var(--br); display:flex; gap:12px; align-items:center; flex-wrap:wrap">
+        <div style="display:flex; align-items:center; gap:6px">
+          <label style="font-weight:600; font-size:11.5px; color:var(--mu)">Year:</label>
+          <select id="ph-year-select" class="fs" style="padding:4px 8px; font-size:11.5px; font-weight:600" onchange="loadPublicHolidays()">
+            <option value="2025">2025</option>
+            <option value="2026" selected>2026</option>
+            <option value="2027">2027</option>
+            <option value="2028">2028</option>
+          </select>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px">
+          <label style="font-weight:600; font-size:11.5px; color:var(--mu)">Category:</label>
+          <select id="ph-type-filter" class="fs" style="padding:4px 8px; font-size:11.5px" onchange="filterHolidaysTable()">
+            <option value="">All Categories</option>
+            <option value="MANDATORY">Mandatory / Gazetted</option>
+            <option value="RESTRICTED">Restricted / Optional</option>
+            <option value="COMPANY_DECLARED">Company Declared</option>
+          </select>
+        </div>
+        <div id="ph-summary-chips" style="display:flex; gap:10px; margin-left:auto; font-size:11.5px">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+
+      <div class="modal-body" style="padding:16px 20px; overflow-y:auto; flex:1">
+        <table class="gt" style="width:100%; border-collapse:collapse; font-size:11.5px">
+          <thead>
+            <tr style="border-bottom:1px solid var(--br); color:var(--mu); background:var(--s2)">
+              <th style="padding:8px 10px; text-align:left">Date</th>
+              <th style="padding:8px 10px; text-align:left">Day</th>
+              <th style="padding:8px 10px; text-align:left">Holiday Title</th>
+              <th style="padding:8px 10px; text-align:center">Category</th>
+              <th style="padding:8px 10px; text-align:left">State / Region</th>
+              <th style="padding:8px 10px; text-align:left">Description</th>
+              <th style="padding:8px 10px; text-align:right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="public-holidays-tbody">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-ftr" style="padding:10px 20px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center">
+        <span id="ph-count-label" style="font-size:11px; color:var(--mu)">Loading public holidays...</span>
+        <button type="button" class="btn bsm" onclick="closePublicHolidaysModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ADD / EDIT PUBLIC HOLIDAY FORM MODAL ── -->
+  <div id="holiday-form-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:480px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438)">
+        <span class="modal-title" id="hf-form-title" style="font-size:14px; font-weight:700">Add Public Holiday</span>
+        <button class="modal-close-x" onclick="closeHolidayFormModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <form id="hf-form" onsubmit="saveHolidayForm(event)">
+          <input type="hidden" id="hf-id" />
+          <div class="fg" style="margin-bottom:10px">
+            <label class="fl">Holiday Title *</label>
+            <input class="fi" id="hf-title" placeholder="e.g. Ugadi Festival, Kannada Rajyotsava" required maxlength="120" />
+          </div>
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Date *</label>
+              <input type="date" class="fi" id="hf-date" required />
+            </div>
+            <div class="fg">
+              <label class="fl">Holiday Category</label>
+              <select class="fs" id="hf-type">
+                <option value="MANDATORY">Mandatory / Gazetted</option>
+                <option value="RESTRICTED">Restricted / Optional</option>
+                <option value="COMPANY_DECLARED">Company Declared</option>
+              </select>
+            </div>
+          </div>
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Applicable State</label>
+              <input class="fi" id="hf-state" value="Karnataka" maxlength="50" />
+            </div>
+            <div class="fg">
+              <label class="fl">Applicable Location</label>
+              <input class="fi" id="hf-location" value="All Locations" maxlength="100" />
+            </div>
+          </div>
+          <div class="fg" style="margin-bottom:12px">
+            <label class="fl">Description / Gazette Note</label>
+            <input class="fi" id="hf-desc" placeholder="e.g. Official Gazetted Holiday under N.I. Act" maxlength="255" />
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:8px">
+            <button type="button" class="btn bsm" onclick="closeHolidayFormModal()">Cancel</button>
+            <button type="submit" class="btn btnp bsm">💾 Save Holiday</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 👔 EMPLOYMENT TYPES MASTER MODAL ── -->
+  <div id="employment-types-modal" class="modal-overlay" style="display:none; z-index:9998;">
+    <div class="modal-box animate-zoom" style="max-width:920px; width:96%; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.85); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:14px 20px; background:linear-gradient(135deg, #161b27, #1a2234); display:flex; justify-content:space-between; align-items:center">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:22px">👔</span>
+          <div>
+            <span class="modal-title" style="font-size:15px; font-weight:700; color:var(--tx)">Employment Types Master</span>
+            <div style="font-size:11px; color:var(--mu)">Configure workforce categories, probation & notice period rules, and statutory benefits</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px">
+          <button type="button" class="btn btnp bsm" onclick="openAddEmploymentTypeModal()">+ Add Employment Type</button>
+          <button class="modal-close-x" onclick="closeEmploymentTypesModal()">✕</button>
+        </div>
+      </div>
+
+      <div class="modal-body" style="padding:16px 20px; overflow-y:auto; flex:1">
+        <table class="gt" style="width:100%; border-collapse:collapse; font-size:11.5px">
+          <thead>
+            <tr style="border-bottom:1px solid var(--br); color:var(--mu); background:var(--s2)">
+              <th style="padding:8px 10px; text-align:left">Type Code</th>
+              <th style="padding:8px 10px; text-align:left">Title / Classification</th>
+              <th style="padding:8px 10px; text-align:left">Description</th>
+              <th style="padding:8px 10px; text-align:center">Probation</th>
+              <th style="padding:8px 10px; text-align:center">Notice Period</th>
+              <th style="padding:8px 10px; text-align:center">PF / ESI</th>
+              <th style="padding:8px 10px; text-align:center">Headcount</th>
+              <th style="padding:8px 10px; text-align:right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="employment-types-tbody">
+            <!-- Populated dynamically -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-ftr" style="padding:10px 20px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center">
+        <span id="et-count-label" style="font-size:11px; color:var(--mu)">Loading employment types...</span>
+        <button type="button" class="btn bsm" onclick="closeEmploymentTypesModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ADD / EDIT EMPLOYMENT TYPE FORM MODAL ── -->
+  <div id="employment-type-form-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:480px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438)">
+        <span class="modal-title" id="et-form-title" style="font-size:14px; font-weight:700">Add Employment Type</span>
+        <button class="modal-close-x" onclick="closeEmploymentTypeFormModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <form id="et-form" onsubmit="saveEmploymentTypeForm(event)">
+          <input type="hidden" id="et-id" />
+          <div class="ms-grid" style="grid-template-columns: 1fr 2fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Type Code *</label>
+              <input class="fi" id="et-code" placeholder="PERM" required maxlength="20" style="text-transform:uppercase" />
+            </div>
+            <div class="fg">
+              <label class="fl">Title / Classification *</label>
+              <input class="fi" id="et-title" placeholder="Permanent / Full-Time" required maxlength="100" />
+            </div>
+          </div>
+
+          <div class="fg" style="margin-bottom:10px">
+            <label class="fl">Description</label>
+            <input class="fi" id="et-desc" placeholder="Standard regular employee terms" maxlength="255" />
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px">
+            <div class="fg">
+              <label class="fl">Probation (Days)</label>
+              <input type="number" class="fi" id="et-probation" min="0" max="365" value="90" required />
+            </div>
+            <div class="fg">
+              <label class="fl">Notice Period (Days)</label>
+              <input type="number" class="fi" id="et-notice" min="0" max="180" value="30" required />
+            </div>
+          </div>
+
+          <div class="ms-toggle-card" style="margin-bottom:8px; padding:8px 12px">
+            <div>
+              <div style="font-weight:600; font-size:12px; color:var(--tx)">PF / ESI Statutory Eligible</div>
+              <div style="font-size:10px; color:var(--mu)">Employee receives statutory retirement & insurance benefits.</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="et-pf-esi" checked />
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div class="ms-toggle-card" style="margin-bottom:14px; padding:8px 12px">
+            <div>
+              <div style="font-weight:600; font-size:12px; color:var(--tx)">Active Status</div>
+              <div style="font-size:10px; color:var(--mu)">Active types appear in employee registration and profile forms.</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="et-active" checked />
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:8px">
+            <button type="button" class="btn bsm" onclick="closeEmploymentTypeFormModal()">Cancel</button>
+            <button type="submit" class="btn btnp bsm">💾 Save Employment Type</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 👥 EMPLOYEE GROUPS MASTER MODAL (COHORTS & TEAMS) ── -->
+  <div id="employee-groups-modal" class="modal-overlay" style="display:none; z-index:9998;">
+    <div class="modal-box animate-zoom" style="max-width:960px; width:96%; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.85); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:14px 20px; background:linear-gradient(135deg, #161b27, #1a2234); display:flex; justify-content:space-between; align-items:center">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:22px">👥</span>
+          <div>
+            <span class="modal-title" style="font-size:15px; font-weight:700; color:var(--tx)">Employee Groups Master (Cohorts & Teams)</span>
+            <div style="font-size:11px; color:var(--mu)">Create cross-functional employee cohorts, taskforces, and operational groups</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px">
+          <button type="button" class="btn btnp bsm" onclick="openAddEmployeeGroupModal()">+ Add Employee Group</button>
+          <button class="modal-close-x" onclick="closeEmployeeGroupsModal()">✕</button>
+        </div>
+      </div>
+
+      <div class="modal-body" style="padding:16px 20px; overflow-y:auto; flex:1">
+        <div id="employee-groups-cards" class="ms-grid" style="grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:14px">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <div class="modal-ftr" style="padding:10px 20px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center">
+        <span id="egrp-count-label" style="font-size:11px; color:var(--mu)">Loading employee groups...</span>
+        <button type="button" class="btn bsm" onclick="closeEmployeeGroupsModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ADD / EDIT EMPLOYEE GROUP FORM MODAL ── -->
+  <div id="employee-group-form-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:480px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438)">
+        <span class="modal-title" id="egrp-form-title" style="font-size:14px; font-weight:700">Add Employee Group</span>
+        <button class="modal-close-x" onclick="closeEmployeeGroupFormModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <form id="egrp-form" onsubmit="saveEmployeeGroupForm(event)">
+          <input type="hidden" id="egrp-id" />
+          <div class="ms-grid" style="grid-template-columns: 1fr 2fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Group Code *</label>
+              <input class="fi" id="egrp-code" placeholder="EXEC" required maxlength="20" style="text-transform:uppercase" />
+            </div>
+            <div class="fg">
+              <label class="fl">Group Name *</label>
+              <input class="fi" id="egrp-name" placeholder="Executive Leadership Council" required maxlength="100" />
+            </div>
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Category</label>
+              <select class="fs" id="egrp-category">
+                <option value="OPERATIONAL">Operational</option>
+                <option value="GOVERNANCE">Governance</option>
+                <option value="PROJECT">Project / Squad</option>
+                <option value="COMPLIANCE">Compliance / Safety</option>
+                <option value="SOCIAL">Social / Culture</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="fl">Badge Theme Color</label>
+              <input type="color" class="fi" id="egrp-color" value="#4f8ef7" style="height:36px; padding:2px" />
+            </div>
+          </div>
+
+          <div class="fg" style="margin-bottom:10px">
+            <label class="fl">Group Leader / Anchor</label>
+            <select class="fs" id="egrp-leader-emp">
+              <option value="">None / Unassigned</option>
+            </select>
+          </div>
+
+          <div class="fg" style="margin-bottom:12px">
+            <label class="fl">Description / Charter</label>
+            <input class="fi" id="egrp-desc" placeholder="Mission and operational scope of this group" maxlength="255" />
+          </div>
+
+          <div class="ms-toggle-card" style="margin-bottom:14px; padding:8px 12px">
+            <div>
+              <div style="font-weight:600; font-size:12px; color:var(--tx)">Active Status</div>
+              <div style="font-size:10px; color:var(--mu)">Active groups appear in reports, filters, and broadcasts.</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="egrp-active" checked />
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:8px">
+            <button type="button" class="btn bsm" onclick="closeEmployeeGroupFormModal()">Cancel</button>
+            <button type="submit" class="btn btnp bsm">💾 Save Group</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ASSIGN MEMBERS TO EMPLOYEE GROUP MODAL ── -->
+  <div id="employee-group-members-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:680px; width:94%; max-height:85vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438); display:flex; justify-content:space-between; align-items:center">
+        <span class="modal-title" id="egrpm-title" style="font-size:14px; font-weight:700">Assign Members to Group</span>
+        <button class="modal-close-x" onclick="closeEmployeeGroupMembersModal()">✕</button>
+      </div>
+
+      <div style="padding:10px 16px; background:var(--s2); border-bottom:1px solid var(--br); display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+        <input type="text" id="egrpm-search" class="fi" placeholder="🔍 Search employee by name or ID..." style="flex:1; min-width:180px; padding:6px 10px; font-size:12px" oninput="filterEmployeeCohortMembersList()" />
+        <select id="egrpm-dept-filter" class="fs" style="padding:6px 8px; font-size:12px" onchange="filterEmployeeCohortMembersList()">
+          <option value="">All Departments</option>
+        </select>
+        <button type="button" class="btn bsm" onclick="selectAllEmployeeCohortMembers(true)">Select All</button>
+        <button type="button" class="btn bsm" onclick="selectAllEmployeeCohortMembers(false)">Clear</button>
+      </div>
+
+      <div class="modal-body" style="padding:12px 16px; overflow-y:auto; flex:1">
+        <table class="gt" style="width:100%; border-collapse:collapse; font-size:11.5px">
+          <thead>
+            <tr style="border-bottom:1px solid var(--br); color:var(--mu); background:var(--s1)">
+              <th style="padding:6px 8px; width:36px; text-align:center">✓</th>
+              <th style="padding:6px 8px; text-align:left">Employee</th>
+              <th style="padding:6px 8px; text-align:left">Department</th>
+              <th style="padding:6px 8px; text-align:left">Designation / Role</th>
+            </tr>
+          </thead>
+          <tbody id="egrpm-members-tbody">
+            <!-- Populated dynamically -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-ftr" style="padding:10px 16px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center">
+        <span id="egrpm-selected-count" style="font-size:11px; color:var(--mu)">0 employees selected</span>
+        <div style="display:flex; gap:8px">
+          <button type="button" class="btn bsm" onclick="closeEmployeeGroupMembersModal()">Cancel</button>
+          <button type="button" class="btn btnp bsm" onclick="saveEmployeeCohortGroupMembers()">💾 Save Group Members</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 📊 1. ATTENDANCE LOG MODAL & AUDIT LEDGER ── -->
+  <div id="attendance-log-modal" class="modal-overlay" style="display:none; z-index:9998;">
+    <div class="modal-box animate-zoom" style="max-width:1100px; width:96%; max-height:92vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.85); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:14px 20px; background:linear-gradient(135deg, #161b27, #1a2234); display:flex; justify-content:space-between; align-items:center">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:22px">📊</span>
+          <div>
+            <span class="modal-title" style="font-size:15px; font-weight:700; color:var(--tx)">Attendance Log & Audit Ledger</span>
+            <div style="font-size:11px; color:var(--mu)">Real-time punch verification ledger, biometric time logs, and manual regularization</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px">
+          <button type="button" class="btn btnp bsm" onclick="openRegularizeAttendanceModal()">+ Regularize Punch</button>
+          <button type="button" class="btn bsm" onclick="exportAttendanceLogCsv()">📥 Export CSV</button>
+          <button class="modal-close-x" onclick="closeAttendanceLogModal()">✕</button>
+        </div>
+      </div>
+
+      <!-- KPI Summary Cards -->
+      <div style="padding:12px 20px 6px 20px; background:var(--s1); border-bottom:1px solid var(--br); display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px">
+        <div style="background:var(--s2); border:1px solid var(--br); border-radius:6px; padding:10px; display:flex; flex-direction:column">
+          <span style="font-size:10.5px; color:var(--mu); font-weight:600; text-transform:uppercase">Total Punches Today</span>
+          <span id="attlog-stat-total" style="font-size:18px; font-weight:700; color:var(--tx); margin-top:2px">0</span>
+        </div>
+        <div style="background:var(--s2); border:1px solid var(--br); border-radius:6px; padding:10px; display:flex; flex-direction:column">
+          <span style="font-size:10.5px; color:var(--ok); font-weight:600; text-transform:uppercase">On-Time Punches</span>
+          <span id="attlog-stat-ontime" style="font-size:18px; font-weight:700; color:var(--ok); margin-top:2px">0</span>
+        </div>
+        <div style="background:var(--s2); border:1px solid var(--br); border-radius:6px; padding:10px; display:flex; flex-direction:column">
+          <span style="font-size:10.5px; color:var(--er); font-weight:600; text-transform:uppercase">Late Punches</span>
+          <span id="attlog-stat-late" style="font-size:18px; font-weight:700; color:var(--er); margin-top:2px">0</span>
+        </div>
+        <div style="background:var(--s2); border:1px solid var(--br); border-radius:6px; padding:10px; display:flex; flex-direction:column">
+          <span style="font-size:10.5px; color:var(--ac); font-weight:600; text-transform:uppercase">Unique Staff Present</span>
+          <span id="attlog-stat-unique" style="font-size:18px; font-weight:700; color:var(--ac); margin-top:2px">0</span>
+        </div>
+        <div style="background:var(--s2); border:1px solid var(--br); border-radius:6px; padding:10px; display:flex; flex-direction:column">
+          <span style="font-size:10.5px; color:var(--wn); font-weight:600; text-transform:uppercase">On-Time Compliance</span>
+          <span id="attlog-stat-rate" style="font-size:18px; font-weight:700; color:var(--wn); margin-top:2px">100%</span>
+        </div>
+      </div>
+
+      <!-- Filter Bar -->
+      <div style="padding:10px 20px; background:var(--s2); border-bottom:1px solid var(--br); display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+        <input type="text" id="attlog-search" class="fi" placeholder="🔍 Search employee name or ID..." style="flex:1; min-width:180px; padding:6px 10px; font-size:12px" oninput="loadAttendanceLogGrid(1)" />
+        <div style="display:flex; align-items:center; gap:6px">
+          <span style="font-size:11px; color:var(--mu)">From:</span>
+          <input type="date" id="attlog-start-date" class="fi" style="padding:4px 8px; font-size:11.5px" onchange="loadAttendanceLogGrid(1)" />
+          <span style="font-size:11px; color:var(--mu)">To:</span>
+          <input type="date" id="attlog-end-date" class="fi" style="padding:4px 8px; font-size:11.5px" onchange="loadAttendanceLogGrid(1)" />
+        </div>
+        <select id="attlog-dept-filter" class="fs" style="padding:6px 8px; font-size:12px" onchange="loadAttendanceLogGrid(1)">
+          <option value="">All Departments</option>
+        </select>
+        <select id="attlog-status-filter" class="fs" style="padding:6px 8px; font-size:12px" onchange="loadAttendanceLogGrid(1)">
+          <option value="">All Statuses</option>
+          <option value="Present">Present (On-Time)</option>
+          <option value="Late">Late</option>
+        </select>
+        <button type="button" class="btn bsm" onclick="resetAttendanceLogFilters()">Reset</button>
+        <button type="button" class="btn bsm" onclick="loadAttendanceLogGrid(1)">🔄 Refresh</button>
+      </div>
+
+      <!-- Table Body -->
+      <div class="modal-body" style="padding:0; overflow-y:auto; flex:1">
+        <table class="gt" style="width:100%; border-collapse:collapse; font-size:12px">
+          <thead>
+            <tr style="border-bottom:1px solid var(--br); color:var(--mu); background:var(--s1); position:sticky; top:0; z-index:2">
+              <th style="padding:8px 12px; text-align:left">Emp ID</th>
+              <th style="padding:8px 12px; text-align:left">Employee Name</th>
+              <th style="padding:8px 12px; text-align:left">Department & Role</th>
+              <th style="padding:8px 12px; text-align:left">Punch Timestamp</th>
+              <th style="padding:8px 12px; text-align:center">Status</th>
+              <th style="padding:8px 12px; text-align:left">Logged Via / Notes</th>
+              <th style="padding:8px 12px; text-align:center">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="attlog-tbody">
+            <!-- Populated dynamically -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-ftr" style="padding:10px 20px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center">
+        <span id="attlog-pagination-label" style="font-size:11px; color:var(--mu)">Showing 0 entries</span>
+        <div id="attlog-pagination-controls" style="display:flex; gap:6px; align-items:center">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── REGULARIZE ATTENDANCE MODAL ── -->
+  <div id="regularize-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:480px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438)">
+        <span class="modal-title" style="font-size:14px; font-weight:700">Attendance Regularization (HR / Admin)</span>
+        <button class="modal-close-x" onclick="closeRegularizeAttendanceModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <form id="regularize-form" onsubmit="saveRegularizeAttendance(event)">
+          <input type="hidden" id="reg-att-id" />
+          <div class="fg" style="margin-bottom:10px">
+            <label class="fl">Employee *</label>
+            <select class="fs" id="reg-emp-id" required>
+              <option value="">Select Employee...</option>
+            </select>
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1.5fr 1fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Punch Date & Time *</label>
+              <input type="datetime-local" class="fi" id="reg-timestamp" required />
+            </div>
+            <div class="fg">
+              <label class="fl">Attendance Status *</label>
+              <select class="fs" id="reg-status" required>
+                <option value="Present">Present (On-Time)</option>
+                <option value="Late">Late</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="fg" style="margin-bottom:14px">
+            <label class="fl">Regularization Reason / Approval Note *</label>
+            <textarea class="fi" id="reg-reason" placeholder="e.g., Biometric terminal network timeout; verified with manager" required rows="3" style="resize:vertical"></textarea>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:8px">
+            <button type="button" class="btn bsm" onclick="closeRegularizeAttendanceModal()">Cancel</button>
+            <button type="submit" class="btn btnp bsm">💾 Save & Regularize</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 📍 2. GEOFENCES MASTER MODAL ── -->
+  <div id="geofences-modal" class="modal-overlay" style="display:none; z-index:9998;">
+    <div class="modal-box animate-zoom" style="max-width:980px; width:96%; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.85); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:14px 20px; background:linear-gradient(135deg, #161b27, #1a2234); display:flex; justify-content:space-between; align-items:center">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:22px">📍</span>
+          <div>
+            <span class="modal-title" style="font-size:15px; font-weight:700; color:var(--tx)">Geofences Master (GPS Boundaries & Mobile Zones)</span>
+            <div style="font-size:11px; color:var(--mu)">Configure GPS coordinate perimeters, allowed radius, enforcement modes, and departmental rules</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px">
+          <button type="button" class="btn bsm" onclick="openTestCoordsModal()">📡 Test GPS Coordinates</button>
+          <button type="button" class="btn btnp bsm" onclick="openAddGeofenceModal()">+ Add Geofence</button>
+          <button class="modal-close-x" onclick="closeGeofencesModal()">✕</button>
+        </div>
+      </div>
+
+      <div class="modal-body" style="padding:16px 20px; overflow-y:auto; flex:1">
+        <div id="geofences-cards" class="ms-grid" style="grid-template-columns:repeat(auto-fill, minmax(290px, 1fr)); gap:14px">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <div class="modal-ftr" style="padding:10px 20px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center">
+        <span id="geofence-count-label" style="font-size:11px; color:var(--mu)">Loading geofences...</span>
+        <button type="button" class="btn bsm" onclick="closeGeofencesModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ADD / EDIT GEOFENCE FORM MODAL ── -->
+  <div id="geofence-form-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:540px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438)">
+        <span class="modal-title" id="geofence-form-title" style="font-size:14px; font-weight:700">Add Geofence Boundary</span>
+        <button class="modal-close-x" onclick="closeGeofenceFormModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <form id="geofence-form" onsubmit="saveGeofenceForm(event)">
+          <input type="hidden" id="geo-id" />
+          <div class="ms-grid" style="grid-template-columns: 1fr 2fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Zone Code *</label>
+              <input class="fi" id="geo-code" placeholder="BLR_HQ" required maxlength="20" style="text-transform:uppercase" />
+            </div>
+            <div class="fg">
+              <label class="fl">Zone Name *</label>
+              <input class="fi" id="geo-name" placeholder="Corporate HQ Campus" required maxlength="100" />
+            </div>
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Latitude *</label>
+              <input type="number" step="0.0000001" class="fi" id="geo-lat" placeholder="12.9716000" required />
+            </div>
+            <div class="fg">
+              <label class="fl">Longitude *</label>
+              <input type="number" step="0.0000001" class="fi" id="geo-lon" placeholder="77.5946000" required />
+            </div>
+            <div class="fg">
+              <label class="fl">Radius (m) *</label>
+              <input type="number" min="10" max="50000" class="fi" id="geo-radius" value="150" required />
+            </div>
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Enforcement Mode</label>
+              <select class="fs" id="geo-enforcement">
+                <option value="STRICT">STRICT (Reject Outside Punches)</option>
+                <option value="WARNING">WARNING (Allow & Flag Outside)</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="fl">Allowed Departments</label>
+              <select class="fs" id="geo-allowed-depts" multiple style="height:60px">
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Office IP Range (CIDR/Subnet)</label>
+              <input class="fi" id="geo-ip" placeholder="192.168.1.0/24" maxlength="100" />
+            </div>
+            <div class="fg">
+              <label class="fl">Campus WiFi BSSID (Optional)</label>
+              <input class="fi" id="geo-wifi" placeholder="e.g. 00:14:22:01:23:45" maxlength="100" />
+            </div>
+          </div>
+
+          <div class="ms-toggle-card" style="margin-bottom:14px; padding:8px 12px">
+            <div>
+              <div style="font-weight:600; font-size:12px; color:var(--tx)">Active Status</div>
+              <div style="font-size:10px; color:var(--mu)">Active zones enforce mobile GPS biometric validations.</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="geo-active" checked />
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:8px">
+            <button type="button" class="btn bsm" onclick="closeGeofenceFormModal()">Cancel</button>
+            <button type="submit" class="btn btnp bsm">💾 Save Geofence</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TEST GPS COORDS MODAL ── -->
+  <div id="geofence-test-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:500px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438)">
+        <span class="modal-title" style="font-size:14px; font-weight:700">📡 Test GPS Coordinates against Geofences</span>
+        <button class="modal-close-x" onclick="closeTestCoordsModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <div style="margin-bottom:12px">
+          <label class="fl">Quick Location Presets</label>
+          <div style="display:flex; gap:6px; flex-wrap:wrap">
+            <button type="button" class="btn bsm" onclick="setTestCoordPreset(12.9716000, 77.5946000)">🏢 Soukhya HQ (BLR)</button>
+            <button type="button" class="btn bsm" onclick="setTestCoordPreset(12.9698000, 77.7499000)">🏗️ Whitefield SEZ</button>
+            <button type="button" class="btn bsm" onclick="setTestCoordPreset(12.3051000, 76.6551000)">🌿 Mysore Plant</button>
+            <button type="button" class="btn bsm" onclick="setTestCoordPreset(13.0827, 80.2707)">❌ Remote Chennai (Outside)</button>
+          </div>
+        </div>
+
+        <div class="ms-grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px">
+          <div class="fg">
+            <label class="fl">Test Latitude</label>
+            <input type="number" step="0.0000001" class="fi" id="test-geo-lat" value="12.9716000" />
+          </div>
+          <div class="fg">
+            <label class="fl">Test Longitude</label>
+            <input type="number" step="0.0000001" class="fi" id="test-geo-lon" value="77.5946000" />
+          </div>
+        </div>
+
+        <button type="button" class="btn btnp bsm" style="width:100%; margin-bottom:14px" onclick="runGeofenceVerificationTest()">⚡ Verify Coordinates</button>
+
+        <div id="test-geo-result" style="display:none; padding:12px; border-radius:6px; border:1px solid var(--br); background:var(--s2); font-size:12px">
+          <!-- Result rendered here -->
+        </div>
+      </div>
+      <div class="modal-ftr" style="padding:10px 16px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:flex-end">
+        <button type="button" class="btn bsm" onclick="closeTestCoordsModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 🔢 3. MANAGE WORK CODES MODAL ── -->
+  <div id="work-codes-modal" class="modal-overlay" style="display:none; z-index:9998;">
+    <div class="modal-box animate-zoom" style="max-width:960px; width:96%; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.85); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:14px 20px; background:linear-gradient(135deg, #161b27, #1a2234); display:flex; justify-content:space-between; align-items:center">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:22px">🔢</span>
+          <div>
+            <span class="modal-title" style="font-size:15px; font-weight:700; color:var(--tx)">Work Codes Master (Projects & Cost Centers)</span>
+            <div style="font-size:11px; color:var(--mu)">Configure job activities, billing multipliers, and overtime eligibility for biometric punching</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px">
+          <button type="button" class="btn btnp bsm" onclick="openAddWorkCodeModal()">+ Add Work Code</button>
+          <button class="modal-close-x" onclick="closeWorkCodesModal()">✕</button>
+        </div>
+      </div>
+
+      <div class="modal-body" style="padding:16px 20px; overflow-y:auto; flex:1">
+        <div id="work-codes-cards" class="ms-grid" style="grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:14px">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <div class="modal-ftr" style="padding:10px 20px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center">
+        <span id="work-code-count-label" style="font-size:11px; color:var(--mu)">Loading work codes...</span>
+        <button type="button" class="btn bsm" onclick="closeWorkCodesModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ADD / EDIT WORK CODE FORM MODAL ── -->
+  <div id="work-code-form-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:480px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438)">
+        <span class="modal-title" id="wc-form-title" style="font-size:14px; font-weight:700">Add Work Code</span>
+        <button class="modal-close-x" onclick="closeWorkCodeFormModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <form id="wc-form" onsubmit="saveWorkCodeForm(event)">
+          <input type="hidden" id="wc-id" />
+          <div class="ms-grid" style="grid-template-columns: 1fr 2fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Work Code *</label>
+              <input class="fi" id="wc-code" placeholder="DEV_PROD" required maxlength="20" style="text-transform:uppercase" />
+            </div>
+            <div class="fg">
+              <label class="fl">Activity / Project Name *</label>
+              <input class="fi" id="wc-name" placeholder="Core Engineering Sprint" required maxlength="100" />
+            </div>
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1.5fr 1fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Category</label>
+              <select class="fs" id="wc-category">
+                <option value="BILLABLE_PROJECT">Billable Client Project</option>
+                <option value="CLIENT_ONSITE">Client Onsite / Field</option>
+                <option value="INTERNAL_OPS">Internal Operations & Support</option>
+                <option value="TRAINING_LD">Learning & Development</option>
+                <option value="FACILITY_MAINT">Facility & Hardware Maintenance</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="fl">Billing Multiplier</label>
+              <input type="number" step="0.05" min="0.5" max="10.0" class="fi" id="wc-multiplier" value="1.00" required />
+            </div>
+          </div>
+
+          <div class="fg" style="margin-bottom:12px">
+            <label class="fl">Description / Cost Center Notes</label>
+            <input class="fi" id="wc-desc" placeholder="Scope and invoicing criteria" maxlength="255" />
+          </div>
+
+          <div class="ms-toggle-card" style="margin-bottom:10px; padding:8px 12px">
+            <div>
+              <div style="font-weight:600; font-size:12px; color:var(--tx)">Overtime Eligible</div>
+              <div style="font-size:10px; color:var(--mu)">Punches under this code qualify for overtime register computation.</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="wc-ot-eligible" checked />
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div class="ms-toggle-card" style="margin-bottom:14px; padding:8px 12px">
+            <div>
+              <div style="font-weight:600; font-size:12px; color:var(--tx)">Active Status</div>
+              <div style="font-size:10px; color:var(--mu)">Active work codes are available for biometric check-in selection.</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="wc-active" checked />
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:8px">
+            <button type="button" class="btn bsm" onclick="closeWorkCodeFormModal()">Cancel</button>
+            <button type="submit" class="btn btnp bsm">💾 Save Work Code</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ⏱️ 4. EMPLOYEE OVERTIME REGISTER MODAL ── -->
+  <div id="ot-register-modal" class="modal-overlay" style="display:none; z-index:9998;">
+    <div class="modal-box animate-zoom" style="max-width:1150px; width:96%; max-height:92vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.85); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:14px 20px; background:linear-gradient(135deg, #161b27, #1a2234); display:flex; justify-content:space-between; align-items:center">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:22px">⏱️</span>
+          <div>
+            <span class="modal-title" style="font-size:15px; font-weight:700; color:var(--tx)">Employee Overtime (OT) Register & Policy Ledger</span>
+            <div style="font-size:11px; color:var(--mu)">Automated overtime rules: 1.5x standard day, 2.0x weekly off, 2.5x Karnataka Gazetted Holiday</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px">
+          <button type="button" class="btn btnp bsm" onclick="openOtAutoCalcModal()">⚡ Auto-Calculate OT</button>
+          <button type="button" class="btn bsm" onclick="openAddOtManualModal()">+ Manual OT Entry</button>
+          <button type="button" class="btn bsm" onclick="bulkApproveSelectedOt()">✓ Bulk Approve</button>
+          <button class="modal-close-x" onclick="closeOtRegisterModal()">✕</button>
+        </div>
+      </div>
+
+      <!-- OT Policy Highlights Bar -->
+      <div style="padding:8px 20px; background:var(--s1); border-bottom:1px solid var(--br); display:flex; gap:14px; align-items:center; flex-wrap:wrap; font-size:11.5px">
+        <span style="font-weight:700; color:var(--tx)">Karnataka Labor Act Rules:</span>
+        <span style="padding:3px 8px; border-radius:4px; background:rgba(79,142,247,0.15); border:1px solid rgba(79,142,247,0.3); color:#4f8ef7; font-weight:600">Standard Working Day: 1.5x</span>
+        <span style="padding:3px 8px; border-radius:4px; background:rgba(245,158,11,0.15); border:1px solid rgba(245,158,11,0.3); color:#f59e0b; font-weight:600">Weekly Off (Sunday/Sat): 2.0x</span>
+        <span style="padding:3px 8px; border-radius:4px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#ef4444; font-weight:600">Gazetted Public Holiday: 2.5x</span>
+      </div>
+
+      <!-- Filter Bar -->
+      <div style="padding:10px 20px; background:var(--s2); border-bottom:1px solid var(--br); display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+        <div style="display:flex; align-items:center; gap:6px">
+          <span style="font-size:11px; color:var(--mu)">Date Range:</span>
+          <input type="date" id="ot-start-date" class="fi" style="padding:4px 8px; font-size:11.5px" onchange="loadOtRegisterGrid(1)" />
+          <span style="font-size:11px; color:var(--mu)">To:</span>
+          <input type="date" id="ot-end-date" class="fi" style="padding:4px 8px; font-size:11.5px" onchange="loadOtRegisterGrid(1)" />
+        </div>
+        <select id="ot-status-filter" class="fs" style="padding:6px 8px; font-size:12px" onchange="loadOtRegisterGrid(1)">
+          <option value="">All Statuses</option>
+          <option value="PENDING">PENDING (Awaiting Approval)</option>
+          <option value="APPROVED">APPROVED (Ready for Payroll)</option>
+          <option value="COMP_OFF">COMP_OFF (Compensatory Off)</option>
+          <option value="REJECTED">REJECTED</option>
+        </select>
+        <button type="button" class="btn bsm" onclick="resetOtFilters()">Reset</button>
+        <button type="button" class="btn bsm" onclick="loadOtRegisterGrid(1)">🔄 Refresh</button>
+      </div>
+
+      <!-- Table Body -->
+      <div class="modal-body" style="padding:0; overflow-y:auto; flex:1">
+        <table class="gt" style="width:100%; border-collapse:collapse; font-size:12px">
+          <thead>
+            <tr style="border-bottom:1px solid var(--br); color:var(--mu); background:var(--s1); position:sticky; top:0; z-index:2">
+              <th style="padding:8px 10px; width:34px; text-align:center"><input type="checkbox" id="ot-select-all" onchange="toggleSelectAllOtRecords(this.checked)" /></th>
+              <th style="padding:8px 10px; text-align:left">OT Date</th>
+              <th style="padding:8px 10px; text-align:left">Employee</th>
+              <th style="padding:8px 10px; text-align:left">Department</th>
+              <th style="padding:8px 10px; text-align:center">Sched / Actual</th>
+              <th style="padding:8px 10px; text-align:center">OT Hours</th>
+              <th style="padding:8px 10px; text-align:center">Rate / Multiplier</th>
+              <th style="padding:8px 10px; text-align:center">Status</th>
+              <th style="padding:8px 10px; text-align:left">Approval / Notes</th>
+              <th style="padding:8px 10px; text-align:center">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="ot-tbody">
+            <!-- Populated dynamically -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-ftr" style="padding:10px 20px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center">
+        <span id="ot-pagination-label" style="font-size:11px; color:var(--mu)">Showing 0 OT records</span>
+        <div id="ot-pagination-controls" style="display:flex; gap:6px; align-items:center">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ADD MANUAL OT ENTRY FORM MODAL ── -->
+  <div id="ot-entry-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:500px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438)">
+        <span class="modal-title" style="font-size:14px; font-weight:700">Manual Overtime Record</span>
+        <button class="modal-close-x" onclick="closeAddOtManualModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <form id="ot-entry-form" onsubmit="saveOtManualEntry(event)">
+          <div class="fg" style="margin-bottom:10px">
+            <label class="fl">Employee *</label>
+            <select class="fs" id="otm-emp-id" required>
+              <option value="">Select Employee...</option>
+            </select>
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">OT Date *</label>
+              <input type="date" class="fi" id="otm-date" required />
+            </div>
+            <div class="fg">
+              <label class="fl">Shift</label>
+              <select class="fs" id="otm-shift">
+                <option value="SHIFT_GEN">General (09:00 - 18:00)</option>
+                <option value="SHIFT_MOR">Morning (06:00 - 14:30)</option>
+                <option value="SHIFT_EVE">Evening (14:00 - 22:30)</option>
+                <option value="SHIFT_NIT">Night (22:00 - 06:30)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Sched Hours</label>
+              <input type="number" step="0.5" min="0" max="24" class="fi" id="otm-sched-hrs" value="8.0" />
+            </div>
+            <div class="fg">
+              <label class="fl">Actual Hours *</label>
+              <input type="number" step="0.5" min="0" max="24" class="fi" id="otm-actual-hrs" value="10.5" required oninput="autoCalculateOtDiff()" />
+            </div>
+            <div class="fg">
+              <label class="fl">OT Hours *</label>
+              <input type="number" step="0.5" min="0" max="24" class="fi" id="otm-ot-hrs" value="2.5" required />
+            </div>
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">OT Rate Multiplier</label>
+              <select class="fs" id="otm-multiplier">
+                <option value="1.5">1.5x (Standard Working Day)</option>
+                <option value="2.0">2.0x (Weekly Off / Sunday)</option>
+                <option value="2.5">2.5x (Public Gazetted Holiday)</option>
+                <option value="1.0">1.0x (Straight Time)</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="fl">Rate Type</label>
+              <select class="fs" id="otm-rate-type">
+                <option value="STANDARD_DAY">Standard Day</option>
+                <option value="WEEKLY_OFF">Weekly Off</option>
+                <option value="PUBLIC_HOLIDAY">Public Holiday</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="fg" style="margin-bottom:14px">
+            <label class="fl">Comments / Task Description</label>
+            <input class="fi" id="otm-comments" placeholder="e.g. Critical release deployment and client data migration" maxlength="255" />
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:8px">
+            <button type="button" class="btn bsm" onclick="closeAddOtManualModal()">Cancel</button>
+            <button type="submit" class="btn btnp bsm">💾 Submit OT Record</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── AUTO-CALCULATE OT MODAL ── -->
+  <div id="ot-calc-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:440px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438)">
+        <span class="modal-title" style="font-size:14px; font-weight:700">⚡ Auto-Calculate Overtime from Punches</span>
+        <button class="modal-close-x" onclick="closeOtAutoCalcModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <p style="font-size:12px; color:var(--mu); margin-bottom:12px">
+          The engine compares daily biometric punch spans against standard shift hours (default 8.0h) and applies Karnataka state multiplier rules automatically.
+        </p>
+
+        <div class="fg" style="margin-bottom:10px">
+          <label class="fl">Select Calculation Date *</label>
+          <input type="date" class="fi" id="ot-calc-date" required />
+        </div>
+
+        <div class="fg" style="margin-bottom:14px">
+          <label class="fl">Standard Shift Hours Threshold</label>
+          <input type="number" step="0.5" class="fi" id="ot-calc-threshold" value="8.0" />
+        </div>
+
+        <div id="ot-calc-result-box" style="display:none; padding:10px; border-radius:6px; background:var(--s2); border:1px solid var(--br); margin-bottom:14px; font-size:12px"></div>
+
+        <div style="display:flex; justify-content:flex-end; gap:8px">
+          <button type="button" class="btn bsm" onclick="closeOtAutoCalcModal()">Cancel</button>
+          <button type="button" class="btn btnp bsm" onclick="runOtAutoCalculation()">⚡ Calculate & Populate Ledger</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 🏥 1. LEAVE TYPES MASTER MODAL (ORGANIZATION) ── -->
+  <div id="leave-types-modal" class="modal-overlay" style="display:none; z-index:9998;">
+    <div class="modal-box animate-zoom" style="max-width:1050px; width:96%; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.85); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:14px 20px; background:linear-gradient(135deg, #161b27, #1a2234); display:flex; justify-content:space-between; align-items:center">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:22px">🏥</span>
+          <div>
+            <span class="modal-title" style="font-size:15px; font-weight:700; color:var(--tx)">Statutory Leave Types Master</span>
+            <div style="font-size:11px; color:var(--mu)">Karnataka Shops & Commercial Establishments Act & Factories Act Statutory Leave Entitlements</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px">
+          <button type="button" class="btn btnp bsm" onclick="openAddLeaveTypeModal()">+ Add Leave Type</button>
+          <button class="modal-close-x" onclick="closeLeaveTypesModal()">✕</button>
+        </div>
+      </div>
+
+      <!-- Statutory Policy Bar -->
+      <div style="padding:8px 20px; background:var(--s1); border-bottom:1px solid var(--br); display:flex; gap:12px; align-items:center; flex-wrap:wrap; font-size:11px">
+        <span style="font-weight:700; color:var(--tx)">Statutory Standard:</span>
+        <span style="padding:2px 6px; border-radius:4px; background:rgba(0,212,170,0.12); color:var(--ac)">Casual (12d)</span>
+        <span style="padding:2px 6px; border-radius:4px; background:rgba(239,68,68,0.12); color:#ef4444">Sick (12d)</span>
+        <span style="padding:2px 6px; border-radius:4px; background:rgba(59,130,246,0.12); color:#60a5fa">Earned / Privilege (18d, Encashable)</span>
+        <span style="padding:2px 6px; border-radius:4px; background:rgba(236,72,153,0.12); color:#ec4899">Maternity (182d / 26 wks)</span>
+        <span style="padding:2px 6px; border-radius:4px; background:rgba(124,58,237,0.12); color:#a78bfa">Comp Off (Credited OT)</span>
+      </div>
+
+      <!-- Table Body -->
+      <div class="modal-body" style="padding:0; overflow-y:auto; flex:1">
+        <table class="gt" style="width:100%; border-collapse:collapse; font-size:12px">
+          <thead>
+            <tr style="border-bottom:1px solid var(--br); color:var(--mu); background:var(--s1); position:sticky; top:0; z-index:2">
+              <th style="padding:8px 10px; text-align:left">Code</th>
+              <th style="padding:8px 10px; text-align:left">Leave Type Name</th>
+              <th style="padding:8px 10px; text-align:left">Category</th>
+              <th style="padding:8px 10px; text-align:center">Pay Status</th>
+              <th style="padding:8px 10px; text-align:center">Annual Quota</th>
+              <th style="padding:8px 10px; text-align:center">Carry Forward</th>
+              <th style="padding:8px 10px; text-align:center">Encashable</th>
+              <th style="padding:8px 10px; text-align:right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="leave-types-tbody">
+            <!-- Populated dynamically -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-ftr" style="padding:10px 20px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center">
+        <span id="lt-count-label" style="font-size:11px; color:var(--mu)">Total Leave Types: 0</span>
+        <button class="btn bsm" onclick="closeLeaveTypesModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ADD / EDIT LEAVE TYPE FORM MODAL ── -->
+  <div id="leave-type-form-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:540px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438); display:flex; justify-content:space-between; align-items:center">
+        <span class="modal-title" id="lt-form-title" style="font-size:14px; font-weight:700">Add Statutory Leave Type</span>
+        <button class="modal-close-x" onclick="closeLeaveTypeFormModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <form id="leave-type-form" onsubmit="saveLeaveTypeForm(event)">
+          <div class="ms-grid" style="grid-template-columns: 1fr 2fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Code *</label>
+              <input type="text" class="fi" id="lt-code" placeholder="e.g. LT_CL" maxlength="30" required style="text-transform:uppercase" />
+            </div>
+            <div class="fg">
+              <label class="fl">Leave Type Name *</label>
+              <input type="text" class="fi" id="lt-name" placeholder="e.g. Casual Leave" maxlength="100" required />
+            </div>
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Category *</label>
+              <select class="fs" id="lt-category" required>
+                <option value="CASUAL">CASUAL (Casual Leave)</option>
+                <option value="SICK">SICK (Medical/Sick)</option>
+                <option value="EARNED">EARNED (Earned/Privilege)</option>
+                <option value="MATERNITY">MATERNITY (Maternity Benefit)</option>
+                <option value="PATERNITY">PATERNITY (Paternity Leave)</option>
+                <option value="COMP_OFF">COMP_OFF (Compensatory Off)</option>
+                <option value="UNPAID">UNPAID (Leave Without Pay)</option>
+                <option value="OTHER">OTHER (Special / Custom)</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="fl">Badge Theme Color</label>
+              <input type="color" class="fi" id="lt-color" value="#00d4aa" style="padding:2px; height:34px; cursor:pointer" />
+            </div>
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Annual Quota (Days) *</label>
+              <input type="number" step="0.5" min="0" max="365" class="fi" id="lt-annual-quota" value="12" required />
+            </div>
+            <div class="fg">
+              <label class="fl">Carry Forward Max (Days)</label>
+              <input type="number" step="0.5" min="0" max="100" class="fi" id="lt-carry-forward" value="0" />
+            </div>
+          </div>
+
+          <div class="fg" style="margin-bottom:12px">
+            <label class="fl">Description / Statutory Rule</label>
+            <input type="text" class="fi" id="lt-description" placeholder="e.g. 12 days per year for unforeseen personal circumstances" maxlength="255" />
+          </div>
+
+          <!-- Policy Toggles -->
+          <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:16px; background:var(--s1); padding:10px; border-radius:6px; border:1px solid var(--br)">
+            <label style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--tx); cursor:pointer">
+              <input type="checkbox" id="lt-paid" checked />
+              <span>Paid Leave</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--tx); cursor:pointer">
+              <input type="checkbox" id="lt-encashable" />
+              <span>Encashable</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--tx); cursor:pointer">
+              <input type="checkbox" id="lt-active" checked />
+              <span>Active</span>
+            </label>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:8px">
+            <button type="button" class="btn bsm" onclick="closeLeaveTypeFormModal()">Cancel</button>
+            <button type="submit" class="btn btnp bsm">💾 Save Leave Type</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 📝 2. EMPLOYEE LEAVE ENTRIES & APPLICATIONS MODAL ── -->
+  <div id="leave-entries-modal" class="modal-overlay" style="display:none; z-index:9998;">
+    <div class="modal-box animate-zoom" style="max-width:1150px; width:96%; max-height:92vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.85); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:14px 20px; background:linear-gradient(135deg, #161b27, #1a2234); display:flex; justify-content:space-between; align-items:center">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:22px">📝</span>
+          <div>
+            <span class="modal-title" style="font-size:15px; font-weight:700; color:var(--tx)">Employee Leave Entries & Applications</span>
+            <div style="font-size:11px; color:var(--mu)">Manage leave requests, statutory quota consumption, and HR manager approvals</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px">
+          <button type="button" class="btn btnp bsm" onclick="openApplyLeaveModal()">+ Apply Leave</button>
+          <button type="button" class="btn bsm" onclick="openLeaveBalancesModal()">📊 View Balances</button>
+          <button class="modal-close-x" onclick="closeLeaveEntriesModal()">✕</button>
+        </div>
+      </div>
+
+      <!-- Filter Bar -->
+      <div style="padding:10px 20px; background:var(--s2); border-bottom:1px solid var(--br); display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+        <select id="le-emp-filter" class="fs" style="padding:6px 8px; font-size:12px; min-width:160px" onchange="loadLeaveEntriesGrid(1)">
+          <option value="">All Employees</option>
+        </select>
+        <select id="le-type-filter" class="fs" style="padding:6px 8px; font-size:12px" onchange="loadLeaveEntriesGrid(1)">
+          <option value="">All Leave Types</option>
+        </select>
+        <select id="le-status-filter" class="fs" style="padding:6px 8px; font-size:12px" onchange="loadLeaveEntriesGrid(1)">
+          <option value="">All Statuses</option>
+          <option value="PENDING">PENDING (Awaiting Approval)</option>
+          <option value="APPROVED">APPROVED (Authorized)</option>
+          <option value="REJECTED">REJECTED</option>
+          <option value="CANCELLED">CANCELLED</option>
+        </select>
+        <div style="display:flex; align-items:center; gap:6px">
+          <span style="font-size:11px; color:var(--mu)">From:</span>
+          <input type="date" id="le-start-date" class="fi" style="padding:4px 8px; font-size:11.5px" onchange="loadLeaveEntriesGrid(1)" />
+          <span style="font-size:11px; color:var(--mu)">To:</span>
+          <input type="date" id="le-end-date" class="fi" style="padding:4px 8px; font-size:11.5px" onchange="loadLeaveEntriesGrid(1)" />
+        </div>
+        <button type="button" class="btn bsm" onclick="resetLeaveFilters()">Reset</button>
+        <button type="button" class="btn bsm" onclick="loadLeaveEntriesGrid(1)">🔄 Refresh</button>
+      </div>
+
+      <!-- Table Body -->
+      <div class="modal-body" style="padding:0; overflow-y:auto; flex:1">
+        <table class="gt" style="width:100%; border-collapse:collapse; font-size:12px">
+          <thead>
+            <tr style="border-bottom:1px solid var(--br); color:var(--mu); background:var(--s1); position:sticky; top:0; z-index:2">
+              <th style="padding:8px 10px; text-align:left">Leave Type</th>
+              <th style="padding:8px 10px; text-align:left">Employee</th>
+              <th style="padding:8px 10px; text-align:left">Duration / Period</th>
+              <th style="padding:8px 10px; text-align:center">Total Days</th>
+              <th style="padding:8px 10px; text-align:left">Reason</th>
+              <th style="padding:8px 10px; text-align:center">Status</th>
+              <th style="padding:8px 10px; text-align:left">Approver / Comments</th>
+              <th style="padding:8px 10px; text-align:right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="leave-entries-tbody">
+            <!-- Populated dynamically -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-ftr" style="padding:10px 20px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center">
+        <span id="le-pagination-label" style="font-size:11px; color:var(--mu)">Showing 0 leave applications</span>
+        <div id="le-pagination-controls" style="display:flex; gap:6px; align-items:center">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── APPLY LEAVE APPLICATION FORM MODAL ── -->
+  <div id="leave-entry-form-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:520px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438); display:flex; justify-content:space-between; align-items:center">
+        <span class="modal-title" style="font-size:14px; font-weight:700">Submit Leave Application</span>
+        <button class="modal-close-x" onclick="closeApplyLeaveModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <form id="leave-entry-form" onsubmit="saveLeaveApplication(event)">
+          <div class="fg" style="margin-bottom:10px">
+            <label class="fl">Employee *</label>
+            <select class="fs" id="la-emp-id" required>
+              <option value="">Select Employee...</option>
+            </select>
+          </div>
+
+          <div class="fg" style="margin-bottom:10px">
+            <label class="fl">Leave Type *</label>
+            <select class="fs" id="la-type-id" required>
+              <option value="">Select Leave Type...</option>
+            </select>
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">Start Date *</label>
+              <input type="date" class="fi" id="la-start-date" required onchange="autoCalcLeaveDays()" />
+            </div>
+            <div class="fg">
+              <label class="fl">End Date *</label>
+              <input type="date" class="fi" id="la-end-date" required onchange="autoCalcLeaveDays()" />
+            </div>
+            <div class="fg">
+              <label class="fl">Total Days *</label>
+              <input type="number" step="0.5" min="0.5" max="365" class="fi" id="la-total-days" value="1.0" required />
+            </div>
+          </div>
+
+          <div class="fg" style="margin-bottom:10px">
+            <label class="fl">Reason for Leave *</label>
+            <input type="text" class="fi" id="la-reason" placeholder="e.g. Family medical emergency / Personal travel" maxlength="255" required />
+          </div>
+
+          <div class="fg" style="margin-bottom:14px">
+            <label class="fl">Additional Comments / Contact During Absence</label>
+            <input type="text" class="fi" id="la-comments" placeholder="e.g. Accessible via mobile phone and email" maxlength="255" />
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:8px">
+            <button type="button" class="btn bsm" onclick="closeApplyLeaveModal()">Cancel</button>
+            <button type="submit" class="btn btnp bsm">💾 Submit Leave Application</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 📊 EMPLOYEE LEAVE BALANCES MODAL ── -->
+  <div id="leave-balance-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:850px; width:94%; max-height:88vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:14px 20px; background:linear-gradient(135deg, #161b27, #1e2438); display:flex; justify-content:space-between; align-items:center">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:22px">📊</span>
+          <div>
+            <span class="modal-title" style="font-size:15px; font-weight:700; color:var(--tx)">Employee Leave Entitlement & Balance Ledger</span>
+            <div style="font-size:11px; color:var(--mu)">Live quota consumption, approved leaves, and remaining balance tracking</div>
+          </div>
+        </div>
+        <button class="modal-close-x" onclick="closeLeaveBalancesModal()">✕</button>
+      </div>
+
+      <div style="padding:10px 20px; background:var(--s2); border-bottom:1px solid var(--br); display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+        <div style="flex:1; min-width:200px">
+          <select id="lb-emp-id" class="fs" style="width:100%; padding:6px 10px; font-size:12px" onchange="loadEmployeeLeaveBalances()">
+            <option value="">Select Employee...</option>
+          </select>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px">
+          <span style="font-size:11px; color:var(--mu)">Year:</span>
+          <select id="lb-year" class="fs" style="padding:6px 10px; font-size:12px" onchange="loadEmployeeLeaveBalances()">
+            <!-- Populated dynamically -->
+          </select>
+        </div>
+        <button type="button" class="btn bsm" onclick="loadEmployeeLeaveBalances()">🔄 Refresh</button>
+      </div>
+
+      <div class="modal-body" style="padding:16px 20px; overflow-y:auto; flex:1" id="lb-cards-container">
+        <!-- Balance cards populated dynamically -->
+      </div>
+
+      <div class="modal-ftr" style="padding:10px 20px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:flex-end">
+        <button class="btn bsm" onclick="closeLeaveBalancesModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 🚶 3. EMPLOYEE OUTDOOR / ON-DUTY (OD) ENTRIES MODAL ── -->
+  <div id="outdoor-entries-modal" class="modal-overlay" style="display:none; z-index:9998;">
+    <div class="modal-box animate-zoom" style="max-width:1150px; width:96%; max-height:92vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,0.85); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:14px 20px; background:linear-gradient(135deg, #161b27, #1a2234); display:flex; justify-content:space-between; align-items:center">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:22px">🚶</span>
+          <div>
+            <span class="modal-title" style="font-size:15px; font-weight:700; color:var(--tx)">Employee Outdoor Duty (OD) & Client Visit Register</span>
+            <div style="font-size:11px; color:var(--mu)">Field work, client visits, and on-duty attendance credit tracking</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px">
+          <button type="button" class="btn btnp bsm" onclick="openApplyOutdoorModal()">+ Apply Outdoor Duty</button>
+          <button class="modal-close-x" onclick="closeOutdoorEntriesModal()">✕</button>
+        </div>
+      </div>
+
+      <!-- Filter Bar -->
+      <div style="padding:10px 20px; background:var(--s2); border-bottom:1px solid var(--br); display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+        <select id="od-emp-filter" class="fs" style="padding:6px 8px; font-size:12px; min-width:160px" onchange="loadOutdoorEntriesGrid(1)">
+          <option value="">All Employees</option>
+        </select>
+        <select id="od-status-filter" class="fs" style="padding:6px 8px; font-size:12px" onchange="loadOutdoorEntriesGrid(1)">
+          <option value="">All Statuses</option>
+          <option value="PENDING">PENDING (Awaiting Approval)</option>
+          <option value="APPROVED">APPROVED (Present on OD)</option>
+          <option value="REJECTED">REJECTED</option>
+        </select>
+        <div style="display:flex; align-items:center; gap:6px">
+          <span style="font-size:11px; color:var(--mu)">From:</span>
+          <input type="date" id="od-start-date" class="fi" style="padding:4px 8px; font-size:11.5px" onchange="loadOutdoorEntriesGrid(1)" />
+          <span style="font-size:11px; color:var(--mu)">To:</span>
+          <input type="date" id="od-end-date" class="fi" style="padding:4px 8px; font-size:11.5px" onchange="loadOutdoorEntriesGrid(1)" />
+        </div>
+        <button type="button" class="btn bsm" onclick="resetOutdoorFilters()">Reset</button>
+        <button type="button" class="btn bsm" onclick="loadOutdoorEntriesGrid(1)">🔄 Refresh</button>
+      </div>
+
+      <!-- Table Body -->
+      <div class="modal-body" style="padding:0; overflow-y:auto; flex:1">
+        <table class="gt" style="width:100%; border-collapse:collapse; font-size:12px">
+          <thead>
+            <tr style="border-bottom:1px solid var(--br); color:var(--mu); background:var(--s1); position:sticky; top:0; z-index:2">
+              <th style="padding:8px 10px; text-align:left">OD Date</th>
+              <th style="padding:8px 10px; text-align:left">Employee</th>
+              <th style="padding:8px 10px; text-align:left">Time Span</th>
+              <th style="padding:8px 10px; text-align:left">Destination / Client</th>
+              <th style="padding:8px 10px; text-align:left">Purpose of Visit</th>
+              <th style="padding:8px 10px; text-align:center">Allowance</th>
+              <th style="padding:8px 10px; text-align:center">Status</th>
+              <th style="padding:8px 10px; text-align:right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="outdoor-entries-tbody">
+            <!-- Populated dynamically -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-ftr" style="padding:10px 20px; background:var(--s2); border-top:1px solid var(--br); display:flex; justify-content:space-between; align-items:center">
+        <span id="od-pagination-label" style="font-size:11px; color:var(--mu)">Showing 0 outdoor duty entries</span>
+        <div id="od-pagination-controls" style="display:flex; gap:6px; align-items:center">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── APPLY OUTDOOR DUTY FORM MODAL ── -->
+  <div id="outdoor-entry-form-modal" class="modal-overlay" style="display:none; z-index:9999;">
+    <div class="modal-box animate-zoom" style="max-width:520px; width:92%; box-shadow:0 24px 64px rgba(0,0,0,0.9); border:1px solid var(--br);">
+      <div class="modal-hdr" style="padding:12px 18px; background:linear-gradient(135deg, #161b27, #1e2438); display:flex; justify-content:space-between; align-items:center">
+        <span class="modal-title" style="font-size:14px; font-weight:700">Submit Outdoor / On-Duty Entry</span>
+        <button class="modal-close-x" onclick="closeApplyOutdoorModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <form id="outdoor-entry-form" onsubmit="saveOutdoorEntry(event)">
+          <div class="fg" style="margin-bottom:10px">
+            <label class="fl">Employee *</label>
+            <select class="fs" id="oda-emp-id" required>
+              <option value="">Select Employee...</option>
+            </select>
+          </div>
+
+          <div class="ms-grid" style="grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:10px">
+            <div class="fg">
+              <label class="fl">OD Date *</label>
+              <input type="date" class="fi" id="oda-date" required />
+            </div>
+            <div class="fg">
+              <label class="fl">Start Time *</label>
+              <input type="time" class="fi" id="oda-start-time" value="09:00" required />
+            </div>
+            <div class="fg">
+              <label class="fl">End Time *</label>
+              <input type="time" class="fi" id="oda-end-time" value="18:00" required />
+            </div>
+          </div>
+
+          <div class="fg" style="margin-bottom:10px">
+            <label class="fl">Destination / Client Site *</label>
+            <input type="text" class="fi" id="oda-destination" placeholder="e.g. Infosys Campus / Client Site Whitefield" maxlength="150" required />
+          </div>
+
+          <div class="fg" style="margin-bottom:10px">
+            <label class="fl">Purpose of Visit *</label>
+            <input type="text" class="fi" id="oda-purpose" placeholder="e.g. Face Recognition hardware maintenance and calibration" maxlength="255" required />
+          </div>
+
+          <div class="fg" style="margin-bottom:12px">
+            <label class="fl">Additional Comments / Remarks</label>
+            <input type="text" class="fi" id="oda-comments" placeholder="e.g. Taxi bill will be submitted for travel reimbursement" maxlength="255" />
+          </div>
+
+          <div style="margin-bottom:14px; background:var(--s1); padding:8px 12px; border-radius:6px; border:1px solid var(--br)">
+            <label style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--tx); cursor:pointer">
+              <input type="checkbox" id="oda-ta" checked />
+              <span>Eligible for Travel Allowance / Reimbursement (TA)</span>
+            </label>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:8px">
+            <button type="button" class="btn bsm" onclick="closeApplyOutdoorModal()">Cancel</button>
+            <button type="submit" class="btn btnp bsm">💾 Submit OD Entry</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- ── AUTHENTICATION LOGIN MODAL ── -->
   <div id="login-modal" class="modal-overlay" style="display:none; z-index:9999;">
     <div class="modal-box animate-zoom" style="max-width:440px; box-shadow:0 24px 64px rgba(0,0,0,0.85); border:1px solid var(--br);">

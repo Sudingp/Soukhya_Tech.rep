@@ -14,6 +14,7 @@ obj/
 *.suo
 .vs/
 .env
+env
 Antigravity-x64
 Antigravity.tar.gz
 __pycache__/
