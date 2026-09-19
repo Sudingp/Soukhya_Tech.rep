@@ -304,15 +304,14 @@ def run_node_integration_suite():
     if os.path.exists(integ_script):
         print()
         log_info("═════════════════════════════════════════════════════════════")
-        log_info(" Running Full 28-Step Node.js Integration Test Suite        ")
-        log_info("═════════════════════════════════════════════════════════════")
+        log_info(" Running Full 32-Step Node.js Integration Test Suite        ")
         node_cmd = 'node.cmd' if sys.platform.startswith('win') else 'node'
         res = subprocess.run([node_cmd, integ_script], cwd=SCRIPT_DIR)
         if res.returncode == 0:
-            log_ok("Complete 28-Step Integration Test Suite passed (100%).")
+            log_ok("Complete 32-Step Integration Test Suite passed (100%).")
             return True
         else:
-            log_fail("Complete 28-Step Integration Test Suite encountered failures.")
+            log_fail("Complete 32-Step Integration Test Suite encountered failures.")
             return False
     return True
 
@@ -321,7 +320,7 @@ def main():
     log_info(f"Starting Soukhya Tech test suite for target: {target}")
 
     if target in ('node', 'all'):
-        # 1. Run complete 28-step Node integration test suite
+        # 1. Run complete 32-step Node integration test suite
         run_node_integration_suite()
 
         # 2. Probe live Node server if active

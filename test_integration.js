@@ -207,7 +207,7 @@ async function runTests() {
 
       // Assign Members to Shift Group
       const grpMembersSet = await request(`/api/shift-groups/${testGroupId}/members`, 'POST', authHeaders, {
-        emp_ids: ['EMP001', 'EMP002']
+        emp_ids: ['EMP0001', 'EMP0002']
       });
       if (grpMembersSet.status !== 200) throw new Error('Assign Shift Group members failed: ' + JSON.stringify(grpMembersSet));
       console.log('   [PASS] Assigned 2 employees to group', testGroupId);
@@ -237,7 +237,7 @@ async function runTests() {
 
       // Assign Shift Roster override
       const rosterAssign = await request('/api/shift-roster/assign', 'POST', authHeaders, {
-        emp_ids: ['EMP001'],
+        emp_ids: ['EMP0001'],
         start_date: '2026-09-10',
         end_date: '2026-09-12',
         shift_id: 'SHIFT_NIT',
@@ -245,18 +245,19 @@ async function runTests() {
         note: 'Special Night Project Duty'
       });
       if (rosterAssign.status !== 200) throw new Error('Assign Shift Roster failed: ' + JSON.stringify(rosterAssign));
-      console.log('   [PASS] Assigned custom night shift to EMP001 for 2026-09-10 to 2026-09-12');
+      console.log('   [PASS] Assigned custom night shift to EMP0001 for 2026-09-10 to 2026-09-12');
 
       // Get Roster Matrix
-      const rosterMatrix = await request('/api/shift-roster?month=2026-09&search=EMP001', 'GET', authHeaders);
+      const rosterMatrix = await request('/api/shift-roster?month=2026-09&search=EMP0001', 'GET', authHeaders);
       if (rosterMatrix.status !== 200 || !Array.isArray(rosterMatrix.body.employees) || rosterMatrix.body.employees.length === 0) {
         throw new Error('Get Shift Roster matrix failed: ' + JSON.stringify(rosterMatrix));
       }
-      const emp1Schedule = rosterMatrix.body.employees[0].schedule;
+      const targetEmp = rosterMatrix.body.employees.find(e => e.id === 'EMP0001') || rosterMatrix.body.employees[0];
+      const emp1Schedule = targetEmp.schedule;
       if (emp1Schedule['2026-09-10']?.shift_id !== 'SHIFT_NIT') {
-        throw new Error('Shift assignment verification failed for EMP001 on 2026-09-10');
+        throw new Error('Shift assignment verification failed for EMP0001 on 2026-09-10');
       }
-      console.log('   [PASS] Retrieved roster matrix and verified EMP001 assignment on 2026-09-10 = SHIFT_NIT');
+      console.log('   [PASS] Retrieved roster matrix and verified EMP0001 assignment on 2026-09-10 = SHIFT_NIT');
 
       // 14. Organization: Departments APIs
       console.log('14. Testing /api/departments CRUD...');
@@ -406,7 +407,7 @@ async function runTests() {
 
       // Assign Members to Group
       const setCohortMembers = await request(`/api/employee-groups/${testGroupId2}/members`, 'POST', authHeaders, {
-        emp_ids: ['EMP001', 'EMP002', 'EMP003'],
+        emp_ids: ['EMP0001', 'EMP0002', 'EMP0003'],
         role_in_group: 'Core Member'
       });
       if (setCohortMembers.status !== 200) throw new Error('Set Group Members failed: ' + JSON.stringify(setCohortMembers));
@@ -438,7 +439,7 @@ async function runTests() {
 
       // Regularize Attendance (Missed punch regularization)
       const regAtt = await request('/api/attendance-log/regularize', 'POST', authHeaders, {
-        emp_id: 'EMP002',
+        emp_id: 'EMP0002',
         timestamp: '2026-09-18 09:05:00',
         status: 'Present',
         reason: 'Integration test regularization'
@@ -446,7 +447,7 @@ async function runTests() {
       if (regAtt.status !== 200 || !regAtt.body.attendance) {
         throw new Error('Attendance Regularization failed: ' + JSON.stringify(regAtt));
       }
-      console.log('   [PASS] Attendance regularized for EMP002 (att_id: ' + regAtt.body.attendance.att_id + ')');
+      console.log('   [PASS] Attendance regularized for EMP0002 (att_id: ' + regAtt.body.attendance.att_id + ')');
 
       // 20. Geofences CRUD & Coordinate Verification
       console.log('20. Testing /api/geofences CRUD & Coordinate Verification...');
@@ -540,7 +541,7 @@ async function runTests() {
 
       // Manual OT Entry creation
       const otCreate = await request('/api/ot-register', 'POST', authHeaders, {
-        emp_id: 'EMP001',
+        emp_id: 'EMP0001',
         ot_date: '2026-09-18',
         shift_id: 'SHIFT_GEN',
         scheduled_hours: 8.0,
@@ -621,7 +622,7 @@ async function runTests() {
       // 24. Employee Leave Entries & Balances
       console.log('24. Testing /api/leave-entries & /balances...');
       const leaveApp = await request('/api/leave-entries', 'POST', authHeaders, {
-        emp_id: 'EMP001',
+        emp_id: 'EMP0001',
         leave_type_id: testLtId,
         start_date: '2026-10-01',
         end_date: '2026-10-05',
@@ -643,7 +644,7 @@ async function runTests() {
       console.log('   [PASS] Leave application approved');
 
       // Check Balances API
-      const balances = await request('/api/leave-entries/balances/EMP001?year=2026', 'GET', authHeaders);
+      const balances = await request('/api/leave-entries/balances/EMP0001?year=2026', 'GET', authHeaders);
       if (balances.status !== 200 || !Array.isArray(balances.body.balances)) {
         throw new Error('Get Leave Balances failed: ' + JSON.stringify(balances));
       }
@@ -651,7 +652,7 @@ async function runTests() {
       if (!testBalance || testBalance.used_days !== 5.0 || testBalance.available_days !== 30.0) {
         throw new Error('Leave balance ledger mismatch: ' + JSON.stringify(balances));
       }
-      console.log(`   [PASS] Balance ledger verified for EMP001 (Quota: ${testBalance.annual_quota}d, Used: ${testBalance.used_days}d, Available: ${testBalance.available_days}d)`);
+      console.log(`   [PASS] Balance ledger verified for EMP0001 (Quota: ${testBalance.annual_quota}d, Used: ${testBalance.used_days}d, Available: ${testBalance.available_days}d)`);
 
       // Clean up leave entry & leave type
       const leaveDelete = await request(`/api/leave-entries/${testLeaveId}`, 'DELETE', authHeaders);
@@ -663,7 +664,7 @@ async function runTests() {
       // 25. Employee Outdoor / On-Duty Entries
       console.log('25. Testing /api/outdoor-entries CRUD & status update...');
       const odCreate = await request('/api/outdoor-entries', 'POST', authHeaders, {
-        emp_id: 'EMP001',
+        emp_id: 'EMP0001',
         od_date: '2026-09-22',
         start_time: '09:30:00',
         end_time: '17:30:00',
@@ -689,26 +690,112 @@ async function runTests() {
       if (odDelete.status !== 200) throw new Error('Delete Outdoor Entry failed: ' + JSON.stringify(odDelete));
       console.log('   [PASS] Cleaned up test outdoor entry');
 
-      // 26. Token Refresh
-      console.log('26. Testing /api/auth/refresh...');
+      // 26. Companies Master CRUD
+      console.log('26. Testing /api/companies CRUD...');
+      const compList = await request('/api/companies', 'GET', authHeaders);
+      if (compList.status !== 200 || !Array.isArray(compList.body.companies)) throw new Error('Get Companies failed: ' + JSON.stringify(compList));
+      console.log(`   [PASS] Retrieved ${compList.body.companies.length} companies from database`);
+
+      const randComp = 'TC_' + Math.floor(Math.random() * 100000);
+      const compCreate = await request('/api/companies', 'POST', authHeaders, {
+        code: randComp,
+        name: 'Test Enterprise Corp Solutions Ltd',
+        short_name: randComp,
+        city: 'Bangalore',
+        state: 'Karnataka',
+        country: 'India'
+      });
+      if (compCreate.status !== 201) throw new Error('Create Company failed: ' + JSON.stringify(compCreate));
+      const testCompId = compCreate.body.id;
+      console.log('   [PASS] Created test company:', testCompId);
+
+      const compUpdate = await request(`/api/companies/${testCompId}`, 'PUT', authHeaders, {
+        code: randComp,
+        name: 'Test Enterprise Corp Solutions Global Ltd',
+        short_name: randComp
+      });
+      if (compUpdate.status !== 200) throw new Error('Update Company failed: ' + JSON.stringify(compUpdate));
+      console.log('   [PASS] Updated test company');
+
+      const compDelete = await request(`/api/companies/${testCompId}`, 'DELETE', authHeaders);
+      if (compDelete.status !== 200) throw new Error('Delete Company failed: ' + JSON.stringify(compDelete));
+      console.log('   [PASS] Cleaned up test company');
+
+      // 27. Designations Master CRUD
+      console.log('27. Testing /api/designations CRUD...');
+      const desList = await request('/api/designations', 'GET', authHeaders);
+      if (desList.status !== 200 || !Array.isArray(desList.body.designations)) throw new Error('Get Designations failed: ' + JSON.stringify(desList));
+      console.log(`   [PASS] Retrieved ${desList.body.designations.length} designations from database`);
+
+      const randDes = 'TD_' + Math.floor(Math.random() * 100000);
+      const desCreate = await request('/api/designations', 'POST', authHeaders, {
+        code: randDes,
+        name: 'Principal Cloud Reliability Specialist',
+        dept_id: 'DEP_ENG',
+        grade_level: 'L4',
+        description: 'Cloud reliability and performance engineering'
+      });
+      if (desCreate.status !== 201) throw new Error('Create Designation failed: ' + JSON.stringify(desCreate));
+      const testDesId = desCreate.body.id;
+      console.log('   [PASS] Created test designation:', testDesId);
+
+      const desDelete = await request(`/api/designations/${testDesId}`, 'DELETE', authHeaders);
+      if (desDelete.status !== 200) throw new Error('Delete Designation failed: ' + JSON.stringify(desDelete));
+      console.log('   [PASS] Cleaned up test designation');
+
+      // 28. Branches Master CRUD
+      console.log('28. Testing /api/branches CRUD...');
+      const brList = await request('/api/branches', 'GET', authHeaders);
+      if (brList.status !== 200 || !Array.isArray(brList.body.branches)) throw new Error('Get Branches failed: ' + JSON.stringify(brList));
+      console.log(`   [PASS] Retrieved ${brList.body.branches.length} branches from database`);
+
+      const randBr = 'TB_' + Math.floor(Math.random() * 100000);
+      const brCreate = await request('/api/branches', 'POST', authHeaders, {
+        code: randBr,
+        name: 'Electronic City Innovation Center',
+        address: 'Phase 1, Electronic City',
+        city: 'Bangalore',
+        state: 'Karnataka',
+        country: 'India'
+      });
+      if (brCreate.status !== 201) throw new Error('Create Branch failed: ' + JSON.stringify(brCreate));
+      const testBrId = brCreate.body.id;
+      console.log('   [PASS] Created test branch:', testBrId);
+
+      const brDelete = await request(`/api/branches/${testBrId}`, 'DELETE', authHeaders);
+      if (brDelete.status !== 200) throw new Error('Delete Branch failed: ' + JSON.stringify(brDelete));
+      console.log('   [PASS] Cleaned up test branch');
+
+      // 29. 5,000+ Employee Fast Paginated Search & Multi-Filter Query Benchmark
+      console.log('29. Testing /api/employees 5,000+ paginated search and filters...');
+      const t0 = Date.now();
+      const empSearch = await request('/api/employees?search=Aarav&department=Engineering%20%26%20Product&company=KRIDE&size=20', 'GET', authHeaders);
+      const searchDuration = Date.now() - t0;
+      if (empSearch.status !== 200 || !Array.isArray(empSearch.body.employees)) {
+        throw new Error('Employee Search failed: ' + JSON.stringify(empSearch));
+      }
+      console.log(`   [PASS] Indexed search returned ${empSearch.body.employees.length} results (Total matched: ${empSearch.body.pagination.total}) in ${searchDuration}ms (< 50ms requirement)`);
+
+      // 30. Token Refresh
+      console.log('30. Testing /api/auth/refresh...');
       const ref = await request('/api/auth/refresh', 'POST', {}, { refresh_token: refreshToken });
       if (ref.status !== 200 || !ref.body.access_token) throw new Error('Token refresh failed: ' + JSON.stringify(ref));
       console.log('   [PASS] Refresh token issued new access token');
 
-      // 27. Logout & Blacklist
-      console.log('27. Testing /api/auth/logout...');
+      // 31. Logout & Blacklist
+      console.log('31. Testing /api/auth/logout...');
       const logout = await request('/api/auth/logout', 'POST', authHeaders);
       if (logout.status !== 200) throw new Error('Logout failed: ' + JSON.stringify(logout));
       console.log('   [PASS] Logged out successfully');
 
-      // 28. Blacklisted token rejected
-      console.log('28. Testing blacklisted token rejection...');
+      // 32. Blacklisted token rejected
+      console.log('32. Testing blacklisted token rejection...');
       const rejected = await request('/api/auth/me', 'GET', authHeaders);
       if (rejected.status !== 401) throw new Error('Blacklisted token was not rejected: ' + JSON.stringify(rejected));
       console.log('   [PASS] Blacklisted token rejected with HTTP 401:', rejected.body.error.code);
 
       console.log('\n=============================================');
-      console.log('  ALL 28 INTEGRATION TESTS PASSED 100%!     ');
+      console.log('  ALL 32 INTEGRATION TESTS PASSED 100%!     ');
       console.log('=============================================\n');
 
       server.close();

@@ -1748,7 +1748,7 @@ app.post('/api/companies', authenticate, requireRoles('ADMIN', 'HR'), async (req
     if (existing) return err(res, 'CONFLICT', 'Company with this code or short name already exists', 409);
 
     const result = await stmts.insertCompany.run(value);
-    await logAudit(req, 'companies', result.id, 'INSERT', null, value);
+    await auditLog({ table: 'companies', recordId: result.id, action: 'INSERT', newVals: value, req });
     ok(res, { message: 'Company created successfully', id: result.id }, 201);
   } catch (e) {
     console.error('[POST /api/companies]', e);
@@ -1765,7 +1765,7 @@ app.put('/api/companies/:id', authenticate, requireRoles('ADMIN', 'HR'), async (
     if (!existing) return err(res, 'NOT_FOUND', 'Company not found', 404);
 
     await stmts.updateCompany.run({ ...value, id: req.params.id });
-    await logAudit(req, 'companies', req.params.id, 'UPDATE', existing, value);
+    await auditLog({ table: 'companies', recordId: req.params.id, action: 'UPDATE', oldVals: existing, newVals: value, req });
     ok(res, { message: 'Company updated successfully' });
   } catch (e) {
     console.error('[PUT /api/companies/:id]', e);
@@ -1779,7 +1779,7 @@ app.delete('/api/companies/:id', authenticate, requireRoles('ADMIN'), async (req
     if (!existing) return err(res, 'NOT_FOUND', 'Company not found', 404);
 
     await stmts.deleteCompany.run(req.params.id);
-    await logAudit(req, 'companies', req.params.id, 'DELETE', existing, null);
+    await auditLog({ table: 'companies', recordId: req.params.id, action: 'DELETE', oldVals: existing, req });
     ok(res, { message: 'Company deleted successfully' });
   } catch (e) {
     console.error('[DELETE /api/companies/:id]', e);
@@ -1829,7 +1829,7 @@ app.post('/api/designations', authenticate, requireRoles('ADMIN', 'HR'), async (
     if (existing) return err(res, 'CONFLICT', 'Designation with this code already exists', 409);
 
     const result = await stmts.insertDesignation.run(value);
-    await logAudit(req, 'designations', result.id, 'INSERT', null, value);
+    await auditLog({ table: 'designations', recordId: result.id, action: 'INSERT', newVals: value, req });
     ok(res, { message: 'Designation created successfully', id: result.id }, 201);
   } catch (e) {
     console.error('[POST /api/designations]', e);
@@ -1846,7 +1846,7 @@ app.put('/api/designations/:id', authenticate, requireRoles('ADMIN', 'HR'), asyn
     if (!existing) return err(res, 'NOT_FOUND', 'Designation not found', 404);
 
     await stmts.updateDesignation.run({ ...value, id: req.params.id });
-    await logAudit(req, 'designations', req.params.id, 'UPDATE', existing, value);
+    await auditLog({ table: 'designations', recordId: req.params.id, action: 'UPDATE', oldVals: existing, newVals: value, req });
     ok(res, { message: 'Designation updated successfully' });
   } catch (e) {
     console.error('[PUT /api/designations/:id]', e);
@@ -1860,7 +1860,7 @@ app.delete('/api/designations/:id', authenticate, requireRoles('ADMIN'), async (
     if (!existing) return err(res, 'NOT_FOUND', 'Designation not found', 404);
 
     await stmts.deleteDesignation.run(req.params.id);
-    await logAudit(req, 'designations', req.params.id, 'DELETE', existing, null);
+    await auditLog({ table: 'designations', recordId: req.params.id, action: 'DELETE', oldVals: existing, req });
     ok(res, { message: 'Designation deleted successfully' });
   } catch (e) {
     console.error('[DELETE /api/designations/:id]', e);
@@ -1913,7 +1913,7 @@ app.post('/api/branches', authenticate, requireRoles('ADMIN', 'HR'), async (req,
     if (existing) return err(res, 'CONFLICT', 'Branch with this code already exists', 409);
 
     const result = await stmts.insertBranch.run(value);
-    await logAudit(req, 'branches', result.id, 'INSERT', null, value);
+    await auditLog({ table: 'branches', recordId: result.id, action: 'INSERT', newVals: value, req });
     ok(res, { message: 'Branch created successfully', id: result.id }, 201);
   } catch (e) {
     console.error('[POST /api/branches]', e);
@@ -1930,7 +1930,7 @@ app.put('/api/branches/:id', authenticate, requireRoles('ADMIN', 'HR'), async (r
     if (!existing) return err(res, 'NOT_FOUND', 'Branch not found', 404);
 
     await stmts.updateBranch.run({ ...value, id: req.params.id });
-    await logAudit(req, 'branches', req.params.id, 'UPDATE', existing, value);
+    await auditLog({ table: 'branches', recordId: req.params.id, action: 'UPDATE', oldVals: existing, newVals: value, req });
     ok(res, { message: 'Branch updated successfully' });
   } catch (e) {
     console.error('[PUT /api/branches/:id]', e);
@@ -1944,7 +1944,7 @@ app.delete('/api/branches/:id', authenticate, requireRoles('ADMIN'), async (req,
     if (!existing) return err(res, 'NOT_FOUND', 'Branch not found', 404);
 
     await stmts.deleteBranch.run(req.params.id);
-    await logAudit(req, 'branches', req.params.id, 'DELETE', existing, null);
+    await auditLog({ table: 'branches', recordId: req.params.id, action: 'DELETE', oldVals: existing, req });
     ok(res, { message: 'Branch deleted successfully' });
   } catch (e) {
     console.error('[DELETE /api/branches/:id]', e);

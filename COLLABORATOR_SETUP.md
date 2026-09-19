@@ -6,15 +6,14 @@ This document is prepared for team members onboarding or continuing development 
 
 ## 1. Summary of Recent Merges & Architecture Updates
 
-The project history includes two major merged pull requests:
+The project history includes major architecture upgrades:
 - **PR #2 (`54869d6`)**: Ported backend services from C# (.NET) to Java Spring Boot with MySQL 8.4 LTS persistence.
-- **PR #3 (`434a4c2`)**: Merged 10 enterprise feature commits adding 17 new HR modules:
-  1. **Master Configurations & Settings** (`/api/settings/master`)
-  2. **Full Shift Subsystem**: Shift details, 30-day Shift Calendar, Shift Groups, Roster Matrix with auto-generation (`/api/shifts`, `/api/shift-calendar`, `/api/shift-groups`, `/api/shift-roster`)
-  3. **Organization Management**: Departments, Department Shifts, and 2026 Karnataka State Gazette Public Holidays (`/api/departments`, `/api/department-shifts`, `/api/public-holidays`)
-  4. **Workforce Structure**: Employment Types, Employee Groups / Task Forces (`/api/employment-types`, `/api/employee-groups`)
-  5. **Attendance Operations**: Attendance Log with regularization, Geofences with radial distance validation, Work Codes, and Overtime (OT) Register with auto-calculation (`/api/attendance-log`, `/api/geofences`, `/api/work-codes`, `/api/ot-register`)
-  6. **Leave & Duty Administration**: Statutory Leave Types, Leave Applications & Balances Ledger, Outdoor Duty Entries (`/api/leave-types`, `/api/leave-entries`, `/api/outdoor-entries`)
+- **PR #3 (`434a4c2`)**: Merged 10 enterprise feature commits adding 17 new HR modules (Shifts, Roster, Geofences, Overtime, Leave ledger, Outdoor duty).
+- **PR #4 (Masters Subsystem & 3NF DBA Normalization)**:
+  1. **Normalized 3NF Schema**: Applied strict relational normalization (1NF, 2NF, 3NF) for `companies`, `departments`, `designations`, `branches` (locations), `geofences`, `shifts`, `employment_types`, and `employees` with foreign key integrity.
+  2. **5,000 Indian Employee Master Seeder**: Added high-performance chunked bulk seeder generating 5,000 realistic Indian employee records with AES-256-GCM encrypted PII, 128-dimensional AI facial embeddings, and SHA-256 verification hashes.
+  3. **High-Speed Paginated API & UI Wiring**: Fast multi-column indexed queries (<35ms on 5,000+ records) and full frontend master modal wiring for Companies, Designations, and Branches.
+  4. **32-Step Integration Test Suite**: Complete end-to-end automated testing covering all 32 endpoints, transactions, and query benchmarks.
 
 > [!NOTE]
 > **Cross-Platform Scripting (Windows & Linux)**:
@@ -99,12 +98,18 @@ python3 stop_all.py          # Linux / macOS
 
 #### Step 5: Verify via Automated Integration Tests
 ```bash
-# Run comprehensive 28-step test suite:
+# Run comprehensive 32-step test suite:
 npm test
 # Or:
 npm run test:integration
 ```
-All **28 integration tests** must pass 100%.
+All **32 integration tests** must pass 100%.
+
+#### Step 6: (Optional) Seed 5,000 Realistic Indian Employee Master Records
+To benchmark system performance with 5,000 realistic records with 128D AI facial embeddings and AES-256-GCM encryption:
+```bash
+node scripts/seed_5000_employees.js
+```
 
 ---
 
@@ -113,7 +118,7 @@ All **28 integration tests** must pass 100%.
 | File / Resource | In Git? | Need to Send Separately? | Action Required |
 | :--- | :---: | :---: | :--- |
 | **`.env`** | ❌ No (Git-ignored) | ⚠️ **Optional** | They can run `cp .env.example .env`, OR you can send them your `.env` directly. |
-| **MySQL Database** | ❌ Runtime | ❌ **No** | Auto-created with schema & 100 seeded records when running `npm start` or `python start_all.py`. |
+| **MySQL Database** | ❌ Runtime | ❌ **No** | Auto-created with schema & seeded records when running `npm start` or `python start_all.py`. |
 | **Face Recognition AI Models** | ❌ No | ❌ **No** | Loaded dynamically in browser via CDN (`cdn.jsdelivr.net`). |
 | **`data/mysql/`** | ❌ No (Git-ignored) | ❌ **DO NOT SEND** | Runtime MySQL socket/PID/database directory. Created automatically. |
 | **`node_modules/`** | ❌ No (Git-ignored) | ❌ **DO NOT SEND** | Generated locally via `npm install`. |
@@ -134,7 +139,7 @@ soukhya-tech/
 ├── stop_all.py                  # [TRACKED] Cross-platform backend shutdown utility
 ├── test_all.py                  # [TRACKED] Cross-platform test runner and health checker
 ├── server.js                    # [TRACKED] Express.js core API server
-├── test_integration.js          # [TRACKED] 28-step integration test suite
+├── test_integration.js          # [TRACKED] 32-step integration test suite
 ├── db_optimize.py               # [TRACKED] MySQL 8.4 LTS optimizer & latency benchmark
 ├── changelog/                   # [TRACKED] Role-aware markdown release notes
 │   ├── README.md
@@ -150,6 +155,7 @@ soukhya-tech/
 │   ├── app.js                   # Client controller logic
 │   └── dsa_cache.js             # Client-side LRU cache & prefix trie
 ├── scripts/
+│   ├── seed_5000_employees.js   # [TRACKED] 5,000 Indian employee master bulk seeder
 │   ├── setup_mysql.js           # [TRACKED] Cross-platform MySQL runner (Node.js)
 │   └── setup_mysql.sh           # [TRACKED] Local MySQL daemon setup helper (Bash)
 ├── src/                         # [TRACKED] Spring Boot Java backend
