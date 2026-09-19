@@ -781,8 +781,11 @@ async function init() {
 
 // ── Load all data from DB on startup ──────────
 async function loadFromDB() {
+  // Load companies
+  await loadCompaniesFromAPI();
+
   // Load employees
-  const empRes = await apiGet('/api/employees');
+  const empRes = await apiGet('/api/employees?size=10000');
   if (empRes && empRes.success) {
     EMP = empRes.employees.map(e => ({
       ...e,
@@ -867,7 +870,7 @@ function showTab(id, btn) {
     renderDbdGrid();
   }
   if (id === 'company') {
-    renderCompanyGrid();
+    loadCompaniesFromAPI();
   }
   if (id === 'employee-list') {
     renderEmployeeGrid();
@@ -3403,7 +3406,30 @@ function closeCompanyModal() {
   document.getElementById('company-modal').style.display = 'none';
 }
 
-function saveCompanyModal() {
+async function loadCompaniesFromAPI() {
+  try {
+    const res = await apiFetch('/api/companies');
+    if (res && res.success && Array.isArray(res.companies)) {
+      COMPANIES = res.companies.map(c => ({
+        id: c.id,
+        code: c.code,
+        name: c.name,
+        short: c.short_name || c.short || c.code,
+        short_name: c.short_name || c.short || c.code,
+        address: c.address,
+        city: c.city,
+        employee_count: c.employee_count || 0,
+        active: c.active
+      }));
+      updateCompanySelects();
+      renderCompanyGrid();
+    }
+  } catch (e) {
+    console.warn('[LOAD COMPANIES]', e.message);
+  }
+}
+
+async function saveCompanyModal() {
   const idxVal = document.getElementById('comp-edit-index').value;
   const name = document.getElementById('comp-name').value.trim();
   const short = document.getElementById('comp-short').value.trim();
@@ -3413,46 +3439,56 @@ function saveCompanyModal() {
     return;
   }
 
+  const payload = {
+    name,
+    code: short.toUpperCase(),
+    short_name: short
+  };
+
   if (idxVal === '') {
     // Add
-    if (COMPANIES.some(c => c.name.toLowerCase() === name.toLowerCase() || c.short.toLowerCase() === short.toLowerCase())) {
-      notify('Company or Short Name already exists.', 'er');
-      return;
+    const res = await apiPost('/api/companies', payload);
+    if (res && res.success) {
+      notify(`Company "${name}" registered successfully.`, 'ok');
+      closeCompanyModal();
+      await loadCompaniesFromAPI();
+    } else {
+      notify((res && res.error && res.error.message) || 'Failed to register company', 'er');
     }
-    COMPANIES.push({ name, short });
-    notify(`Company "${name}" registered successfully.`, 'ok');
   } else {
     // Edit
     const idx = parseInt(idxVal);
-    if (isNaN(idx) || idx < 0 || idx >= COMPANIES.length) return;
-    
-    if (COMPANIES.some((c, i) => i !== idx && (c.name.toLowerCase() === name.toLowerCase() || c.short.toLowerCase() === short.toLowerCase()))) {
-      notify('Company or Short Name already exists.', 'er');
-      return;
+    const c = COMPANIES[idx];
+    if (!c) return;
+    const compId = c.id || c.code || short;
+    const res = await apiPut(`/api/companies/${compId}`, payload);
+    if (res && res.success) {
+      notify(`Company details updated.`, 'ok');
+      closeCompanyModal();
+      await loadCompaniesFromAPI();
+    } else {
+      notify((res && res.error && res.error.message) || 'Failed to update company', 'er');
     }
-    COMPANIES[idx].name = name;
-    COMPANIES[idx].short = short;
-    notify(`Company details updated.`, 'ok');
   }
-
-  closeCompanyModal();
-  updateCompanySelects();
-  renderCompanyGrid();
 }
 
-function deleteCompanyItem(idx) {
+async function deleteCompanyItem(idx) {
   const c = COMPANIES[idx];
   if (!c) return;
   if (!confirm(`Are you sure you want to delete company "${c.name}"?`)) return;
-  
-  COMPANIES.splice(idx, 1);
-  notify(`Company deleted successfully.`, 'wn');
-  updateCompanySelects();
-  renderCompanyGrid();
+
+  const compId = c.id || c.code || c.short;
+  const res = await apiDelete(`/api/companies/${compId}`);
+  if (res && res.success) {
+    notify(`Company deleted successfully.`, 'wn');
+    await loadCompaniesFromAPI();
+  } else {
+    notify((res && res.error && res.error.message) || 'Failed to delete company', 'er');
+  }
 }
 
 function updateCompanySelects() {
-  const selects = ['r-company', 'm-company', 'rep-company'];
+  const selects = ['r-company', 'm-company', 'rep-company', 'emp-list-filter-company'];
   selects.forEach(id => {
     const select = document.getElementById(id);
     if (!select) return;
@@ -3460,7 +3496,7 @@ function updateCompanySelects() {
     const currentVal = select.value;
     select.innerHTML = '';
     
-    if (id === 'rep-company') {
+    if (id === 'rep-company' || id === 'emp-list-filter-company') {
       const optAll = document.createElement('option');
       optAll.value = 'All';
       optAll.textContent = 'All Companies';
@@ -3469,8 +3505,8 @@ function updateCompanySelects() {
     
     COMPANIES.forEach(c => {
       const opt = document.createElement('option');
-      opt.value = c.short;
-      opt.textContent = c.short;
+      opt.value = c.short || c.code;
+      opt.textContent = `${c.short || c.code} - ${c.name}`;
       select.appendChild(opt);
     });
     
@@ -3822,6 +3858,7 @@ window.syncRegFormDevices = syncRegFormDevices;
 window.unsyncRegFormDevices = unsyncRegFormDevices;
 
 // Company List helpers
+window.loadCompaniesFromAPI = loadCompaniesFromAPI;
 window.renderCompanyGrid = renderCompanyGrid;
 window.sortCompanies = sortCompanies;
 window.updateCompanyPagination = updateCompanyPagination;
