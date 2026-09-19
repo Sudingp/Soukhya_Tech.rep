@@ -84,7 +84,7 @@ function renderEmploymentTypesTable(types) {
         </td>
         <td style="padding:10px; text-align:center">
           <span class="badge" style="background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3); font-weight:600; font-size:11px">
-            👥 ${t.headcount || 0}
+            👥 ${t.employee_count || t.headcount || 0}
           </span>
         </td>
         <td style="padding:10px; text-align:right">
@@ -264,7 +264,7 @@ function renderEmployeeGroupsCards(groups) {
 
         <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--br); padding-top:10px; margin-top:6px">
           <span class="badge" style="background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3); font-weight:600; font-size:11px">
-            👥 ${g.members_count || 0} Members
+            👥 ${g.member_count || g.members_count || 0} Members
           </span>
 
           <div style="display:flex; gap:6px">

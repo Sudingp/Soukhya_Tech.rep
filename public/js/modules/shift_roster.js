@@ -78,7 +78,7 @@ function renderDepartmentsTable(depts) {
         </td>
         <td style="padding:10px; text-align:center">
           <span class="badge" style="background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3); font-weight:600; font-size:11px">
-            👥 ${d.headcount || 0}
+            👥 ${d.employee_count || d.headcount || 0}
           </span>
         </td>
         <td style="padding:10px; text-align:right">
@@ -286,7 +286,7 @@ function renderDeptShiftsTable(deptShifts, shifts) {
       <tr style="border-bottom:1px solid var(--br); transition:background 0.15s">
         <td style="padding:12px 10px">
           <div style="font-weight:700; color:var(--tx)">${escapeHtml(ds.dept_name)}</div>
-          <div style="font-size:10.5px; color:var(--mu); font-family:var(--mo)">Code: ${escapeHtml(ds.dept_code)}</div>
+          <div style="font-size:10.5px; color:var(--mu); font-family:var(--mo)">Code: ${escapeHtml(ds.dept_code)} · <strong style="color:#60a5fa">👥 ${Number(ds.employee_count || 0).toLocaleString("en-IN")} Emps</strong></div>
         </td>
         <td style="padding:12px 10px; vertical-align:middle">
           <select class="fs" id="ds-default-shift-${ds.dept_id}" style="padding:5px 8px; font-size:11.5px; width:100%; max-width:210px">

@@ -72,7 +72,7 @@ function renderCompanyGrid() {
   if (!tbody) return;
 
   if (pageRecords.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" class="emp" style="text-align:center; padding:12px; color:var(--mu)">No companies registered.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="emp" style="text-align:center; padding:12px; color:var(--mu)">No companies registered.</td></tr>`;
     const gridInfo = document.getElementById('company-grid-info');
     if (gridInfo) gridInfo.textContent = 'Records: 0 - 0 of 0';
     const pageNum = document.getElementById('company-page-num');
@@ -83,10 +83,16 @@ function renderCompanyGrid() {
   let html = '';
   pageRecords.forEach((c) => {
     const origIndex = COMPANIES.findIndex(comp => comp.name === c.name && comp.short === c.short);
+    const empCount = c.employee_count || 0;
     html += `
       <tr style="border-bottom:1px solid #eee">
         <td style="padding:8px; border-right:1px solid #ccc; font-weight:bold">${c.name}</td>
         <td style="padding:8px; border-right:1px solid #ccc">${c.short}</td>
+        <td style="padding:8px; border-right:1px solid #ccc; text-align:center">
+          <span style="display:inline-block; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:bold; background:rgba(30,136,229,0.12); color:#1565c0; border:1px solid rgba(30,136,229,0.3)">
+            👥 ${empCount.toLocaleString()}
+          </span>
+        </td>
         <td style="padding:8px; border-right:1px solid #ccc; text-align:center">
           <a href="#" style="color:#0055aa; text-decoration:none" onclick="event.preventDefault(); notify('Logo link clicked for ${c.short}', 'ok')">Logo</a>
         </td>
