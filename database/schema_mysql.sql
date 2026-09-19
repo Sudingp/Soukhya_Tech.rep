@@ -577,6 +577,120 @@ CREATE TABLE IF NOT EXISTS `token_blacklist` (
   KEY `idx_blacklist_expires` (`expires_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- ── 29. Master: Divisions (Business Units & Strategic Verticals) ──
+CREATE TABLE IF NOT EXISTS `divisions` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `code` VARCHAR(30) NOT NULL,
+  `name` VARCHAR(150) NOT NULL,
+  `company_id` VARCHAR(50) NOT NULL,
+  `head_emp_id` VARCHAR(50) NULL,
+  `budget_code` VARCHAR(50) NULL,
+  `active` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_divisions_code` (`code`),
+  KEY `idx_divisions_company` (`company_id`),
+  KEY `idx_divisions_active` (`active`),
+  CONSTRAINT `fk_divisions_company`
+    FOREIGN KEY (`company_id`) REFERENCES `companies` (`id`)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_divisions_head`
+    FOREIGN KEY (`head_emp_id`) REFERENCES `employees` (`id`)
+    ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ── 30. Master: Cost Centers (Financial & Project Cost Accounting) ──
+CREATE TABLE IF NOT EXISTS `cost_centers` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `code` VARCHAR(30) NOT NULL,
+  `name` VARCHAR(150) NOT NULL,
+  `company_id` VARCHAR(50) NOT NULL,
+  `dept_id` VARCHAR(50) NULL,
+  `gl_account` VARCHAR(50) NULL,
+  `annual_budget` DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+  `currency` VARCHAR(10) NOT NULL DEFAULT 'INR',
+  `active` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_cost_centers_code` (`code`),
+  KEY `idx_cost_centers_company` (`company_id`),
+  KEY `idx_cost_centers_dept` (`dept_id`),
+  KEY `idx_cost_centers_active` (`active`),
+  CONSTRAINT `fk_cost_centers_company`
+    FOREIGN KEY (`company_id`) REFERENCES `companies` (`id`)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_cost_centers_dept`
+    FOREIGN KEY (`dept_id`) REFERENCES `departments` (`id`)
+    ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ── 31. Master: Biometric Devices (Edge Hardware & Terminal Manager) ──
+CREATE TABLE IF NOT EXISTS `biometric_devices` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `serial_number` VARCHAR(50) NOT NULL,
+  `device_name` VARCHAR(100) NOT NULL,
+  `device_ip` VARCHAR(45) NOT NULL,
+  `device_port` INT UNSIGNED NOT NULL DEFAULT 4370,
+  `device_model` VARCHAR(50) NOT NULL DEFAULT 'eSSL SilkBio-101TC',
+  `protocol` ENUM('ZKEM', 'HIKVISION', 'ESSL', 'ANVIZ', 'REST_API') NOT NULL DEFAULT 'ESSL',
+  `branch_id` VARCHAR(50) NULL,
+  `direction` ENUM('IN', 'OUT', 'BOTH') NOT NULL DEFAULT 'BOTH',
+  `last_heartbeat` DATETIME NULL,
+  `status` ENUM('ONLINE', 'OFFLINE', 'SYNCING', 'ERROR') NOT NULL DEFAULT 'ONLINE',
+  `template_count` INT UNSIGNED NOT NULL DEFAULT 0,
+  `buffer_lag_ms` INT UNSIGNED NOT NULL DEFAULT 0,
+  `active` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_biometric_devices_serial` (`serial_number`),
+  KEY `idx_biometric_devices_branch` (`branch_id`),
+  KEY `idx_biometric_devices_status` (`status`, `active`),
+  CONSTRAINT `fk_biometric_devices_branch`
+    FOREIGN KEY (`branch_id`) REFERENCES `branches` (`id`)
+    ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ── 32. Master: Employee Transfers & Promotion Audit Ledger ──
+CREATE TABLE IF NOT EXISTS `employee_transfers` (
+  `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `emp_id` VARCHAR(50) NOT NULL,
+  `prev_company_id` VARCHAR(50) NULL,
+  `new_company_id` VARCHAR(50) NULL,
+  `prev_dept_id` VARCHAR(50) NULL,
+  `new_dept_id` VARCHAR(50) NULL,
+  `prev_desig_id` VARCHAR(50) NULL,
+  `new_desig_id` VARCHAR(50) NULL,
+  `prev_branch_id` VARCHAR(50) NULL,
+  `new_branch_id` VARCHAR(50) NULL,
+  `transfer_type` ENUM('PROMOTION', 'DEPARTMENT_TRANSFER', 'BRANCH_RELOCATION', 'LATERAL_MOVE', 'RE_DESIGNATION') NOT NULL,
+  `effective_date` DATE NOT NULL,
+  `remarks` TEXT NULL,
+  `approved_by` VARCHAR(50) NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY `idx_transfers_emp_date` (`emp_id`, `effective_date`),
+  KEY `idx_transfers_type` (`transfer_type`),
+  CONSTRAINT `fk_transfers_emp`
+    FOREIGN KEY (`emp_id`) REFERENCES `employees` (`id`)
+    ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ── 33. High-Speed Transactional Buffer: Fast Punch Ingestion Pipeline ──
+CREATE TABLE IF NOT EXISTS `fast_punch_buffer` (
+  `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `emp_id` VARCHAR(50) NOT NULL,
+  `terminal_id` VARCHAR(50) NOT NULL,
+  `punch_timestamp` DATETIME NOT NULL,
+  `punch_state` ENUM('CHECK_IN', 'CHECK_OUT', 'BREAK_IN', 'BREAK_OUT', 'AUTO') NOT NULL DEFAULT 'AUTO',
+  `verification_type` ENUM('FACE', 'FINGERPRINT', 'CARD', 'PASSCODE', 'GPS_MOBILE') NOT NULL DEFAULT 'FACE',
+  `temperature` DECIMAL(4,1) NULL,
+  `mask_detected` TINYINT(1) NOT NULL DEFAULT 0,
+  `processed` TINYINT(1) NOT NULL DEFAULT 0,
+  `process_latency_ms` DECIMAL(6,2) NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY `idx_punch_proc_created` (`processed`, `created_at`),
+  KEY `idx_punch_emp_time` (`emp_id`, `punch_timestamp`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 -- ══════════════════════════════════════════════════════════════════════════════
 -- PRE-SEEDED ENTERPRISE MASTER DATA (1NF, 2NF, 3NF ALIGNED)
 -- ══════════════════════════════════════════════════════════════════════════════
@@ -751,5 +865,26 @@ VALUES (
   'USER',
   1
 );
+
+-- Pre-seeded Divisions
+INSERT IGNORE INTO `divisions` (`id`, `code`, `name`, `company_id`, `budget_code`, `active`) VALUES
+  ('DIV_TECH', 'TECH_DEV', 'Technology, Product Engineering & AI', 'COMP_KRIDE', 'BU_TECH_2026', 1),
+  ('DIV_OPS', 'RAIL_OPS', 'Rail Infrastructure & Signal Operations', 'COMP_KRIDE', 'BU_OPS_2026', 1),
+  ('DIV_FIN', 'CORP_FIN', 'Corporate Finance & Procurement', 'COMP_SOUKHYA', 'BU_FIN_2026', 1),
+  ('DIV_HR', 'PEOPLE_HR', 'Human Resources & Talent Management', 'COMP_SOUKHYA', 'BU_HR_2026', 1);
+
+-- Pre-seeded Cost Centers
+INSERT IGNORE INTO `cost_centers` (`id`, `code`, `name`, `company_id`, `dept_id`, `gl_account`, `annual_budget`, `currency`, `active`) VALUES
+  ('CC_ENG_101', 'ENG_CORE', 'Core Software Engineering Cost Center', 'COMP_KRIDE', 'DEP_ENG', 'GL-70102', 15000000.00, 'INR', 1),
+  ('CC_RAIL_502', 'RAIL_COMM', 'Rail Commissioning & Field Works', 'COMP_KRIDE', 'DEP_OPS', 'GL-80204', 35000000.00, 'INR', 1),
+  ('CC_CORP_901', 'CORP_EXEC', 'Corporate Executive & Administration', 'COMP_SOUKHYA', 'DEP_HR', 'GL-90101', 8000000.00, 'INR', 1),
+  ('CC_IT_301', 'IT_CLOUD', 'Enterprise Cloud & Data Infrastructure', 'COMP_SOUKHYA', 'DEP_IT', 'GL-60302', 12000000.00, 'INR', 1);
+
+-- Pre-seeded Biometric Devices
+INSERT IGNORE INTO `biometric_devices` (`id`, `serial_number`, `device_name`, `device_ip`, `device_port`, `device_model`, `protocol`, `branch_id`, `direction`, `status`, `template_count`, `buffer_lag_ms`, `active`) VALUES
+  ('DEV_BLR_01', 'ESSL-BLR-001', 'HQ Main Entrance Turnstile #1', '192.168.1.15', 4370, 'eSSL SilkBio-101TC', 'ESSL', 'BR_HQ', 'IN', 'ONLINE', 5100, 12, 1),
+  ('DEV_BLR_02', 'ESSL-BLR-002', 'HQ West Exit Turnstile #2', '192.168.1.16', 4370, 'eSSL SilkBio-101TC', 'ESSL', 'BR_HQ', 'OUT', 'ONLINE', 5100, 15, 1),
+  ('DEV_WFD_01', 'HIK-WFD-001', 'Whitefield SEZ Face Pod Gate', '192.168.10.22', 8000, 'Hikvision DS-K1T671MF', 'HIKVISION', 'BR_WFD', 'BOTH', 'ONLINE', 1200, 24, 1),
+  ('DEV_MYS_01', 'ESSL-MYS-001', 'Mysore Plant Security Gate', '192.168.20.10', 4370, 'eSSL uFace 800 Plus', 'ESSL', 'BR_MYS', 'BOTH', 'OFFLINE', 450, 0, 1);
 
 SET FOREIGN_KEY_CHECKS = 1;
