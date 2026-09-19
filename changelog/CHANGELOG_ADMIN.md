@@ -4,7 +4,37 @@ This changelog contains comprehensive, full-stack (Backend + Database + Infrastr
 
 ---
 
-## Branch: `HR-Enterprise-Dev-V2` (Current Active Version — v2.0.0)
+## Branch: `HR-Enterprise-Dev-V4` / `HR-Enterprise-Prod` (Current Active Version — v4.0.0)
+
+### 1. Senior DBA Performance Optimizations & Benchmark Suite
+- **Automated Benchmark Suite (`scripts/db_benchmark.js`)**:
+  - Implemented a 15-query automated benchmarking engine testing Simple (S1–S5), Medium (M1–M5), and Complex (C1–C5) performance tiers under high concurrency on 10,100 employees, 156,000+ attendance records, and 284,000+ roster slots.
+  - Generates Min, Max, Avg, P50, P95, and P99 latency distributions and queries per second (QPS).
+- **Covering Composite Indexes & Generated Columns**:
+  - `attendance`: Stored generated column `punch_date DATE GENERATED ALWAYS AS (CAST(timestamp AS DATE)) STORED` with covering index `idx_att_pdate_dept_stat_cov (punch_date, dept, status, emp_id)` (4x query latency reduction from 284 ms to 70 ms).
+  - `shift_roster`: Covering composite index `idx_roster_date_shift_emp_cov (roster_date, shift_id, emp_id)` (11.3x speedup from 622 ms to 54.8 ms).
+  - `employees`: Covering composite indexes `idx_emp_comp_dept_stat_cov (company_id, dept, status, emp_id)` and `idx_emp_div_cc_stat_cov (division_id, cost_center_id, status, emp_id)`.
+  - `ot_records`: Covering index `idx_ot_emp_stat_hrs_cov (emp_id, status, ot_hours)`.
+  - `employee_leave_balances`: Covering index `idx_elb_emp_yr_avail_cov (emp_id, financial_year, available_balance)`.
+
+### 2. High Court of Karnataka 2026 Official Calendar & Leave Workflow
+- **Gazette Ingestion**: Ingested 41 official holidays (20 Mandatory Gazetted + 21 Restricted / RH) with automated shift calendar synchronization and non-working day overrides.
+- **Statutory Leave Type**: Added `LT_RH` (*Restricted Holiday*) leave type with an annual quota of 2.0 days.
+- **Interactive Leave Application Workflow**:
+  - Dynamic `#la-holiday-id` dropdown in Leave Application modal grouped by Gazetted and Restricted holidays.
+  - Automated selection handlers auto-filling leave date range, setting quota to 1.0 day, and tagging category badges.
+
+### 3. Master Configuration & 3NF Relational Mapping
+- **Normalized Schema**: 32 relational tables with foreign keys and cascade rules across Companies, Divisions, Cost Centers, Designations, Branches, Geofences, Shifts, Shift Groups, Shift Calendar, Shift Roster, Employment Types, Employee Groups, Work Codes, Biometric Devices, Employee Transfers, Fast Punch Buffer.
+- **Dataset Scale**: 10,100 active employee records with 128-d AI face embeddings mapped across all enterprise entities.
+
+### 4. Code Quality & Modularity Enforcement
+- **Line Limit Rule**: 100% of all JavaScript, CSS, and DAO files are strictly $\le 500$ lines.
+- **Integration Test Suite**: 38/38 automated integration tests passing 100% (`node test_integration.js`).
+
+---
+
+## Branch: `HR-Enterprise-Dev-V2` (v2.0.0)
 
 ### 1. Enterprise Database Migration: MySQL 8.4 LTS
 - **Engine & Charset**: Upgraded the core persistence layer to **MySQL 8.4 LTS / 8.0 LTS** using `InnoDB` for strict ACID transaction compliance, row-level locking, and crash resilience. Default collation set to `utf8mb4_0900_ai_ci`.

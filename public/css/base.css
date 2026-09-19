@@ -1,0 +1,407 @@
+/* public/css/base.css — App Shell, Theme Variables, Header & Core Layout (<500 lines) */
+
+/* ── Reset & Variables ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg:   #0d1117;
+  --s1:   #161b27;
+  --s2:   #1e2438;
+  --s3:   #252d42;
+  --br:   #2d3650;
+  --ac:   #00d4aa;
+  --ac2:  #4f8ef7;
+  --tx:   #dde2f0;
+  --mu:   #6b7691;
+  --ok:   #10b981;
+  --warn: #f0a500;
+  --err:  #ef4444;
+  --mo:   'IBM Plex Mono', monospace;
+  --sa:   'IBM Plex Sans', sans-serif;
+}
+
+body {
+  background: var(--bg);
+  color: var(--tx);
+  font-family: var(--sa);
+  height: 100vh;
+  width: 100vw;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── App Shell ── */
+#far {
+  font-family: var(--sa);
+  background: var(--bg);
+  color: var(--tx);
+  width: 100vw;
+  max-width: 100%;
+  height: 100vh;
+  border-radius: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: none;
+  box-shadow: none;
+}
+
+/* ── Loading Screen ── */
+#ld {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+}
+
+.ldlogo {
+  font-family: var(--mo);
+  font-size: 26px;
+  color: var(--ac);
+  letter-spacing: 3px;
+  margin-bottom: 6px;
+}
+
+.ldsub {
+  font-size: 12px;
+  color: var(--mu);
+  margin-bottom: 36px;
+  letter-spacing: 1px;
+}
+
+.pbar {
+  width: 260px;
+  height: 3px;
+  background: var(--s2);
+  border-radius: 2px;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.pfill {
+  height: 100%;
+  background: var(--ac);
+  border-radius: 2px;
+  width: 0;
+  transition: width .5s;
+}
+
+.pmsg {
+  font-family: var(--mo);
+  font-size: 11px;
+  color: var(--mu);
+  text-align: center;
+}
+
+/* ── Main App ── */
+#ma {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Header ── */
+#hdr {
+  background: var(--s1);
+  border-bottom: 1px solid var(--br);
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.brand {
+  font-family: var(--mo);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ac);
+  padding: 14px 20px 14px 0;
+  border-right: 1px solid var(--br);
+  margin-right: 4px;
+  letter-spacing: 1px;
+}
+
+.brand em {
+  font-style: normal;
+  color: var(--mu);
+  font-size: 9px;
+  display: block;
+  margin-top: 2px;
+  letter-spacing: .5px;
+}
+
+.tbtn {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--mu);
+  font-family: var(--sa);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 14px 14px;
+  cursor: pointer;
+  transition: color .2s, border-color .2s;
+  white-space: nowrap;
+}
+
+.tbtn:hover { color: var(--tx); }
+.tbtn.on   { color: var(--ac); border-bottom-color: var(--ac); }
+
+.hr {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.mdot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--warn);
+  transition: background .5s;
+}
+.mdot.ok { background: var(--ac); }
+
+.hst {
+  font-family: var(--mo);
+  font-size: 10px;
+  color: var(--mu);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+#clk {
+  font-family: var(--mo);
+  font-size: 11px;
+  color: var(--mu);
+}
+
+/* ── Mode Badges & Header Controls ── */
+.mode-badge {
+  font-family: var(--mo);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  transition: all 0.2s;
+}
+
+.mode-badge.admin {
+  background: rgba(0, 212, 170, 0.12);
+  color: var(--ac);
+  border: 1px solid rgba(0, 212, 170, 0.35);
+}
+
+.mode-badge.user {
+  background: rgba(79, 142, 247, 0.12);
+  color: var(--ac2);
+  border: 1px solid rgba(79, 142, 247, 0.35);
+}
+
+.btn-hdr-switch {
+  background: var(--s2);
+  color: var(--tx);
+  border: 1px solid var(--br);
+  border-radius: 4px;
+  padding: 4px 9px;
+  font-size: 11px;
+  font-family: var(--sa);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s;
+}
+
+.btn-hdr-switch:hover {
+  border-color: var(--ac);
+  color: var(--ac);
+  background: var(--s3);
+}
+
+.btn-hdr-logout {
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 4px;
+  padding: 4px 9px;
+  font-size: 11px;
+  font-family: var(--sa);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s;
+}
+
+.btn-hdr-logout:hover {
+  background: rgba(239, 68, 68, 0.25);
+  color: #fff;
+  border-color: var(--err);
+}
+
+/* ── Role-Based Access Control ── */
+body.user-mode .admin-only {
+  display: none !important;
+}
+
+/* ── Notifications ── */
+#ntf { flex-shrink: 0; padding: 0 18px; }
+
+.ni {
+  padding: 9px 13px;
+  border-radius: 6px;
+  font-size: 12px;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  animation: ni .25s ease;
+}
+
+@keyframes ni {
+  from { opacity: 0; transform: translateY(-3px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.nok { background: rgba(16,185,129,.1);  border: 1px solid rgba(16,185,129,.25); color: var(--ok); }
+.ner { background: rgba(239,68,68,.1);   border: 1px solid rgba(239,68,68,.25);  color: var(--err); }
+.nwn { background: rgba(240,165,0,.1);   border: 1px solid rgba(240,165,0,.25);  color: var(--warn); }
+
+/* ── Tab content ── */
+#app {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  background: var(--bg);
+}
+
+.tc {
+  display: none;
+  width: 100%;
+  flex: 1;
+}
+
+.tc.on {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 100%;
+}
+
+/* Dark theme tabs retain their sleek padding */
+#tab-reg,
+#tab-att,
+#tab-hr {
+  padding: 20px 28px;
+}
+
+/* Enterprise ESSL White Theme Pages (Dashboard, Company List, Employee List) */
+#tab-dbd,
+#tab-company,
+#tab-employee-list {
+  background: #ffffff;
+  min-height: 100%;
+  flex: 1;
+}
+
+.essl-page-container {
+  background: #ffffff;
+  padding: 24px 32px 40px;
+  font-family: Arial, sans-serif;
+  color: #333;
+  width: 100%;
+  min-height: 100%;
+  flex: 1;
+  box-sizing: border-box;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 3px; height: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--br); border-radius: 2px; }
+
+/* ── DB badge ── */
+.db-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-family: var(--mo);
+  background: rgba(79,142,247,.15);
+  color: var(--ac2);
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+/* ── Hibernate Custom Animations ── */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-5px); }
+  40%, 80% { transform: translateX(5px); }
+}
+
+.animate-shake {
+  animation: shake 0.4s ease-in-out;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 0.5; }
+}
+
+.animate-pulse {
+  animation: pulse-glow 1.5s infinite ease-in-out;
+}
+
+/* Crimson warning card when scanned hibernated */
+.hiber-alert {
+  border: 1px solid rgba(239, 68, 68, 0.4) !important;
+  background: linear-gradient(135deg, var(--s2) 0%, rgba(239, 68, 68, 0.08) 100%) !important;
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.15);
+}
+
+/* ── Misc ── */
+.emp { text-align: center; padding: 24px; color: var(--mu); font-size: 12px; }
+
+#cprev {
+  width: 100%;
+  aspect-ratio: 4/3;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 2px solid var(--ac);
+  display: none;
+  margin-top: 8px;
+}
+
+.det {
+  animation: dp 1.2s ease-in-out infinite;
+  font-family: var(--mo);
+  font-size: 10px;
+  color: var(--ac);
+  margin-left: auto;
+}
+
+@keyframes dp {
+  0%, 100% { opacity: .4; }
+  50%       { opacity: 1; }
+}

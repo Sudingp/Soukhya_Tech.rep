@@ -1,0 +1,316 @@
+/* public/css/modals.css — Modal System, Master Settings, & Form Dialogs (<500 lines) */
+
+/* ── eTimeTrackLite Replica Modal Styles ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(13, 17, 23, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fade-in 0.2s ease-out;
+}
+
+.modal-box {
+  background: var(--s1);
+  border: 1px solid var(--br);
+  border-radius: 12px;
+  width: 780px;
+  max-width: 95%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.7);
+}
+
+.modal-hdr {
+  background: var(--s2);
+  border-bottom: 1px solid var(--br);
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-title {
+  font-family: var(--mo);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ac);
+  letter-spacing: 0.5px;
+}
+
+.modal-close-x {
+  background: none;
+  border: none;
+  color: var(--mu);
+  font-size: 16px;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.modal-close-x:hover {
+  color: var(--err);
+}
+
+.modal-body {
+  padding: 18px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.modal-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.date-selects-row {
+  display: flex;
+  gap: 6px;
+}
+
+.radio-grp {
+  display: flex;
+  gap: 16px;
+  padding: 4px 0;
+}
+
+.frad {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--tx);
+  cursor: pointer;
+}
+
+.frad input {
+  accent-color: var(--ac);
+  cursor: pointer;
+}
+
+.chk-fg {
+  margin-top: 14px;
+  margin-bottom: 14px;
+}
+
+.fchk-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-family: var(--mo);
+  color: var(--mu);
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.fchk-label input {
+  accent-color: var(--ac);
+  cursor: pointer;
+}
+
+.modal-extra-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  border-top: 1px dashed var(--br);
+  padding-top: 14px;
+  margin-top: 14px;
+}
+
+.modal-hib-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.modal-ftr {
+  background: var(--s2);
+  border-top: 1px solid var(--br);
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.btn-sec-sync {
+  border-color: rgba(16, 185, 129, 0.3);
+  color: var(--ok);
+}
+.btn-sec-sync:hover {
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.btn-sec-del {
+  border-color: rgba(239, 68, 68, 0.3);
+  color: var(--err);
+}
+.btn-sec-del:hover {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.modal-link-wrap {
+  margin: 0 auto;
+  padding: 0 10px;
+}
+
+.modal-lnk {
+  font-size: 11px;
+  color: var(--ac2);
+  text-decoration: none;
+  font-family: var(--sa);
+  border-bottom: 1px dashed var(--ac2);
+  transition: all 0.15s;
+}
+
+.modal-lnk:hover {
+  color: var(--tx);
+  border-bottom-color: var(--tx);
+}
+
+.modal-actions-right {
+  display: flex;
+  gap: 8px;
+}
+
+/* Animations */
+.animate-zoom {
+  animation: zoom-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes zoom-in {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ── ⚙️ MASTER SETTINGS MODAL STYLES ── */
+.ms-tabs-bar {
+  display: flex;
+  gap: 6px;
+}
+
+.ms-tab-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--mu);
+  font-family: var(--sa);
+  font-size: 11.5px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.ms-tab-btn:hover {
+  color: var(--tx);
+  background: var(--s3);
+}
+
+.ms-tab-btn.active {
+  color: var(--ac);
+  background: var(--s3);
+  border-color: var(--ac);
+  font-weight: 600;
+}
+
+.ms-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.ms-hint {
+  display: block;
+  font-size: 10px;
+  color: var(--mu);
+  margin-top: 4px;
+  line-height: 1.3;
+}
+
+.ms-toggle-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  background: var(--s2);
+  border: 1px solid var(--br);
+  border-radius: 6px;
+  gap: 16px;
+}
+
+.fi-range {
+  width: 100%;
+  accent-color: var(--ac);
+  cursor: pointer;
+}
+
+/* Toggle Switch */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 38px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--s3);
+  border: 1px solid var(--br);
+  transition: .2s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 2px;
+  bottom: 2px;
+  background-color: #fff;
+  transition: .2s;
+}
+
+input:checked + .slider {
+  background-color: var(--ac);
+  border-color: var(--ac);
+}
+
+input:checked + .slider:before {
+  transform: translateX(18px);
+  background-color: #0b0f19;
+}
+
+.slider.round {
+  border-radius: 20px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}

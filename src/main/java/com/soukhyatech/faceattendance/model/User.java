@@ -26,10 +26,12 @@ public class User {
     @Column(nullable = false, length = 255)
     private String passwordHash;
 
+    @Builder.Default
     @Column(nullable = false, length = 20)
     @Enumerated(EnumType.STRING)
     private Role role = Role.EMPLOYEE;
 
+    @Builder.Default
     @Column(nullable = false)
     private Boolean active = true;
 
@@ -42,6 +44,6 @@ public class User {
     private Instant updatedAt;
 
     public enum Role {
-        ADMIN, HR, EMPLOYEE, DEVICE
+        ADMIN, HR, EMPLOYEE, DEVICE, USER
     }
 }

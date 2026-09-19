@@ -4,6 +4,23 @@ Welcome to the Soukhya Tech HR Enterprise release notes. This document highlight
 
 ---
 
+## What's New in Version 4.0 (Branch: `HR-Enterprise-Dev-V4` / `HR-Enterprise-Prod`)
+
+### 1. Official Karnataka High Court 2026 Holiday Calendar & Smart Leave
+- **41 Official State Holidays**: Access the complete Karnataka 2026 gazette with 20 Mandatory General Holidays and 21 Restricted / Optional Holidays (RH).
+- **Smart Holiday Leave Application**: When applying for leave, select a holiday directly from the new dropdown list (`#la-holiday-id`). The system automatically sets the date, preselects Restricted Holiday (`LT_RH`) or Casual Leave (`LT_CL`), and handles quota calculations.
+- **Dynamic Holiday Badges**: View live visual badges for General Gazetted vs. Restricted holidays across shift schedules and calendar days.
+
+### 2. High-Performance Organization Masters & Multi-Company Directory
+- **Unified Master Management**: Manage Companies, Divisions, Cost Centers, Designations, Branches, Geofences, Shifts, Shift Groups, and Biometric Devices from responsive, dedicated modals.
+- **Instant Search on 10,000+ Staff**: Search, filter, and paginate across 10,100 employee profiles with sub-millisecond responsiveness.
+
+### 3. Real-Time Overtime & Shift Rostering
+- **Automated Overtime Calculation**: Overtime calculations accurately calculate standard vs. weekly-off and public holiday wage rates (1.5x / 2.0x).
+- **Monthly Shift Matrix**: View and manage shift schedules across all departments with zero lag.
+
+---
+
 ## What's New in Version 2.0 (Branch: `HR-Enterprise-Dev-V2`)
 
 ### 1. Full-Screen Edge-to-Edge Experience

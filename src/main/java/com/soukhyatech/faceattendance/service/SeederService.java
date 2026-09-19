@@ -59,6 +59,16 @@ public class SeederService {
             userRepository.save(admin);
             System.out.println("[AUTH] Default admin created: " + adminUsername);
         }
+        if (userRepository.findByUsernameAndActiveTrue("user").isEmpty()) {
+            User user = User.builder()
+                .username("user")
+                .passwordHash(passwordEncoder.encode("user123"))
+                .role(User.Role.USER)
+                .active(true)
+                .build();
+            userRepository.save(user);
+            System.out.println("[AUTH] Default user created: user");
+        }
     }
 
     private List<Employee> generateEmployees() {
