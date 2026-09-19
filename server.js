@@ -766,43 +766,52 @@ app.delete('/api/admin/users/:id', authenticate, requireRoles('ADMIN'), async (r
 // EMPLOYEE ROUTES
 // ══════════════════════════════════════════════
 
-// GET /api/employees — paginated, cached, role-aware masking
+// GET /api/employees — high-speed paginated, filterable, role-aware masking
 app.get('/api/employees', authenticate, async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-    const size = Math.min(100, Math.max(1, parseInt(req.query.size, 10) || 20));
-    const statusFilter = req.query.status || null;
+    const size = Math.min(10000, Math.max(1, parseInt(req.query.size || req.query.limit, 10) || 20));
     const isAdminOrHr = ['ADMIN', 'HR'].includes(req.user.role);
 
-    const cacheKey = CACHE_KEYS.EMP_LIST(page, size, statusFilter);
-    let rows = cache.get(cacheKey);
-    if (!rows) {
-      if (statusFilter) {
-        rows = await stmts.getEmployeeByStatus.all(statusFilter);
-      } else {
-        rows = await stmts.getAllEmployees.all();
-      }
-      cache.set(cacheKey, rows, CACHE_TTL_EMP * 1000, ['employees']);
-    }
+    const queryParams = {
+      search: req.query.search || '',
+      department: req.query.department || '',
+      company: req.query.company || '',
+      status: req.query.status || '',
+      employment_type: req.query.employment_type || '',
+      sortBy: req.query.sortBy || 'created_at',
+      sortOrder: req.query.sortOrder || 'DESC',
+      page,
+      limit: size
+    };
 
-    const total = rows.length;
-    const paginated = rows.slice((page - 1) * size, page * size).map(e => {
+    const result = await stmts.getEmployees.all(queryParams);
+    const paginated = result.employees.map(e => {
       const decrypted = decryptEmployeePii(e, !isAdminOrHr);
       const desc = typeof decrypted.descriptor === 'string' ? JSON.parse(decrypted.descriptor) : decrypted.descriptor;
       return {
         ...decrypted,
         descriptor: desc,
-        // Never expose descriptor_hash to client
         descriptor_hash: undefined,
       };
     });
 
-    const responseData = { employees: paginated, pagination: { page, size, total, pages: Math.ceil(total / size) } };
+    const responseData = {
+      employees: paginated,
+      total: result.total,
+      pagination: {
+        page: result.page,
+        size: result.limit,
+        limit: result.limit,
+        total: result.total,
+        pages: result.totalPages
+      }
+    };
     if (handleETag(req, res, responseData, 'employees')) return;
     ok(res, responseData);
   } catch (e) {
     console.error('[GET /api/employees]', e);
-    err(res, 'INTERNAL_ERROR', 'Failed to fetch employees', 500);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch employees: ' + e.message, 500);
   }
 });
 
@@ -1688,6 +1697,258 @@ app.post('/api/shift-roster/auto-generate', authenticate, requireRoles('ADMIN'),
   } catch (e) {
     console.error('[POST /api/shift-roster/auto-generate]', e);
     err(res, 'INTERNAL_ERROR', 'Failed to auto-generate shift roster: ' + e.message, 500);
+  }
+});
+
+// ══════════════════════════════════════════════
+// 🏢 COMPANIES MASTER APIS
+// ══════════════════════════════════════════════
+const companySchema = Joi.object({
+  code: Joi.string().min(2).max(30).required(),
+  name: Joi.string().min(2).max(150).required(),
+  short_name: Joi.string().min(2).max(50).required(),
+  logo_url: Joi.string().allow('', null).optional(),
+  address: Joi.string().allow('', null).max(255).optional(),
+  city: Joi.string().max(100).default('Bangalore'),
+  state: Joi.string().max(100).default('Karnataka'),
+  country: Joi.string().max(100).default('India'),
+  pincode: Joi.string().allow('', null).max(20).optional(),
+  email: Joi.string().email().allow('', null).optional(),
+  phone: Joi.string().allow('', null).max(25).optional(),
+  active: Joi.boolean().default(true)
+});
+
+app.get('/api/companies', authenticate, async (req, res) => {
+  try {
+    const companies = await stmts.getAllCompanies.all();
+    ok(res, { companies, total: companies.length });
+  } catch (e) {
+    console.error('[GET /api/companies]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch companies: ' + e.message, 500);
+  }
+});
+
+app.get('/api/companies/:id', authenticate, async (req, res) => {
+  try {
+    const company = await stmts.getCompanyById.get(req.params.id);
+    if (!company) return err(res, 'NOT_FOUND', 'Company not found', 404);
+    ok(res, { company });
+  } catch (e) {
+    console.error('[GET /api/companies/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch company: ' + e.message, 500);
+  }
+});
+
+app.post('/api/companies', authenticate, requireRoles('ADMIN', 'HR'), async (req, res) => {
+  try {
+    const { error, value } = companySchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const existing = await stmts.getCompanyById.get(value.code);
+    if (existing) return err(res, 'CONFLICT', 'Company with this code or short name already exists', 409);
+
+    const result = await stmts.insertCompany.run(value);
+    await logAudit(req, 'companies', result.id, 'INSERT', null, value);
+    ok(res, { message: 'Company created successfully', id: result.id }, 201);
+  } catch (e) {
+    console.error('[POST /api/companies]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to create company: ' + e.message, 500);
+  }
+});
+
+app.put('/api/companies/:id', authenticate, requireRoles('ADMIN', 'HR'), async (req, res) => {
+  try {
+    const { error, value } = companySchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const existing = await stmts.getCompanyById.get(req.params.id);
+    if (!existing) return err(res, 'NOT_FOUND', 'Company not found', 404);
+
+    await stmts.updateCompany.run({ ...value, id: req.params.id });
+    await logAudit(req, 'companies', req.params.id, 'UPDATE', existing, value);
+    ok(res, { message: 'Company updated successfully' });
+  } catch (e) {
+    console.error('[PUT /api/companies/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to update company: ' + e.message, 500);
+  }
+});
+
+app.delete('/api/companies/:id', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const existing = await stmts.getCompanyById.get(req.params.id);
+    if (!existing) return err(res, 'NOT_FOUND', 'Company not found', 404);
+
+    await stmts.deleteCompany.run(req.params.id);
+    await logAudit(req, 'companies', req.params.id, 'DELETE', existing, null);
+    ok(res, { message: 'Company deleted successfully' });
+  } catch (e) {
+    console.error('[DELETE /api/companies/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to delete company: ' + e.message, 500);
+  }
+});
+
+// ══════════════════════════════════════════════
+// 👔 DESIGNATIONS MASTER APIS
+// ══════════════════════════════════════════════
+const designationSchema = Joi.object({
+  code: Joi.string().min(2).max(30).required(),
+  name: Joi.string().min(2).max(100).required(),
+  dept_id: Joi.string().allow('', null).optional(),
+  grade_level: Joi.string().max(20).default('L1'),
+  description: Joi.string().allow('', null).max(255).optional(),
+  active: Joi.boolean().default(true)
+});
+
+app.get('/api/designations', authenticate, async (req, res) => {
+  try {
+    const designations = await stmts.getAllDesignations.all();
+    ok(res, { designations, total: designations.length });
+  } catch (e) {
+    console.error('[GET /api/designations]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch designations: ' + e.message, 500);
+  }
+});
+
+app.get('/api/designations/:id', authenticate, async (req, res) => {
+  try {
+    const designation = await stmts.getDesignationById.get(req.params.id);
+    if (!designation) return err(res, 'NOT_FOUND', 'Designation not found', 404);
+    ok(res, { designation });
+  } catch (e) {
+    console.error('[GET /api/designations/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch designation: ' + e.message, 500);
+  }
+});
+
+app.post('/api/designations', authenticate, requireRoles('ADMIN', 'HR'), async (req, res) => {
+  try {
+    const { error, value } = designationSchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const existing = await stmts.getDesignationById.get(value.code);
+    if (existing) return err(res, 'CONFLICT', 'Designation with this code already exists', 409);
+
+    const result = await stmts.insertDesignation.run(value);
+    await logAudit(req, 'designations', result.id, 'INSERT', null, value);
+    ok(res, { message: 'Designation created successfully', id: result.id }, 201);
+  } catch (e) {
+    console.error('[POST /api/designations]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to create designation: ' + e.message, 500);
+  }
+});
+
+app.put('/api/designations/:id', authenticate, requireRoles('ADMIN', 'HR'), async (req, res) => {
+  try {
+    const { error, value } = designationSchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const existing = await stmts.getDesignationById.get(req.params.id);
+    if (!existing) return err(res, 'NOT_FOUND', 'Designation not found', 404);
+
+    await stmts.updateDesignation.run({ ...value, id: req.params.id });
+    await logAudit(req, 'designations', req.params.id, 'UPDATE', existing, value);
+    ok(res, { message: 'Designation updated successfully' });
+  } catch (e) {
+    console.error('[PUT /api/designations/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to update designation: ' + e.message, 500);
+  }
+});
+
+app.delete('/api/designations/:id', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const existing = await stmts.getDesignationById.get(req.params.id);
+    if (!existing) return err(res, 'NOT_FOUND', 'Designation not found', 404);
+
+    await stmts.deleteDesignation.run(req.params.id);
+    await logAudit(req, 'designations', req.params.id, 'DELETE', existing, null);
+    ok(res, { message: 'Designation deleted successfully' });
+  } catch (e) {
+    console.error('[DELETE /api/designations/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to delete designation: ' + e.message, 500);
+  }
+});
+
+// ══════════════════════════════════════════════
+// 🏢 BRANCHES / LOCATIONS MASTER APIS
+// ══════════════════════════════════════════════
+const branchSchema = Joi.object({
+  code: Joi.string().min(2).max(30).required(),
+  name: Joi.string().min(2).max(100).required(),
+  address: Joi.string().allow('', null).max(255).optional(),
+  city: Joi.string().max(100).default('Bangalore'),
+  state: Joi.string().max(100).default('Karnataka'),
+  country: Joi.string().max(100).default('India'),
+  pincode: Joi.string().allow('', null).max(20).optional(),
+  geofence_id: Joi.string().allow('', null).optional(),
+  active: Joi.boolean().default(true)
+});
+
+app.get('/api/branches', authenticate, async (req, res) => {
+  try {
+    const branches = await stmts.getAllBranches.all();
+    ok(res, { branches, total: branches.length });
+  } catch (e) {
+    console.error('[GET /api/branches]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch branches: ' + e.message, 500);
+  }
+});
+
+app.get('/api/branches/:id', authenticate, async (req, res) => {
+  try {
+    const branch = await stmts.getBranchById.get(req.params.id);
+    if (!branch) return err(res, 'NOT_FOUND', 'Branch not found', 404);
+    ok(res, { branch });
+  } catch (e) {
+    console.error('[GET /api/branches/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to fetch branch: ' + e.message, 500);
+  }
+});
+
+app.post('/api/branches', authenticate, requireRoles('ADMIN', 'HR'), async (req, res) => {
+  try {
+    const { error, value } = branchSchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const existing = await stmts.getBranchById.get(value.code);
+    if (existing) return err(res, 'CONFLICT', 'Branch with this code already exists', 409);
+
+    const result = await stmts.insertBranch.run(value);
+    await logAudit(req, 'branches', result.id, 'INSERT', null, value);
+    ok(res, { message: 'Branch created successfully', id: result.id }, 201);
+  } catch (e) {
+    console.error('[POST /api/branches]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to create branch: ' + e.message, 500);
+  }
+});
+
+app.put('/api/branches/:id', authenticate, requireRoles('ADMIN', 'HR'), async (req, res) => {
+  try {
+    const { error, value } = branchSchema.validate(req.body);
+    if (error) return err(res, 'VALIDATION_ERROR', error.details[0].message, 400);
+
+    const existing = await stmts.getBranchById.get(req.params.id);
+    if (!existing) return err(res, 'NOT_FOUND', 'Branch not found', 404);
+
+    await stmts.updateBranch.run({ ...value, id: req.params.id });
+    await logAudit(req, 'branches', req.params.id, 'UPDATE', existing, value);
+    ok(res, { message: 'Branch updated successfully' });
+  } catch (e) {
+    console.error('[PUT /api/branches/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to update branch: ' + e.message, 500);
+  }
+});
+
+app.delete('/api/branches/:id', authenticate, requireRoles('ADMIN'), async (req, res) => {
+  try {
+    const existing = await stmts.getBranchById.get(req.params.id);
+    if (!existing) return err(res, 'NOT_FOUND', 'Branch not found', 404);
+
+    await stmts.deleteBranch.run(req.params.id);
+    await logAudit(req, 'branches', req.params.id, 'DELETE', existing, null);
+    ok(res, { message: 'Branch deleted successfully' });
+  } catch (e) {
+    console.error('[DELETE /api/branches/:id]', e);
+    err(res, 'INTERNAL_ERROR', 'Failed to delete branch: ' + e.message, 500);
   }
 });
 

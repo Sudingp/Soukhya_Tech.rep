@@ -242,6 +242,401 @@ class MySQLAdapter {
     return this.employeeCount();
   }
 
+
+  // ──────────────────────────────────────────────
+  // 🏢 Companies Master
+  // ──────────────────────────────────────────────
+  async getAllCompanies() {
+    const pool = await this.getPool();
+    const [rows] = await pool.execute(`
+      SELECT c.*, 
+             (SELECT COUNT(*) FROM employees e WHERE e.company_id = c.id OR e.company = c.short_name OR e.company = c.name) as employee_count
+      FROM companies c
+      ORDER BY c.name ASC
+    `);
+    return rows.map(r => ({
+      ...r,
+      active: r.active === 1 || r.active === true,
+      employee_count: parseInt(r.employee_count || 0, 10)
+    }));
+  }
+
+  async getCompanyById(id) {
+    const pool = await this.getPool();
+    const [rows] = await pool.execute(`
+      SELECT c.*, 
+             (SELECT COUNT(*) FROM employees e WHERE e.company_id = c.id OR e.company = c.short_name OR e.company = c.name) as employee_count
+      FROM companies c
+      WHERE c.id = ? OR c.code = ? OR c.short_name = ?
+    `, [id, id, id]);
+    if (!rows[0]) return null;
+    const r = rows[0];
+    return {
+      ...r,
+      active: r.active === 1 || r.active === true,
+      employee_count: parseInt(r.employee_count || 0, 10)
+    };
+  }
+
+  async insertCompany(c) {
+    const pool = await this.getPool();
+    const id = c.id || `COMP_${c.code || c.short_name || Date.now()}`.toUpperCase();
+    const [result] = await pool.execute(`
+      INSERT INTO companies (
+        id, code, name, short_name, logo_url, address, city, state, country, pincode, email, phone, active
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      id,
+      (c.code || c.short_name || '').toUpperCase(),
+      c.name,
+      c.short_name || c.code || '',
+      c.logo_url || null,
+      c.address || null,
+      c.city || 'Bangalore',
+      c.state || 'Karnataka',
+      c.country || 'India',
+      c.pincode || null,
+      c.email || null,
+      c.phone || null,
+      c.active !== false ? 1 : 0
+    ]);
+    return { changes: result.affectedRows, id };
+  }
+
+  async updateCompany(c) {
+    const pool = await this.getPool();
+    const [result] = await pool.execute(`
+      UPDATE companies SET
+        code = ?, name = ?, short_name = ?, logo_url = ?, address = ?,
+        city = ?, state = ?, country = ?, pincode = ?, email = ?, phone = ?,
+        active = ?, updated_at = NOW()
+      WHERE id = ?
+    `, [
+      (c.code || c.short_name || '').toUpperCase(),
+      c.name,
+      c.short_name || c.code || '',
+      c.logo_url || null,
+      c.address || null,
+      c.city || 'Bangalore',
+      c.state || 'Karnataka',
+      c.country || 'India',
+      c.pincode || null,
+      c.email || null,
+      c.phone || null,
+      c.active !== false ? 1 : 0,
+      c.id
+    ]);
+    return { changes: result.affectedRows };
+  }
+
+  async deleteCompany(id) {
+    const pool = await this.getPool();
+    const [result] = await pool.execute('DELETE FROM companies WHERE id = ?', [id]);
+    return { changes: result.affectedRows };
+  }
+
+  // ──────────────────────────────────────────────
+  // 👔 Designations Master
+  // ──────────────────────────────────────────────
+  async getAllDesignations() {
+    const pool = await this.getPool();
+    const [rows] = await pool.execute(`
+      SELECT d.*, dept.name as dept_name,
+             (SELECT COUNT(*) FROM employees e WHERE e.designation_id = d.id OR e.designation = d.name) as employee_count
+      FROM designations d
+      LEFT JOIN departments dept ON d.dept_id = dept.id
+      ORDER BY d.name ASC
+    `);
+    return rows.map(r => ({
+      ...r,
+      active: r.active === 1 || r.active === true,
+      employee_count: parseInt(r.employee_count || 0, 10)
+    }));
+  }
+
+  async getDesignationById(id) {
+    const pool = await this.getPool();
+    const [rows] = await pool.execute(`
+      SELECT d.*, dept.name as dept_name,
+             (SELECT COUNT(*) FROM employees e WHERE e.designation_id = d.id OR e.designation = d.name) as employee_count
+      FROM designations d
+      LEFT JOIN departments dept ON d.dept_id = dept.id
+      WHERE d.id = ? OR d.code = ?
+    `, [id, id]);
+    if (!rows[0]) return null;
+    const r = rows[0];
+    return {
+      ...r,
+      active: r.active === 1 || r.active === true,
+      employee_count: parseInt(r.employee_count || 0, 10)
+    };
+  }
+
+  async insertDesignation(d) {
+    const pool = await this.getPool();
+    const id = d.id || `DES_${d.code || Date.now()}`.toUpperCase();
+    const [result] = await pool.execute(`
+      INSERT INTO designations (
+        id, code, name, dept_id, grade_level, description, active
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    `, [
+      id,
+      (d.code || '').toUpperCase(),
+      d.name,
+      d.dept_id || null,
+      d.grade_level || 'L1',
+      d.description || null,
+      d.active !== false ? 1 : 0
+    ]);
+    return { changes: result.affectedRows, id };
+  }
+
+  async updateDesignation(d) {
+    const pool = await this.getPool();
+    const [result] = await pool.execute(`
+      UPDATE designations SET
+        code = ?, name = ?, dept_id = ?, grade_level = ?, description = ?,
+        active = ?, updated_at = NOW()
+      WHERE id = ?
+    `, [
+      (d.code || '').toUpperCase(),
+      d.name,
+      d.dept_id || null,
+      d.grade_level || 'L1',
+      d.description || null,
+      d.active !== false ? 1 : 0,
+      d.id
+    ]);
+    return { changes: result.affectedRows };
+  }
+
+  async deleteDesignation(id) {
+    const pool = await this.getPool();
+    const [result] = await pool.execute('DELETE FROM designations WHERE id = ?', [id]);
+    return { changes: result.affectedRows };
+  }
+
+  // ──────────────────────────────────────────────
+  // 🏢 Branches Master (Locations)
+  // ──────────────────────────────────────────────
+  async getAllBranches() {
+    const pool = await this.getPool();
+    const [rows] = await pool.execute(`
+      SELECT b.*, g.name as geofence_name,
+             (SELECT COUNT(*) FROM employees e WHERE e.branch_id = b.id OR e.location = b.name) as employee_count
+      FROM branches b
+      LEFT JOIN geofences g ON b.geofence_id = g.id
+      ORDER BY b.name ASC
+    `);
+    return rows.map(r => ({
+      ...r,
+      active: r.active === 1 || r.active === true,
+      employee_count: parseInt(r.employee_count || 0, 10)
+    }));
+  }
+
+  async getBranchById(id) {
+    const pool = await this.getPool();
+    const [rows] = await pool.execute(`
+      SELECT b.*, g.name as geofence_name,
+             (SELECT COUNT(*) FROM employees e WHERE e.branch_id = b.id OR e.location = b.name) as employee_count
+      FROM branches b
+      LEFT JOIN geofences g ON b.geofence_id = g.id
+      WHERE b.id = ? OR b.code = ?
+    `, [id, id]);
+    if (!rows[0]) return null;
+    const r = rows[0];
+    return {
+      ...r,
+      active: r.active === 1 || r.active === true,
+      employee_count: parseInt(r.employee_count || 0, 10)
+    };
+  }
+
+  async insertBranch(b) {
+    const pool = await this.getPool();
+    const id = b.id || `BR_${b.code || Date.now()}`.toUpperCase();
+    const [result] = await pool.execute(`
+      INSERT INTO branches (
+        id, code, name, address, city, state, country, pincode, geofence_id, active
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      id,
+      (b.code || '').toUpperCase(),
+      b.name,
+      b.address || null,
+      b.city || 'Bangalore',
+      b.state || 'Karnataka',
+      b.country || 'India',
+      b.pincode || null,
+      b.geofence_id || null,
+      b.active !== false ? 1 : 0
+    ]);
+    return { changes: result.affectedRows, id };
+  }
+
+  async updateBranch(b) {
+    const pool = await this.getPool();
+    const [result] = await pool.execute(`
+      UPDATE branches SET
+        code = ?, name = ?, address = ?, city = ?, state = ?, country = ?,
+        pincode = ?, geofence_id = ?, active = ?, updated_at = NOW()
+      WHERE id = ?
+    `, [
+      (b.code || '').toUpperCase(),
+      b.name,
+      b.address || null,
+      b.city || 'Bangalore',
+      b.state || 'Karnataka',
+      b.country || 'India',
+      b.pincode || null,
+      b.geofence_id || null,
+      b.active !== false ? 1 : 0,
+      b.id
+    ]);
+    return { changes: result.affectedRows };
+  }
+
+  async deleteBranch(id) {
+    const pool = await this.getPool();
+    const [result] = await pool.execute('DELETE FROM branches WHERE id = ?', [id]);
+    return { changes: result.affectedRows };
+  }
+
+  // ──────────────────────────────────────────────
+  // ⚡ High-Speed Paginated Employees & Batch Inserter
+  // ──────────────────────────────────────────────
+  async getEmployees(params = {}) {
+    const pool = await this.getPool();
+    let { search, department, company, status, employment_type, sortBy = 'created_at', sortOrder = 'DESC', page = 1, limit = 50 } = params;
+    page = parseInt(page, 10) || 1;
+    limit = parseInt(limit, 10) || 50;
+    if (limit < 1) limit = 50;
+    if (limit > 10000) limit = 10000;
+    const offset = (page - 1) * limit;
+
+    const allowedSort = ['id', 'name', 'department', 'company', 'role', 'designation', 'status', 'created_at', 'card_number'];
+    const sortCol = allowedSort.includes(sortBy) ? sortBy : 'created_at';
+    const sortDir = (String(sortOrder).toUpperCase() === 'ASC') ? 'ASC' : 'DESC';
+
+    const whereClauses = [];
+    const whereParams = [];
+
+    if (search && search.trim()) {
+      const s = `%${search.trim()}%`;
+      whereClauses.push('(e.id LIKE ? OR e.name LIKE ? OR e.email LIKE ? OR e.card_number LIKE ? OR e.role LIKE ? OR e.designation LIKE ?)');
+      whereParams.push(s, s, s, s, s, s);
+    }
+    if (department && department !== 'All') {
+      whereClauses.push('(e.department = ? OR e.department_id = ?)');
+      whereParams.push(department, department);
+    }
+    if (company && company !== 'All') {
+      whereClauses.push('(e.company = ? OR e.company_id = ?)');
+      whereParams.push(company, company);
+    }
+    if (status && status !== 'All') {
+      whereClauses.push('e.status = ?');
+      whereParams.push(status);
+    }
+    if (employment_type && employment_type !== 'All') {
+      whereClauses.push('(e.employment_type = ? OR e.employment_type_id = ?)');
+      whereParams.push(employment_type, employment_type);
+    }
+
+    const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+    const [countRows] = await pool.execute(`SELECT COUNT(*) as total FROM employees e ${whereSql}`, whereParams);
+    const total = countRows[0]?.total || 0;
+
+    const querySql = `
+      SELECT e.*, c.name as company_name, d.name as department_name, des.name as designation_name, b.name as branch_name
+      FROM employees e
+      LEFT JOIN companies c ON e.company_id = c.id
+      LEFT JOIN departments d ON e.department_id = d.id
+      LEFT JOIN designations des ON e.designation_id = des.id
+      LEFT JOIN branches b ON e.branch_id = b.id
+      ${whereSql}
+      ORDER BY e.${sortCol} ${sortDir}
+      LIMIT ${limit} OFFSET ${offset}
+    `;
+    const [rows] = await pool.execute(querySql, whereParams);
+    return {
+      employees: rows.map(r => this._normalizeEmployee(r)),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit)
+    };
+  }
+
+  async bulkInsertEmployees(records, chunkSize = 500) {
+    const pool = await this.getPool();
+    let totalInserted = 0;
+
+    for (let i = 0; i < records.length; i += chunkSize) {
+      const chunk = records.slice(i, i + chunkSize);
+      const conn = await pool.getConnection();
+      try {
+        await conn.beginTransaction();
+
+        const placeholders = [];
+        const values = [];
+
+        for (const emp of chunk) {
+          placeholders.push('(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+          const descriptorStr = typeof emp.descriptor === 'string' ? emp.descriptor : JSON.stringify(emp.descriptor || []);
+          values.push(
+            emp.id, emp.name, emp.department, emp.role, descriptorStr, emp.descriptor_hash, emp.image || null, emp.status || 'Active',
+            emp.hibernate_start_date || null, emp.hibernate_end_date || null, emp.hibernate_reason || null,
+            emp.company || null, emp.company_id || null, emp.department_id || null,
+            emp.designation || null, emp.designation_id || null, emp.branch_id || null,
+            emp.employment_type_id || null, emp.primary_shift_id || null, emp.geofence_id || null,
+            emp.gender || null, emp.date_of_joining || null, emp.date_of_confirmation || null, emp.last_working_day || null,
+            emp.aadhaar_number || null, emp.pan_number || null, emp.card_number || null, emp.phone_no || null, emp.email || null, emp.reporting_to || null,
+            emp.device_code || null, emp.sub_department || null, emp.division || null, emp.grade || null, emp.team || null, emp.location || null,
+            emp.employment_type || null, emp.category || null, emp.holiday_group || null, emp.shift_group || null, emp.shift_roster || null,
+            emp.geofence || null, emp.device_expiry_rule_applicable ? 1 : 0, emp.verification_type || null
+          );
+        }
+
+        const sql = `
+          INSERT INTO employees (
+            id, name, department, role, descriptor, descriptor_hash, image, status,
+            hibernate_start_date, hibernate_end_date, hibernate_reason,
+            company, company_id, department_id,
+            designation, designation_id, branch_id,
+            employment_type_id, primary_shift_id, geofence_id,
+            gender, date_of_joining, date_of_confirmation, last_working_day,
+            aadhaar_number, pan_number, card_number, phone_no, email, reporting_to,
+            device_code, sub_department, division, grade, team, location,
+            employment_type, category, holiday_group, shift_group, shift_roster,
+            geofence, device_expiry_rule_applicable, verification_type
+          ) VALUES ${placeholders.join(', ')}
+          ON DUPLICATE KEY UPDATE
+            name = VALUES(name), department = VALUES(department), role = VALUES(role),
+            company = VALUES(company), company_id = VALUES(company_id), department_id = VALUES(department_id),
+            designation = VALUES(designation), designation_id = VALUES(designation_id), branch_id = VALUES(branch_id),
+            employment_type_id = VALUES(employment_type_id), primary_shift_id = VALUES(primary_shift_id),
+            geofence_id = VALUES(geofence_id), status = VALUES(status), email = VALUES(email),
+            phone_no = VALUES(phone_no), card_number = VALUES(card_number), location = VALUES(location),
+            updated_at = NOW()
+        `;
+
+        await conn.execute(sql, values);
+        await conn.commit();
+        totalInserted += chunk.length;
+      } catch (err) {
+        await conn.rollback();
+        throw err;
+      } finally {
+        conn.release();
+      }
+    }
+
+    return { totalInserted };
+  }
+
   // ──────────────────────────────────────────────
   // Attendance
   // ──────────────────────────────────────────────

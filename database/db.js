@@ -439,6 +439,66 @@ const stmts = {
     all: (empId, year) => mysqlAdapter.getEmployeeLeaveBalances(empId, year)
   },
 
+
+  // ── 🏢 Companies Master ──
+  getAllCompanies: {
+    all: () => mysqlAdapter.getAllCompanies()
+  },
+  getCompanyById: {
+    get: (id) => mysqlAdapter.getCompanyById(id)
+  },
+  insertCompany: {
+    run: (data) => mysqlAdapter.insertCompany(data)
+  },
+  updateCompany: {
+    run: (data) => mysqlAdapter.updateCompany(data)
+  },
+  deleteCompany: {
+    run: (id) => mysqlAdapter.deleteCompany(id)
+  },
+
+  // ── 👔 Designations Master ──
+  getAllDesignations: {
+    all: () => mysqlAdapter.getAllDesignations()
+  },
+  getDesignationById: {
+    get: (id) => mysqlAdapter.getDesignationById(id)
+  },
+  insertDesignation: {
+    run: (data) => mysqlAdapter.insertDesignation(data)
+  },
+  updateDesignation: {
+    run: (data) => mysqlAdapter.updateDesignation(data)
+  },
+  deleteDesignation: {
+    run: (id) => mysqlAdapter.deleteDesignation(id)
+  },
+
+  // ── 🏢 Branches Master ──
+  getAllBranches: {
+    all: () => mysqlAdapter.getAllBranches()
+  },
+  getBranchById: {
+    get: (id) => mysqlAdapter.getBranchById(id)
+  },
+  insertBranch: {
+    run: (data) => mysqlAdapter.insertBranch(data)
+  },
+  updateBranch: {
+    run: (data) => mysqlAdapter.updateBranch(data)
+  },
+  deleteBranch: {
+    run: (id) => mysqlAdapter.deleteBranch(id)
+  },
+
+  // ── ⚡ Paginated Employees ──
+  getEmployees: {
+    all: (params) => mysqlAdapter.getEmployees(params)
+  },
+  bulkInsertEmployees: {
+    run: (records, chunkSize) => mysqlAdapter.bulkInsertEmployees(records, chunkSize)
+  },
+
   // ── 🚶 Employee Outdoor Entries (On-Duty / OD) ──
   getOutdoorEntries: {
     all: (filter) => mysqlAdapter.getOutdoorEntries(filter)
