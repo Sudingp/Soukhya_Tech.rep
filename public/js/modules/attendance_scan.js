@@ -175,24 +175,48 @@ function renderLog() {
 // ══════════════════════════════════════════════
 async function updateStats() {
   try {
-    const res = await apiGet('/api/stats');
-    if (!res.success) return;
+    const res = await apiGet('/api/stats', false);
+    if (!res || !res.success) return;
 
     const today = new Date().toDateString();
     const td    = ATT.filter(a => new Date(a.ts).toDateString() === today);
 
-    // Populate default logs stats
-    document.getElementById('st').textContent   = res.total_employees;
-    document.getElementById('spd').textContent  = td.length;
-    document.getElementById('slt').textContent  = td.filter(a => a.status === 'Late').length;
-    document.getElementById('sall').textContent = ATT.length;
-
-    // Populate Roster Status stats
+    const totalEmp = Number(res.total_employees || res.totalEmployees || 0);
     const sc = res.status_counts || {};
-    document.getElementById('s-active').textContent = sc.active ?? res.presentToday ?? res.present_today ?? 0;
-    document.getElementById('s-hibernate').textContent = sc.hibernate ?? 0;
-    document.getElementById('s-leave').textContent = sc.on_leave ?? 0;
-    document.getElementById('s-resigned').textContent = sc.resigned ?? 0;
+    const activeEmp = Number(sc.active ?? res.active_employees ?? res.activeEmployees ?? totalEmp);
+    const presentToday = Number(res.present_today ?? res.presentToday ?? td.length);
+    const lateToday = Number(res.late_today ?? res.lateToday ?? td.filter(a => a.status === 'Late').length);
+
+    // Populate HR Dashboard attendance stats
+    const elSt = document.getElementById('st');
+    const elSpd = document.getElementById('spd');
+    const elSlt = document.getElementById('slt');
+    const elSall = document.getElementById('sall');
+
+    if (elSt) elSt.textContent = totalEmp;
+    if (elSpd) elSpd.textContent = presentToday;
+    if (elSlt) elSlt.textContent = lateToday;
+    if (elSall) elSall.textContent = res.total_punches ?? ATT.length;
+
+    // Populate HR Dashboard Roster Status stats
+    const elActive = document.getElementById('s-active');
+    const elHib = document.getElementById('s-hibernate');
+    const elLeave = document.getElementById('s-leave');
+    const elRes = document.getElementById('s-resigned');
+
+    if (elActive) elActive.textContent = activeEmp;
+    if (elHib) elHib.textContent = sc.hibernate ?? 0;
+    if (elLeave) elLeave.textContent = sc.on_leave ?? 0;
+    if (elRes) elRes.textContent = sc.resigned ?? 0;
+
+    // Sync Main ESSL Dashboard status cards
+    const cardReg = document.getElementById('essl-card-reg');
+    const cardAct = document.getElementById('essl-card-act');
+    const cardPres = document.getElementById('essl-card-pres');
+
+    if (cardReg) cardReg.textContent = totalEmp;
+    if (cardAct) cardAct.textContent = activeEmp;
+    if (cardPres) cardPres.textContent = presentToday;
 
     // Initialize/Update interactive charts
     updateCharts(res);

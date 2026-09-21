@@ -9,6 +9,7 @@ const Joi = require('joi');
 const { stmts } = require('../database/db');
 const { authenticate, requireRoles } = require('../middleware/auth');
 const { auditLog } = require('../middleware/audit_logger');
+const { broadcastDbChange } = require('./sync_routes');
 
 const employeeSchema = Joi.object({
   id: Joi.string().required(),
@@ -85,6 +86,7 @@ router.post('/', authenticate, requireRoles('ADMIN', 'HR'), async (req, res) => 
 
     const created = await stmts.insertEmployee.run(value);
     await auditLog({ table: 'employees', recordId: value.id, action: 'INSERT', newVals: value, req });
+    try { broadcastDbChange('employees', 'INSERT'); } catch (_) {}
     res.status(201).json({ success: true, message: 'Employee created successfully', employee: created });
   } catch (err) {
     res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message }, request_id: req.id });
@@ -100,6 +102,7 @@ router.put('/:id', authenticate, requireRoles('ADMIN', 'HR'), async (req, res) =
 
     const updated = await stmts.updateEmployee.run({ ...req.body, id: req.params.id });
     await auditLog({ table: 'employees', recordId: req.params.id, action: 'UPDATE', oldVals: existing, newVals: req.body, req });
+    try { broadcastDbChange('employees', 'UPDATE'); } catch (_) {}
     res.json({ success: true, message: 'Employee updated successfully', employee: updated });
   } catch (err) {
     res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message }, request_id: req.id });
@@ -115,6 +118,7 @@ router.delete('/:id', authenticate, requireRoles('ADMIN'), async (req, res) => {
 
     await stmts.deleteEmployee.run(req.params.id);
     await auditLog({ table: 'employees', recordId: req.params.id, action: 'DELETE', oldVals: existing, req });
+    try { broadcastDbChange('employees', 'DELETE'); } catch (_) {}
     res.json({ success: true, message: 'Employee deleted successfully' });
   } catch (err) {
     res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message }, request_id: req.id });
@@ -130,6 +134,7 @@ router.post('/bulk/import', authenticate, requireRoles('ADMIN'), async (req, res
 
     const { totalInserted } = await stmts.bulkInsertEmployees.run(records, 500);
     await auditLog({ table: 'employees', recordId: 'BULK', action: 'INSERT', newVals: { count: records.length }, req });
+    try { broadcastDbChange('employees', 'INSERT'); } catch (_) {}
     res.status(201).json({ success: true, message: `Imported ${totalInserted} employees`, count: totalInserted });
   } catch (err) {
     res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message }, request_id: req.id });

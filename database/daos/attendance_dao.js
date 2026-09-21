@@ -103,7 +103,15 @@ class AttendanceDAO {
 
   async getStats() {
     const pool = await this.getPool();
-    const [empCount] = await pool.query("SELECT COUNT(*) as total FROM employees WHERE status = 'Active'");
+    const [counts] = await pool.query(`
+      SELECT
+        COUNT(*) as total_employees,
+        SUM(CASE WHEN status = 'Active' THEN 1 ELSE 0 END) as active_count,
+        SUM(CASE WHEN status = 'Hibernate' THEN 1 ELSE 0 END) as hibernate_count,
+        SUM(CASE WHEN status = 'On Leave' THEN 1 ELSE 0 END) as on_leave_count,
+        SUM(CASE WHEN status = 'Resigned' THEN 1 ELSE 0 END) as resigned_count
+      FROM employees
+    `);
     const [todayCount] = await pool.query(`
       SELECT
         COUNT(*) as total_punches,
@@ -114,13 +122,39 @@ class AttendanceDAO {
       WHERE timestamp >= CURDATE() AND timestamp < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
     `);
 
-    const totalEmp = empCount[0]?.total || 0;
-    const present = todayCount[0]?.present_count || 0;
-    const absent = Math.max(0, totalEmp - present);
+    const [deptHib] = await pool.query(`
+      SELECT COALESCE(NULLIF(department, ''), 'Unassigned') as department, COUNT(*) as count
+      FROM employees
+      WHERE status = 'Hibernate'
+      GROUP BY department
+      ORDER BY count DESC
+      LIMIT 10
+    `);
+
+    const [monthTrend] = await pool.query(`
+      SELECT COALESCE(DATE_FORMAT(hibernate_start_date, '%Y-%m'), DATE_FORMAT(updated_at, '%Y-%m'), '2026-04') as month, COUNT(*) as count
+      FROM employees
+      WHERE status = 'Hibernate'
+      GROUP BY month
+      ORDER BY month ASC
+      LIMIT 6
+    `);
+
+    const empRow = counts[0] || {};
+    const totalEmp = Number(empRow.total_employees || 0);
+    const activeEmp = Number(empRow.active_count || 0);
+    const hibernateEmp = Number(empRow.hibernate_count || 0);
+    const onLeaveEmp = Number(empRow.on_leave_count || 0);
+    const resignedEmp = Number(empRow.resigned_count || 0);
+
+    const present = Number(todayCount[0]?.present_count || 0);
+    const absent = Math.max(0, activeEmp - present);
 
     return {
       totalEmployees: totalEmp,
       total_employees: totalEmp,
+      activeEmployees: activeEmp,
+      active_employees: activeEmp,
       presentToday: present,
       present_today: present,
       absentToday: absent,
@@ -128,7 +162,15 @@ class AttendanceDAO {
       onTimeToday: Number(todayCount[0]?.on_time || 0),
       on_time_today: Number(todayCount[0]?.on_time || 0),
       lateToday: Number(todayCount[0]?.late_count || 0),
-      late_today: Number(todayCount[0]?.late_count || 0)
+      late_today: Number(todayCount[0]?.late_count || 0),
+      status_counts: {
+        active: activeEmp,
+        hibernate: hibernateEmp,
+        on_leave: onLeaveEmp,
+        resigned: resignedEmp
+      },
+      dept_hibernate_counts: deptHib.map(d => ({ department: d.department, count: Number(d.count) })),
+      monthly_hibernate_trend: monthTrend.map(t => ({ month: t.month, count: Number(t.count) }))
     };
   }
 

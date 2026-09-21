@@ -65,16 +65,33 @@ function showSubTab(subId, btn) {
 // ──────────────────────────────────────────────
 // ESSL Dashboard functions
 // ──────────────────────────────────────────────
-function updateDbdStats() {
-  const regCount = EMP.length;
-  const actCount = EMP.filter(e => e.status === 'Active' || e.status === 'Working' || e.status === 'Working' || e.status === 'Working').length;
+async function updateDbdStats() {
+  let regCount = EMP.length;
+  let actCount = EMP.filter(e => e.status === 'Active' || e.status === 'Working').length;
   
   // Present today
   const todayStr = new Date().toISOString().slice(0, 10);
-  const presentCount = new Set(
+  let presentCount = new Set(
     ATT.filter(a => new Date(a.ts).toISOString().slice(0, 10) === todayStr)
        .map(a => a.empId)
   ).size;
+
+  try {
+    const stats = await apiGet('/api/stats', false);
+    if (stats && stats.success) {
+      if (stats.total_employees !== undefined) regCount = stats.total_employees;
+      if (stats.status_counts && stats.status_counts.active !== undefined) {
+        actCount = stats.status_counts.active;
+      } else if (stats.active_employees !== undefined) {
+        actCount = stats.active_employees;
+      }
+      if (stats.present_today !== undefined) {
+        presentCount = stats.present_today;
+      }
+    }
+  } catch (e) {
+    // fallback to in-memory local state
+  }
   
   const devOnCount = DEVICES.filter(d => d.status === 'online').length;
   const devOffCount = DEVICES.filter(d => d.status === 'offline').length;

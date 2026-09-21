@@ -9,6 +9,7 @@ const Joi = require('joi');
 const { stmts } = require('../database/db');
 const { authenticate, requireRoles } = require('../middleware/auth');
 const { auditLog } = require('../middleware/audit_logger');
+const { broadcastDbChange } = require('./sync_routes');
 
 const punchSchema = Joi.object({
   emp_id: Joi.string().required(),
@@ -60,6 +61,7 @@ router.post('/', async (req, res) => {
     });
 
     await auditLog({ table: 'attendance', recordId: String(result.lastInsertRowid), action: 'INSERT', newVals: value, req });
+    try { broadcastDbChange('attendance', 'INSERT'); } catch (_) {}
 
     res.status(201).json({
       success: true,
@@ -167,6 +169,7 @@ const handleRegularizePunch = async (req, res) => {
       user_agent: req.headers['user-agent'] || 'System'
     });
     await auditLog({ table: 'attendance', recordId: String(result.lastInsertRowid), action: 'INSERT', newVals: req.body, req });
+    try { broadcastDbChange('attendance', 'INSERT'); } catch (_) {}
     res.json({
       success: true,
       message: 'Attendance regularized successfully',
@@ -189,6 +192,7 @@ const handleUpdateRegularize = async (req, res) => {
       regularized_by: req.user?.username || 'Admin'
     });
     await auditLog({ table: 'attendance', recordId: req.params.id, action: 'UPDATE', newVals: req.body, req });
+    try { broadcastDbChange('attendance', 'UPDATE'); } catch (_) {}
     res.json({ success: true, message: 'Attendance regularized successfully', attendance: updated });
   } catch (err) {
     res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message }, request_id: req.id });

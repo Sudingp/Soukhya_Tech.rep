@@ -283,15 +283,33 @@ async function api(path, opts = {}) {
   return apiFetch(url, fetchOpts);
 }
 
+function invalidateStatsCache() {
+  if (typeof clientCache !== 'undefined' && clientCache) {
+    clientCache.delete('/api/stats');
+    clientCache.delete('/api/attendance-log/stats');
+    clientCache.invalidateByPrefix('/api/employees');
+    clientCache.invalidateByPrefix('/api/attendance');
+  }
+}
+
 const apiGet    = (path, useCache = true) => {
   if (useCache && clientCache && clientCache.has(path)) {
     return Promise.resolve(clientCache.get(path));
   }
   return apiFetch(path);
 };
-const apiPost   = (path, body)   => apiFetch(path, { method: 'POST',   body: JSON.stringify(body) });
-const apiPut    = (path, body)   => apiFetch(path, { method: 'PUT',    body: JSON.stringify(body) });
-const apiDelete = (path)         => apiFetch(path, { method: 'DELETE' });
+const apiPost   = (path, body)   => {
+  invalidateStatsCache();
+  return apiFetch(path, { method: 'POST',   body: JSON.stringify(body) });
+};
+const apiPut    = (path, body)   => {
+  invalidateStatsCache();
+  return apiFetch(path, { method: 'PUT',    body: JSON.stringify(body) });
+};
+const apiDelete = (path)         => {
+  invalidateStatsCache();
+  return apiFetch(path, { method: 'DELETE' });
+};
 
 window.api = api;
 window.apiFetch = apiFetch;
