@@ -4,7 +4,44 @@ This changelog contains comprehensive, full-stack (Backend + Database + Infrastr
 
 ---
 
-## Branch: `HR-Enterprise-Dev-V4` / `HR-Enterprise-Prod` (Current Active Version — v4.0.0)
+## Branch: `HR-Enterprise-Prod` (Current Active Version — v4.1.0)
+
+### 1. Role-Based Access Control (RBAC) Segregation & Privilege Hardening
+- **Client-Side RBAC Enforcement**:
+  - Segregated UI into Administrative Governance and Employee Self-Service (ESS).
+  - High-privilege administrative actions (Punch Regularization, Weekly-Off Pattern Application, Karnataka Gazette Import, Shift Synchronization, Leave/OD Status Decisions) marked with `.admin-action` and hidden in User Mode.
+  - Dynamically configured via `body.user-mode .admin-only, body.user-mode .admin-action { display: none !important; }`.
+- **Backend API Scoping & Access Control**:
+  - `GET /api/attendance-log`: Automatically forces `req.query.emp_id = req.user.emp_id` when caller role is `USER`.
+  - `GET /api/leave-entries` & `GET /api/outdoor-entries`: Scoped strictly to `req.user.emp_id` for `USER` role.
+  - Action mutations (`PUT /:id/status`, `DELETE /:id`, `PUT /api/attendance-log/:id/regularize`) strictly guarded by `requireRoles('ADMIN', 'HR')`.
+
+### 2. Live Machine Geolocation & OpenStreetMap Leaflet Engine
+- **Hardware Coordinate Capture**:
+  - Integrated W3C Geolocation API in employee registration and attendance capture to acquire machine coordinates (`latitude`, `longitude`, `accuracy`).
+- **Interactive OpenStreetMap Mapping**:
+  - Integrated Leaflet.js with OpenStreetMap tiles for real-time map preview, draggable marker, and reverse geocoding via Nominatim API.
+- **Relational Persistence & Geofence Validation**:
+  - Added coordinate columns in MySQL schema (`latitude`, `longitude`, `registered_location`).
+  - Integrated with server-side Haversine geofence verification engine (`/api/geofences/verify`) for circular and polygonal geofences.
+
+### 3. Master Configuration Relational Pipeline Restoration
+- **Organization Subsystem Data Normalization**:
+  - Restored end-to-end data rendering across Companies, Branches, Divisions, Cost Centers, Designations, Departments, Department Shifts, Geofences, and Work Codes.
+  - Added global `window.state` resolver proxying to `EMP`, `ATT`, and `COMPANIES` collections.
+  - Normalized API response handling in `public/js/core/changelog.js` (`apiFetch`) to automatically alias unwrapped top-level arrays into `.data`.
+  - Added direct modal launchers for all 10 organization entities in the `#sub-org` drawer menu.
+
+### 4. Cross-Platform Scripts & Modularity Compliance
+- **Windows & Linux Infrastructure**:
+  - Standardized cross-platform Python 3 runners (`start_all.py`, `stop_all.py`, `test_all.py`) and Windows batch scripts (`start-all.bat`, `stop-all.bat`, `test-all.bat`).
+- **Strict Modularity Rule**:
+  - 100% of all JavaScript and CSS files strictly maintain $\le 500$ lines.
+  - Complete 38-step integration test suite passing 100% (`node test_integration.js`).
+
+---
+
+## Branch: `HR-Enterprise-Dev-V4` (v4.0.0)
 
 ### 1. Senior DBA Performance Optimizations & Benchmark Suite
 - **Automated Benchmark Suite (`scripts/db_benchmark.js`)**:

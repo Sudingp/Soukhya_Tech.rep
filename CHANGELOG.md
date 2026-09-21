@@ -1,6 +1,58 @@
 # Changelog — Soukhya Tech HR Enterprise
 
-All notable changes across architecture, database, API layer, frontend modules, and performance benchmarks are documented in this file.
+All notable changes across architecture, database, API layer, frontend modules, governance, and user self-service are documented in this file.
+
+---
+
+## [4.1.0] - 2026-09-21 (Branch: `HR-Enterprise-Prod`)
+
+### 🛡️ Administrator & Technical Perspective
+- **Role-Based Access Control (RBAC) Segregation & Privilege Hardening**:
+  - Full interface and API segregation between Administrative Governance and Employee Self-Service (ESS).
+  - High-privilege administrative actions (Punch Regularization, Weekly-Off Pattern Application, Karnataka Gazette Import, Shift Synchronization, Leave/OD Status Approvals) protected by `.admin-action` CSS classes and backend `requireRoles('ADMIN', 'HR')` middleware.
+  - Server-side data scoping: `GET /api/attendance-log`, `GET /api/leave-entries`, and `GET /api/outdoor-entries` strictly scope results to `req.user.emp_id` when called by `USER` role tokens.
+- **Live Machine Geolocation Engine & OpenStreetMap Leaflet Mapping**:
+  - Integrated OpenStreetMap with Leaflet.js for interactive mapping and coordinate capture during employee registration.
+  - Captures browser hardware coordinates (latitude, longitude, accuracy) via W3C Geolocation API with reverse geocoding via OpenStreetMap Nominatim.
+  - Persists geolocation data in MySQL 8.4 schema (`employees.latitude`, `employees.longitude`, `employees.registered_location`) and verifies coordinates against active polygon and circular geofence boundaries.
+- **Organization Masters Restoration & 3NF Data Pipelines**:
+  - Restored complete relational data rendering across Companies, Branches, Divisions, Cost Centers, Designations, Departments, Department Shifts, Geofences, and Work Codes.
+  - Added global `window.state` resolver proxying to `EMP`, `ATT`, and `COMPANIES` arrays.
+  - Normalized API response payloads with `.data` aliasing in `apiFetch` (`public/js/core/changelog.js`).
+  - Added direct modal launchers for all 10 organization master entities in the `#sub-org` drawer menu.
+- **Senior DBA Performance Optimizations & Covering Indexes**:
+  - Executed automated 15-tier benchmark suite (`scripts/db_benchmark.js`) testing Simple (S1–S5), Medium (M1–M5), and Complex (C1–C5) performance tiers under high concurrency on 10,100 employees, 156,000+ attendance records, and 284,000+ roster slots.
+  - Sub-millisecond latency for Simple/Medium queries (0.16 ms – 0.79 ms) with throughput up to 23,000+ QPS.
+  - Roster Matrix scan optimized from 622 ms to 54.8 ms (11.3x speedup); 30-day attendance rollup reduced from 284 ms to 70.0 ms (4x speedup).
+  - Stored generated column `punch_date` on `attendance` table with covering index `idx_att_pdate_dept_stat_cov`.
+- **Edge Biometric Ingestion & Device Management**:
+  - Ultra-high-throughput fast punch ingestion buffer capable of 20,000 TPS with sub-5ms OLTP response times.
+  - Hardware terminal TCP ping latency monitor and synchronized biometric template distributor across 10,100 employee profiles.
+- **Cross-Platform Startup & Execution**:
+  - Standardized cross-platform Python 3 runners (`start_all.py`, `stop_all.py`, `test_all.py`) alongside native Windows batch scripts (`start-all.bat`, `stop-all.bat`, `test-all.bat`).
+- **Code Quality & Verification**:
+  - 100% compliance with strict file modularity rule: all `.js` and `.css` files remain $\le 500$ lines.
+  - 38/38 end-to-end integration tests passing 100% (`node test_integration.js` & `python3 test_all.py`).
+
+### 👤 Employee & User Self-Service (ESS) Perspective
+- **Dedicated Employee Self-Service (ESS) Portal**:
+  - Streamlined, distraction-free interface when in User Mode with complex administrative drawers, company configs, and device consoles hidden.
+  - Added top navigation quick-access bar:
+    - `📅 My Schedule`: View monthly assigned shifts, working hours, and scheduled rest days.
+    - `📝 Leave & Balances`: Check real-time quota ledgers (Casual, Sick, Earned, Maternity, Restricted Holiday), submit leave requests, and track approval status.
+    - `🚶 Outdoor Duty (OD)`: Submit off-site client and field duty requisitions with automatic attendance credit synchronization.
+    - `🕒 Attendance History`: View personal punch-in/out records, timestamps, and verification status.
+    - `🏖️ Holidays 2026`: View the full Karnataka 2026 gazetted and restricted holiday calendar.
+- **Live GPS Machine Location & Visual Mapping**:
+  - Automatic geolocation detection and interactive OpenStreetMap pin placement during registration and check-in.
+  - Real-time address resolution and geofence boundary verification.
+- **Smart Karnataka Holiday Leave Application**:
+  - Ingested 53 official holidays from the Karnataka Gazette & High Court 2026 calendar (32 Mandatory Gazetted + 21 Restricted / Optional Holidays).
+  - One-click holiday leave application via `#la-holiday-id` dropdown with automated date population, 1.0 day quota deduction, and leave type pre-selection (`LT_RH` / `LT_CL`).
+- **Personal Data Privacy**:
+  - Non-admin staff can only query and view their own personal records, protecting employee attendance and leave confidentiality across all screens.
+- **Sub-Second Face Attendance**:
+  - Instant face alignment and punch recording with neural 128-d AI embeddings and duplicate punch cooldown protection.
 
 ---
 

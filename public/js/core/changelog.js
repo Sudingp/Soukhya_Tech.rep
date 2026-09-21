@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════
-// CHANGELOG MODAL CONTROLLER (v4.0)
+// CHANGELOG MODAL CONTROLLER (v4.1)
 // ══════════════════════════════════════════════
 function openChangelogModal(forceTab) {
   const modal = document.getElementById('changelog-modal');
@@ -17,7 +17,7 @@ function openChangelogModal(forceTab) {
 
   const dontShowChk = document.getElementById('cl-dont-show-chk');
   if (dontShowChk) {
-    dontShowChk.checked = localStorage.getItem('changelog_dismiss_v4') === 'true';
+    dontShowChk.checked = localStorage.getItem('changelog_dismiss_v4_1') === 'true';
   }
 
   modal.style.display = 'flex';
@@ -41,24 +41,24 @@ function switchChangelogTab(tab) {
     userBtn?.classList.remove('active');
     if (adminView) adminView.style.display = 'block';
     if (userView) userView.style.display = 'none';
-    if (roleIndicator) roleIndicator.textContent = 'VIEW: ADMIN TECHNICAL (v4.0)';
+    if (roleIndicator) roleIndicator.textContent = 'VIEW: ADMIN TECHNICAL (v4.1)';
   } else {
     userBtn?.classList.add('active');
     adminBtn?.classList.remove('active');
     if (userView) userView.style.display = 'block';
     if (adminView) adminView.style.display = 'none';
-    if (roleIndicator) roleIndicator.textContent = 'VIEW: USER HIGHLIGHTS (v4.0)';
+    if (roleIndicator) roleIndicator.textContent = 'VIEW: USER HIGHLIGHTS (v4.1)';
   }
 }
 
 function toggleChangelogPref(checked) {
-  localStorage.setItem('changelog_dismiss_v4', checked ? 'true' : 'false');
+  localStorage.setItem('changelog_dismiss_v4_1', checked ? 'true' : 'false');
 }
 
 let changelogAutoShown = false;
 function checkAutoShowChangelog() {
   if (changelogAutoShown) return;
-  const dismissed = localStorage.getItem('changelog_dismiss_v4');
+  const dismissed = localStorage.getItem('changelog_dismiss_v4_1');
   if (dismissed !== 'true') {
     changelogAutoShown = true;
     setTimeout(() => {

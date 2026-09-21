@@ -21,22 +21,39 @@ HR-Enterprise-Dev-V1 (v1.1.0) ──────► Java Spring Boot 3 migration
                                             │
                                             ▼
 HR-Enterprise-Dev-V2 (v2.0.0) ──────► Pure MySQL 8.4 LTS, Hash-Based Auth, Admin Governance,
-                                      DSA LRU Caching, Full-Screen UI, Complete SQLite Elimination
+                                      DSA LRU Caching, Full-Screen UI, SQLite Elimination
+                                            │
+                                            ▼
+HR-Enterprise-Dev-V3.1 (v3.1.0) ────► Organization Relational Configs, Shift Roster,
+                                      Work Codes, Geofences, Biometric Device Management
+                                            │
+                                            ▼
+HR-Enterprise-Dev-V4 (v4.0.0) ──────► 2026 Karnataka Gazette Ingestion, Senior DBA
+                                      15-Tier Benchmark Suite, Covering Indexes
+                                            │
+                                            ▼
+HR-Enterprise-Prod (v4.1.0) ────────► Comprehensive Admin & User Mode Segregation,
+                                      Employee Self-Service (ESS), Live Geolocation
 ```
 
 ### Version Summaries:
 
-- **v2.0.0 (`HR-Enterprise-Dev-V2`) — [Current Active Branch]**:
-  - **Database**: Pure enterprise MySQL 8.4 LTS with InnoDB, native JSON biometrics, composite indexes, connection pooling, and complete removal of SQLite.
-  - **Authentication**: Zero plaintext credentials (SHA-256 username hash + Bcrypt password hash), session revocation, and JWT token blacklist.
-  - **Governance**: Real-time mode switching (Admin Mode vs. User Mode) and admin-governed password resets (no self-service forgot password).
-  - **Performance**: DSA Doubly-Linked-List LRU Cache, Prefix Trie, Server-Sent Events (SSE) live sync.
-  - **Frontend UI**: Full-viewport responsiveness, interactive login modal, mode switcher, and role-aware changelog modal.
-  - **DevOps**: Single-command startup (`npm start`) with auto-starting MySQL daemon.
+- **v4.1.0 (`HR-Enterprise-Prod`) — [Current Active Branch]**:
+  - **RBAC Segregation**: Complete UI and API separation between Administrative Governance and Employee Self-Service (ESS) with role scoping on attendance, leaves, and outdoor duty.
+  - **Live Geolocation**: W3C machine GPS capture, Leaflet OpenStreetMap preview, and database coordinate persistence.
+  - **Organization Subsystem**: Restored 3NF configuration pipelines across Companies, Branches, Divisions, Cost Centers, Designations, and Department Shifts.
+  - **Quality**: 100% compliance with $\le 500$ lines rule across all JS/CSS files; 38/38 integration tests passing (100%).
 
-- **v1.1.0 (`HR-Enterprise-Dev-V1`)**:
-  - Replaced C# .NET 8 backend with Java Spring Boot 3 backend.
-  - SQLite schema migrations v1 to v5 with JPA/Hibernate compatibility.
+- **v4.0.0 (`HR-Enterprise-Dev-V4`)**:
+  - **Calendar**: Complete ingestion of 53 Karnataka 2026 gazetted and restricted holidays with interactive holiday leave workflow.
+  - **Performance**: Senior DBA 15-tier query benchmark suite with covering composite indexes and stored generated column `punch_date`.
+
+- **v3.1.0 (`HR-Enterprise-Dev-V3.1`)**:
+  - Shift Calendar, Shift Groups, and 284K-slot Shift Roster Matrix.
+  - Organization drawer consolidation for Leave Types, Leave Entries, and Outdoor Entries.
+
+- **v2.0.0 (`HR-Enterprise-Dev-V2`)**:
+  - Pure enterprise MySQL 8.4 LTS migration, zero plaintext credentials, role-based auth, DSA caching, and full-viewport responsiveness.
 
 - **v1.0.0 (`HR-Enterprise-Prod`)**:
   - Initial face-api.js webcam scanner and ESSL-style dashboard.

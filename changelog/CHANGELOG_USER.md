@@ -4,7 +4,32 @@ Welcome to the Soukhya Tech HR Enterprise release notes. This document highlight
 
 ---
 
-## What's New in Version 4.0 (Branch: `HR-Enterprise-Dev-V4` / `HR-Enterprise-Prod`)
+## What's New in Version 4.1 (Branch: `HR-Enterprise-Prod`)
+
+### 1. Dedicated Employee Self-Service (ESS) Portal
+- **Focused Workspace**: When logged in as an employee or in User Mode, administrative menus, device sync consoles, and company master configurations are hidden, presenting a clean, user-friendly portal.
+- **Top Quick-Access Navigation Bar**:
+  - `📅 My Schedule`: View your monthly shift assignments, reporting timings, and scheduled rest days.
+  - `📝 Leave & Balances`: View your real-time available leave balance ledger across Casual (`LT_CL`), Sick (`LT_SL`), Earned (`LT_EL`), Maternity (`LT_ML`), and Restricted Holidays (`LT_RH`).
+  - `🚶 Outdoor Duty (OD)`: Submit off-site client visits and field assignments directly from your dashboard with automatic attendance synchronization.
+  - `🕒 Attendance History`: Check your personal punch logs, verification status, and daily scan history.
+  - `🏖️ Holidays 2026`: View the official Karnataka High Court and Government Gazetted holiday schedule.
+
+### 2. Live Machine Geolocation & OpenStreetMap Preview
+- **Automatic GPS Detection**: During employee registration and punch-in, the system automatically detects your machine's GPS coordinates.
+- **Interactive OpenStreetMap**: View your exact location on a Leaflet OpenStreetMap pin with real-time street address lookup.
+- **Geofence Awareness**: Clear visual feedback confirming your location is within authorized company geofence perimeters.
+
+### 3. Smart Karnataka Holiday Leave Application
+- **53 Official Holidays**: Full integration of Karnataka 2026 holidays (32 Mandatory Gazetted + 21 Restricted Holidays).
+- **One-Click Application**: Simply pick a holiday from the dropdown list in the Leave Entry dialog. The system auto-fills the date, sets the 1.0 day quota, and selects the correct leave category.
+
+### 4. Personal Data Privacy & Isolated Records
+- **Confidentiality Guaranteed**: Your attendance punches, leave applications, and outdoor duty requests are strictly isolated to your personal profile.
+
+---
+
+## What's New in Version 4.0 (Branch: `HR-Enterprise-Dev-V4`)
 
 ### 1. Official Karnataka High Court 2026 Holiday Calendar & Smart Leave
 - **41 Official State Holidays**: Access the complete Karnataka 2026 gazette with 20 Mandatory General Holidays and 21 Restricted / Optional Holidays (RH).
