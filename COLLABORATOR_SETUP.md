@@ -1,6 +1,6 @@
 # Collaborator Setup & Onboarding Guide — Soukhya Tech HR Enterprise
 
-This document is prepared for team members onboarding or continuing development on **Soukhya Tech HR Enterprise (v4.1.0 Enterprise RBAC Release)** on branch **`HR-Enterprise-Prod`** across **Windows**, **Linux**, and **macOS**.
+This document is prepared for team members onboarding or continuing development on **Soukhya Tech HR Enterprise (v4.2.0 Enterprise Dual Theme Release)** on branch **`HR-Enterprise-Prod`** across **Windows**, **Linux**, and **macOS**.
 
 ---
 
@@ -48,18 +48,59 @@ Since the baseline commit `54869d6483a4b8103f844103b7d173cf1a236a50`, the codeba
   - Persisted coordinates in MySQL schema (`employees.latitude`, `employees.longitude`, `employees.registered_location`) with Haversine polygon geofence verification.
 - **Master Data Pipeline Restoration**: Restored 3NF configuration pipelines across Companies, Branches, Divisions, Cost Centers, Designations, Departments, and Department Shifts with global `window.state` resolver proxy.
 
-### E. Cross-Platform Windows & Linux Parity
+### E. Universal Dual Light & Dark Mode Engine (v4.2.0)
+- **Universal Light Mode Default**: Clean, modern enterprise Light theme applied by default across all screens, navigation bars, modals, cards, and tables.
+- **Login Portal & Header Toggles**: Dedicated interactive theme toggle on the Authentication Login Portal (`#login-theme-toggle`) and in-app Header (`#app-theme-toggle`). Selection during login persists into the workspace.
+- **Zero-FOUC & Persistent Cache**: Early `<head>` initialization script eliminates layout flicker; stored in `localStorage` under `soukhya_theme`.
+- **Dynamic Charts**: Chart.js charts (`rosterChart`, `deptChart`, `trendChart`) re-render color axes and tooltips on the fly.
+- **100% Modularity Compliance**: All 39 `.js` and `.css` files remain strictly $\le 500$ lines.
+
+### F. Cross-Platform Windows & Linux Parity
 - First-class support for both native Windows batch scripts (`start-all.bat`, `stop-all.bat`, `test-all.bat`) and Python runners (`start_all.py`, `stop_all.py`, `test_all.py`).
 - Windows 10/11 Microsoft Store App Execution Alias protection via `python -c "import sys"`.
 - Windows process-tree cleanup (`taskkill /F /T /PID`) and listening-port conflict resolution on port 3000.
 - Safe dynamic binary lookup (`shutil.which('node')` resolving `node.exe` on Windows and `/usr/bin/node` on Linux).
 - UNIX domain socket isolation on Windows, ensuring reliable TCP connections on port 3306.
-- **Strict Modularity Rule**: 100% of all JavaScript and CSS files are strictly $\le 500$ lines of code.
 - **Integration Test Pass**: Complete 38-step automated integration test suite passing 100%.
 
 ---
 
-## 2. What Your Collaborator Needs to Do on Their System
+## 2. 🤝 What Your Colleague Needs From You (Handoff Checklist)
+
+> [!IMPORTANT]
+> Share this section with your colleague when handing over the project. It explicitly distinguishes between what they **must receive directly from you** versus what is **already self-contained in Git**.
+
+### 📋 Checklist: Items Your Colleague Needs Directly From You
+
+| # | Item | Why It Is Needed | How To Provide It |
+| :-: | :--- | :--- | :--- |
+| **1** | **GitHub Repository Write Access** | Required to clone, pull, and push branches (`HR-Enterprise-Prod`, `production`). | Add your colleague's GitHub username under **Repository Settings > Collaborators** with **Write** access at: `https://github.com/Sudingp/Soukhya_Tech.rep/settings/access`. |
+| **2** | **Production `.env` Secrets File** | `.env` is git-ignored. It contains security tokens and the encryption key. | Provide your colleague with a copy of your `.env` securely (or verify they use `.env.example` with the exact keys below). |
+| **3** | **PII Encryption Key (Crucial)** | Required for AES-256-GCM decryption of employee telephone numbers, emails, and card numbers stored in MySQL. | Ensure their `.env` has:<br>`PII_ENCRYPTION_KEY=0673da2e3102f4ad23371a5c507736ee68f9bda316ec0e99ff9b883cc07b5693` |
+| **4** | **JWT Authentication Secrets** | Signs and verifies user session tokens and refresh tokens. | `JWT_SECRET=super-secure-production-jwt-secret-key-2026`<br>`JWT_REFRESH_SECRET=super-secure-refresh-token-key-2026` *(both present in `.env.example`)* |
+| **5** | **MySQL Connection Info (If Shared DB)** | **Only if** using a shared/remote MySQL instance. If your colleague runs local MySQL, they can use their own credentials. | `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`. |
+| **6** | **Active Production Branch Name** | Ensure they branch off and submit pull requests against the right branch. | **`HR-Enterprise-Prod`** (synced with `origin/production`). |
+| **7** | **System Demo Credentials** | For manual testing in the browser (`http://localhost:3000`). | **Admin**: `admin` / `admin123`<br>**User (ESS)**: `user` / `user123` |
+
+---
+
+### 🚫 What Your Colleague DOES NOT Need From You (Self-Contained in Git)
+
+Your colleague **does not** need you to send them any of the following files or resources, as they are fully tracked or auto-generated by the repository scripts:
+
+| Resource | Why You DO NOT Need To Send It |
+| :--- | :--- |
+| **MySQL Database Dumps / `.sql` Files** | The full relational schema (33 tables, 391 columns, 32 FKs) and all 10,100 Indian employee seed records are generated automatically via `node scripts/setup_mysql.js` and `database/schema_mysql.sql`. |
+| **AI Face Recognition Models** | Downloaded dynamically in the browser at runtime from the jsDelivr CDN (`@vladmandic/face-api`). |
+| **Physical Biometric Terminals** | Biometric readers (`TFEE260300053` - `TFEE260300056`) are simulated in software with TCP ping responders and an asynchronous fast punch write buffer (`/api/punch-buffer`). |
+| **Cross-Platform Startup & Test Scripts** | Native Windows batch files (`start-all.bat`, `stop-all.bat`, `test-all.bat`) and Python scripts (`start_all.py`, `stop_all.py`, `test_all.py`) are committed to Git. |
+| **ER/EER Architecture Workbook** | The complete 6-sheet architecture workbook ([`Soukhya_Tech_Enterprise_ER_EER_Architecture.xlsx`](./Soukhya_Tech_Enterprise_ER_EER_Architecture.xlsx)) and 300 DPI diagrams are tracked in Git. |
+| **Dependencies (`node_modules`)** | Installed automatically on their machine via `npm install`. |
+
+---
+
+## 3. What Your Collaborator Needs to Do on Their System
+
 
 ### Prerequisites
 - **Python 3.8+** (installed on Windows or Linux; standard library only, no pip packages required)
@@ -161,18 +202,6 @@ node scripts/db_benchmark.js
 
 ---
 
-## 3. Files to Send Separately (What to Send vs. What is in Git)
-
-| File / Resource | In Git? | Need to Send Separately? | Action Required |
-| :--- | :---: | :---: | :--- |
-| **`.env`** | ❌ No (Git-ignored) | ⚠️ **Optional** | They can run `cp .env.example .env`, OR you can send them your `.env` directly. |
-| **MySQL Database** | ❌ Runtime | ❌ **No** | Auto-created with schema & seeded records when running `npm start` or `python start_all.py`. |
-| **Face Recognition AI Models** | ❌ No | ❌ **No** | Loaded dynamically in browser via CDN (`cdn.jsdelivr.net`). |
-| **`data/mysql/`** | ❌ No (Git-ignored) | ❌ **DO NOT SEND** | Runtime MySQL socket/PID/database directory. Created automatically. |
-| **`node_modules/`** | ❌ No (Git-ignored) | ❌ **DO NOT SEND** | Generated locally via `npm install`. |
-
----
-
 ## 4. Repository Structure & Directory Map
 
 ### Current Production Architecture (`HR-Enterprise-Prod`)
@@ -181,8 +210,9 @@ soukhya-tech/
 ├── .env.example                 # [TRACKED] Sample environment configuration
 ├── .gitignore                   # [TRACKED] Defines files excluded from Git
 ├── README.md                    # [TRACKED] Architecture & system documentation
-├── CHANGELOG.md                 # [TRACKED] Central release history (v4.1.0)
+├── CHANGELOG.md                 # [TRACKED] Central release history (v4.2.0)
 ├── COLLABORATOR_SETUP.md        # [TRACKED] This setup guide
+├── Soukhya_Tech_Enterprise_ER_EER_Architecture.xlsx # [TRACKED] 6-sheet ER/EER specification workbook
 ├── package.json                 # [TRACKED] Node dependencies and start scripts
 ├── start_all.py                 # [TRACKED] Cross-platform backend launcher (Windows & Linux)
 ├── stop_all.py                  # [TRACKED] Cross-platform backend shutdown utility
@@ -210,8 +240,9 @@ soukhya-tech/
 │   ├── device_routes.js, employee_routes.js, master_routes.js, punch_buffer_routes.js
 │   ├── roster_routes.js, shift_routes.js, sync_routes.js, workflow_routes.js
 ├── public/                      # [TRACKED] Frontend Single-Page Application
-│   ├── index.html               # Main dashboard UI with changelog & master modals
-│   ├── css/                     # [TRACKED] Modular styles (base.css, components.css)
+│   ├── index.html               # Main dashboard UI with dual theme toggles & modals
+│   ├── style.css                # [TRACKED] Modular style bundle importing all stylesheets
+│   ├── css/                     # [TRACKED] Modular styles (base.css, theme.css, modals.css)
 │   └── js/
 │       ├── core/                # api_sync.js, auth_state.js, changelog.js
 │       └── modules/             # employee_master.js, shift_roster.js, overtime.js,
@@ -267,4 +298,44 @@ data/
 *.sock
 *.pid
 ```
+
+---
+
+## 6. Pre-Flight Verification Checklist (For Collaborator Before Development)
+
+Before making any commits or modifying code, your colleague should run these verification steps:
+
+- [ ] **Step 1: Check Git Branch**
+  ```bash
+  git branch --show-current
+  # Expected output: HR-Enterprise-Prod
+  ```
+- [ ] **Step 2: Check `.env` Existence & Key Validity**
+  ```bash
+  node -e "require('dotenv').config(); console.log('PII Key valid:', (process.env.PII_ENCRYPTION_KEY || '').length === 64);"
+  # Expected output: PII Key valid: true
+  ```
+- [ ] **Step 3: Run Full Automated Integration Test Suite (38/38 Tests)**
+  ```bash
+  npm test
+  # Or:
+  python3 test_all.py
+  # Expected output: ALL 38 INTEGRATION TESTS PASSED 100%!
+  ```
+- [ ] **Step 4: Launch Web Application & Test Dual Themes**
+  ```bash
+  npm run start:all
+  # Open http://localhost:3000
+  # Verify:
+  # 1. Page opens in Light Mode by default.
+  # 2. Login screen theme toggle switches between Light & Dark.
+  # 3. Sign in as admin/admin123 and test header theme toggle.
+  # 4. Stop servers when done: npm run stop:all
+  ```
+- [ ] **Step 5: Code Modularity Check ($\le 500$ Lines)**
+  Any new `.js` or `.css` files created must remain strictly $\le 500$ lines:
+  ```bash
+  wc -l public/css/*.css public/*.css public/js/core/*.js public/js/modules/*.js public/*.js
+  ```
+
 
