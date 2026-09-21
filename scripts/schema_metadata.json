@@ -1,0 +1,4140 @@
+{
+  "columns": [
+    {
+      "TABLE_NAME": "attendance",
+      "COLUMN_NAME": "att_id",
+      "COLUMN_TYPE": "bigint(20) unsigned",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "auto_increment",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "attendance",
+      "COLUMN_NAME": "emp_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "attendance",
+      "COLUMN_NAME": "name",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "attendance",
+      "COLUMN_NAME": "dept",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "attendance",
+      "COLUMN_NAME": "role",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "attendance",
+      "COLUMN_NAME": "latitude",
+      "COLUMN_TYPE": "decimal(10,7)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "attendance",
+      "COLUMN_NAME": "longitude",
+      "COLUMN_TYPE": "decimal(10,7)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "attendance",
+      "COLUMN_NAME": "timestamp",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "attendance",
+      "COLUMN_NAME": "status",
+      "COLUMN_TYPE": "enum('Present','Late')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "'Present'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "attendance",
+      "COLUMN_NAME": "logged_by",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "attendance",
+      "COLUMN_NAME": "ip_address",
+      "COLUMN_TYPE": "varchar(45)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "attendance",
+      "COLUMN_NAME": "user_agent",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "attendance",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "attendance",
+      "COLUMN_NAME": "punch_date",
+      "COLUMN_TYPE": "date",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "STORED GENERATED",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "audit_log",
+      "COLUMN_NAME": "log_id",
+      "COLUMN_TYPE": "bigint(20) unsigned",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "auto_increment",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "audit_log",
+      "COLUMN_NAME": "table_name",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "audit_log",
+      "COLUMN_NAME": "record_id",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "audit_log",
+      "COLUMN_NAME": "action",
+      "COLUMN_TYPE": "enum('INSERT','UPDATE','DELETE','LOGIN','LOGOUT','RESET_SEED')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "audit_log",
+      "COLUMN_NAME": "old_values",
+      "COLUMN_TYPE": "longtext",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "audit_log",
+      "COLUMN_NAME": "new_values",
+      "COLUMN_TYPE": "longtext",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "audit_log",
+      "COLUMN_NAME": "performed_by",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "audit_log",
+      "COLUMN_NAME": "performed_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "audit_log",
+      "COLUMN_NAME": "ip_address",
+      "COLUMN_TYPE": "varchar(45)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "audit_log",
+      "COLUMN_NAME": "user_agent",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "biometric_devices",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "biometric_devices",
+      "COLUMN_NAME": "serial_number",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "UNI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "biometric_devices",
+      "COLUMN_NAME": "device_name",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "biometric_devices",
+      "COLUMN_NAME": "device_ip",
+      "COLUMN_TYPE": "varchar(45)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "biometric_devices",
+      "COLUMN_NAME": "device_port",
+      "COLUMN_TYPE": "int(10) unsigned",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "4370",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "biometric_devices",
+      "COLUMN_NAME": "device_model",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "'eSSL SilkBio-101TC'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "biometric_devices",
+      "COLUMN_NAME": "protocol",
+      "COLUMN_TYPE": "enum('ZKEM','HIKVISION','ESSL','ANVIZ','REST_API')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "'ESSL'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "biometric_devices",
+      "COLUMN_NAME": "branch_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "biometric_devices",
+      "COLUMN_NAME": "direction",
+      "COLUMN_TYPE": "enum('IN','OUT','BOTH')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "'BOTH'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "biometric_devices",
+      "COLUMN_NAME": "last_heartbeat",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "biometric_devices",
+      "COLUMN_NAME": "status",
+      "COLUMN_TYPE": "enum('ONLINE','OFFLINE','SYNCING','ERROR')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "'ONLINE'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "biometric_devices",
+      "COLUMN_NAME": "template_count",
+      "COLUMN_TYPE": "int(10) unsigned",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "0",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "biometric_devices",
+      "COLUMN_NAME": "buffer_lag_ms",
+      "COLUMN_TYPE": "int(10) unsigned",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "0",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "biometric_devices",
+      "COLUMN_NAME": "active",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "biometric_devices",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "biometric_devices",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "on update current_timestamp()",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "branches",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "branches",
+      "COLUMN_NAME": "code",
+      "COLUMN_TYPE": "varchar(30)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "UNI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "branches",
+      "COLUMN_NAME": "name",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "branches",
+      "COLUMN_NAME": "address",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "branches",
+      "COLUMN_NAME": "city",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "'Bangalore'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "branches",
+      "COLUMN_NAME": "state",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "'Karnataka'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "branches",
+      "COLUMN_NAME": "country",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "'India'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "branches",
+      "COLUMN_NAME": "pincode",
+      "COLUMN_TYPE": "varchar(20)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "branches",
+      "COLUMN_NAME": "geofence_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "branches",
+      "COLUMN_NAME": "active",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "branches",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "branches",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "on update current_timestamp()",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "code",
+      "COLUMN_TYPE": "varchar(30)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "UNI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "name",
+      "COLUMN_TYPE": "varchar(150)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "short_name",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "UNI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "logo_url",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "address",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "city",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "'Bangalore'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "state",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "'Karnataka'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "country",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "'India'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "pincode",
+      "COLUMN_TYPE": "varchar(20)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "email",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "phone",
+      "COLUMN_TYPE": "varchar(25)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "active",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "on update current_timestamp()",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "cost_centers",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "cost_centers",
+      "COLUMN_NAME": "code",
+      "COLUMN_TYPE": "varchar(30)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "UNI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "cost_centers",
+      "COLUMN_NAME": "name",
+      "COLUMN_TYPE": "varchar(150)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "cost_centers",
+      "COLUMN_NAME": "company_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "cost_centers",
+      "COLUMN_NAME": "dept_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "cost_centers",
+      "COLUMN_NAME": "gl_account",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "cost_centers",
+      "COLUMN_NAME": "annual_budget",
+      "COLUMN_TYPE": "decimal(15,2)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "0.00",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "cost_centers",
+      "COLUMN_NAME": "currency",
+      "COLUMN_TYPE": "varchar(10)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "'INR'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "cost_centers",
+      "COLUMN_NAME": "active",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "cost_centers",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "cost_centers",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "on update current_timestamp()",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "departments",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "departments",
+      "COLUMN_NAME": "code",
+      "COLUMN_TYPE": "varchar(20)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "UNI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "departments",
+      "COLUMN_NAME": "name",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "departments",
+      "COLUMN_NAME": "head_emp_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "departments",
+      "COLUMN_NAME": "parent_dept_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "departments",
+      "COLUMN_NAME": "division",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "'Corporate'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "departments",
+      "COLUMN_NAME": "location",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "'Bangalore HQ'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "departments",
+      "COLUMN_NAME": "active",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "departments",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "departments",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "on update current_timestamp()",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "department_shifts",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "bigint(20) unsigned",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "auto_increment",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "department_shifts",
+      "COLUMN_NAME": "dept_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "UNI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "department_shifts",
+      "COLUMN_NAME": "default_shift_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "'SHIFT_GEN'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "department_shifts",
+      "COLUMN_NAME": "allowed_shifts",
+      "COLUMN_TYPE": "longtext",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "department_shifts",
+      "COLUMN_NAME": "auto_apply",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "department_shifts",
+      "COLUMN_NAME": "updated_by",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "department_shifts",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "on update current_timestamp()",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "designations",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "designations",
+      "COLUMN_NAME": "code",
+      "COLUMN_TYPE": "varchar(30)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "UNI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "designations",
+      "COLUMN_NAME": "name",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "designations",
+      "COLUMN_NAME": "dept_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "designations",
+      "COLUMN_NAME": "grade_level",
+      "COLUMN_TYPE": "varchar(20)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "'L1'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "designations",
+      "COLUMN_NAME": "description",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "designations",
+      "COLUMN_NAME": "active",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "designations",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "designations",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "on update current_timestamp()",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "divisions",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "divisions",
+      "COLUMN_NAME": "code",
+      "COLUMN_TYPE": "varchar(30)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "UNI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "divisions",
+      "COLUMN_NAME": "name",
+      "COLUMN_TYPE": "varchar(150)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "divisions",
+      "COLUMN_NAME": "company_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "divisions",
+      "COLUMN_NAME": "head_emp_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "divisions",
+      "COLUMN_NAME": "budget_code",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "divisions",
+      "COLUMN_NAME": "active",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "divisions",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "divisions",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "on update current_timestamp()",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "name",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "department",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "role",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "descriptor",
+      "COLUMN_TYPE": "longtext",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "descriptor_hash",
+      "COLUMN_TYPE": "char(64)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "image",
+      "COLUMN_TYPE": "mediumtext",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "status",
+      "COLUMN_TYPE": "enum('Active','Hibernate','On Leave','Resigned')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "'Active'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "hibernate_start_date",
+      "COLUMN_TYPE": "date",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "hibernate_end_date",
+      "COLUMN_TYPE": "date",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "hibernate_reason",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "company",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "company_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "division_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "cost_center_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "department_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "designation",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "designation_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "branch_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "employment_type_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "primary_shift_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "shift_group_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "cohort_group_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "work_code_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "geofence_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "gender",
+      "COLUMN_TYPE": "varchar(20)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "date_of_joining",
+      "COLUMN_TYPE": "date",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "date_of_confirmation",
+      "COLUMN_TYPE": "date",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "last_working_day",
+      "COLUMN_TYPE": "date",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "aadhaar_number",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "pan_number",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "card_number",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "phone_no",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "email",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "reporting_to",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "device_code",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "sub_department",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "division",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "grade",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "team",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "location",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "latitude",
+      "COLUMN_TYPE": "decimal(10,7)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "longitude",
+      "COLUMN_TYPE": "decimal(10,7)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "employment_type",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "category",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "holiday_group",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "shift_group",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "shift_roster",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "geofence",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "device_expiry_rule_applicable",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "0",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "verification_type",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "expiry_start_date",
+      "COLUMN_TYPE": "date",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "expiry_end_date",
+      "COLUMN_TYPE": "date",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "version",
+      "COLUMN_TYPE": "int(10) unsigned",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "updated_by",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "on update current_timestamp()",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_cohort_groups",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_cohort_groups",
+      "COLUMN_NAME": "code",
+      "COLUMN_TYPE": "varchar(20)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "UNI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_cohort_groups",
+      "COLUMN_NAME": "name",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_cohort_groups",
+      "COLUMN_NAME": "category",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "'OPERATIONAL'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_cohort_groups",
+      "COLUMN_NAME": "description",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_cohort_groups",
+      "COLUMN_NAME": "leader_emp_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_cohort_groups",
+      "COLUMN_NAME": "color",
+      "COLUMN_TYPE": "varchar(20)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "'#4f8ef7'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_cohort_groups",
+      "COLUMN_NAME": "active",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_cohort_groups",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_cohort_groups",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "on update current_timestamp()",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_cohort_members",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "bigint(20) unsigned",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "auto_increment",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_cohort_members",
+      "COLUMN_NAME": "group_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_cohort_members",
+      "COLUMN_NAME": "emp_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_cohort_members",
+      "COLUMN_NAME": "role_in_group",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "'Member'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_cohort_members",
+      "COLUMN_NAME": "assigned_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_leave_balances",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int(11)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "auto_increment",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_leave_balances",
+      "COLUMN_NAME": "emp_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_leave_balances",
+      "COLUMN_NAME": "leave_type_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_leave_balances",
+      "COLUMN_NAME": "financial_year",
+      "COLUMN_TYPE": "varchar(10)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "'2026-2027'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_leave_balances",
+      "COLUMN_NAME": "allocated_quota",
+      "COLUMN_TYPE": "decimal(4,1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "12.0",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_leave_balances",
+      "COLUMN_NAME": "used_days",
+      "COLUMN_TYPE": "decimal(4,1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "0.0",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_leave_balances",
+      "COLUMN_NAME": "pending_approval_days",
+      "COLUMN_TYPE": "decimal(4,1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "0.0",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_leave_balances",
+      "COLUMN_NAME": "available_balance",
+      "COLUMN_TYPE": "decimal(4,1)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "STORED GENERATED",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_leave_balances",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_leave_balances",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "on update current_timestamp()",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_leave_entries",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "bigint(20) unsigned",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "auto_increment",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_leave_entries",
+      "COLUMN_NAME": "emp_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_leave_entries",
+      "COLUMN_NAME": "leave_type_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_leave_entries",
+      "COLUMN_NAME": "start_date",
+      "COLUMN_TYPE": "date",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_leave_entries",
+      "COLUMN_NAME": "end_date",
+      "COLUMN_TYPE": "date",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_leave_entries",
+      "COLUMN_NAME": "total_days",
+      "COLUMN_TYPE": "decimal(4,1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "1.0",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_leave_entries",
+      "COLUMN_NAME": "reason",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_leave_entries",
+      "COLUMN_NAME": "status",
+      "COLUMN_TYPE": "enum('PENDING','APPROVED','REJECTED','CANCELLED')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "'PENDING'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_leave_entries",
+      "COLUMN_NAME": "approved_by",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_leave_entries",
+      "COLUMN_NAME": "approved_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_leave_entries",
+      "COLUMN_NAME": "comments",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_leave_entries",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_leave_entries",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "on update current_timestamp()",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_outdoor_entries",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "bigint(20) unsigned",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "auto_increment",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_outdoor_entries",
+      "COLUMN_NAME": "emp_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_outdoor_entries",
+      "COLUMN_NAME": "od_date",
+      "COLUMN_TYPE": "date",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_outdoor_entries",
+      "COLUMN_NAME": "start_time",
+      "COLUMN_TYPE": "time",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "'09:00:00'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_outdoor_entries",
+      "COLUMN_NAME": "end_time",
+      "COLUMN_TYPE": "time",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "'18:00:00'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_outdoor_entries",
+      "COLUMN_NAME": "destination_client",
+      "COLUMN_TYPE": "varchar(150)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_outdoor_entries",
+      "COLUMN_NAME": "purpose",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_outdoor_entries",
+      "COLUMN_NAME": "travel_allowance_eligible",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_outdoor_entries",
+      "COLUMN_NAME": "status",
+      "COLUMN_TYPE": "enum('PENDING','APPROVED','REJECTED')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "'PENDING'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_outdoor_entries",
+      "COLUMN_NAME": "approved_by",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_outdoor_entries",
+      "COLUMN_NAME": "approved_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_outdoor_entries",
+      "COLUMN_NAME": "comments",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_outdoor_entries",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_outdoor_entries",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "on update current_timestamp()",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_transfers",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "bigint(20) unsigned",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "auto_increment",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_transfers",
+      "COLUMN_NAME": "emp_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_transfers",
+      "COLUMN_NAME": "prev_company_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_transfers",
+      "COLUMN_NAME": "new_company_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_transfers",
+      "COLUMN_NAME": "prev_dept_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_transfers",
+      "COLUMN_NAME": "new_dept_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_transfers",
+      "COLUMN_NAME": "prev_desig_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_transfers",
+      "COLUMN_NAME": "new_desig_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_transfers",
+      "COLUMN_NAME": "prev_branch_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_transfers",
+      "COLUMN_NAME": "new_branch_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_transfers",
+      "COLUMN_NAME": "transfer_type",
+      "COLUMN_TYPE": "enum('PROMOTION','DEPARTMENT_TRANSFER','BRANCH_RELOCATION','LATERAL_MOVE','RE_DESIGNATION')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_transfers",
+      "COLUMN_NAME": "effective_date",
+      "COLUMN_TYPE": "date",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_transfers",
+      "COLUMN_NAME": "remarks",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_transfers",
+      "COLUMN_NAME": "approved_by",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employee_transfers",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employment_types",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employment_types",
+      "COLUMN_NAME": "code",
+      "COLUMN_TYPE": "varchar(20)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "UNI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employment_types",
+      "COLUMN_NAME": "title",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employment_types",
+      "COLUMN_NAME": "description",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employment_types",
+      "COLUMN_NAME": "probation_days",
+      "COLUMN_TYPE": "int(10) unsigned",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "90",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employment_types",
+      "COLUMN_NAME": "notice_period_days",
+      "COLUMN_TYPE": "int(10) unsigned",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "30",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employment_types",
+      "COLUMN_NAME": "pf_esi_eligible",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employment_types",
+      "COLUMN_NAME": "active",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employment_types",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "employment_types",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "on update current_timestamp()",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "fast_punch_buffer",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "bigint(20) unsigned",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "auto_increment",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "fast_punch_buffer",
+      "COLUMN_NAME": "emp_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "fast_punch_buffer",
+      "COLUMN_NAME": "terminal_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "fast_punch_buffer",
+      "COLUMN_NAME": "punch_timestamp",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "fast_punch_buffer",
+      "COLUMN_NAME": "punch_state",
+      "COLUMN_TYPE": "enum('CHECK_IN','CHECK_OUT','BREAK_IN','BREAK_OUT','AUTO')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "'AUTO'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "fast_punch_buffer",
+      "COLUMN_NAME": "verification_type",
+      "COLUMN_TYPE": "enum('FACE','FINGERPRINT','CARD','PASSCODE','GPS_MOBILE')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "'FACE'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "fast_punch_buffer",
+      "COLUMN_NAME": "temperature",
+      "COLUMN_TYPE": "decimal(4,1)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "fast_punch_buffer",
+      "COLUMN_NAME": "mask_detected",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "0",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "fast_punch_buffer",
+      "COLUMN_NAME": "processed",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "0",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "fast_punch_buffer",
+      "COLUMN_NAME": "process_latency_ms",
+      "COLUMN_TYPE": "decimal(6,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "fast_punch_buffer",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "geofences",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "geofences",
+      "COLUMN_NAME": "code",
+      "COLUMN_TYPE": "varchar(20)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "UNI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "geofences",
+      "COLUMN_NAME": "name",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "geofences",
+      "COLUMN_NAME": "latitude",
+      "COLUMN_TYPE": "decimal(10,7)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "geofences",
+      "COLUMN_NAME": "longitude",
+      "COLUMN_TYPE": "decimal(10,7)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "geofences",
+      "COLUMN_NAME": "radius_meters",
+      "COLUMN_TYPE": "int(10) unsigned",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "150",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "geofences",
+      "COLUMN_NAME": "enforcement_mode",
+      "COLUMN_TYPE": "enum('STRICT','WARNING')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "'STRICT'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "geofences",
+      "COLUMN_NAME": "allowed_depts",
+      "COLUMN_TYPE": "longtext",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "geofences",
+      "COLUMN_NAME": "ip_range",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "geofences",
+      "COLUMN_NAME": "wifi_bssid",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "geofences",
+      "COLUMN_NAME": "active",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "geofences",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "geofences",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "on update current_timestamp()",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "leave_types",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "leave_types",
+      "COLUMN_NAME": "code",
+      "COLUMN_TYPE": "varchar(20)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "UNI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "leave_types",
+      "COLUMN_NAME": "name",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "leave_types",
+      "COLUMN_NAME": "category",
+      "COLUMN_TYPE": "varchar(30)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "'CASUAL'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "leave_types",
+      "COLUMN_NAME": "description",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "leave_types",
+      "COLUMN_NAME": "paid",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "leave_types",
+      "COLUMN_NAME": "annual_quota_days",
+      "COLUMN_TYPE": "decimal(4,1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "12.0",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "leave_types",
+      "COLUMN_NAME": "carry_forward_max",
+      "COLUMN_TYPE": "decimal(4,1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "0.0",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "leave_types",
+      "COLUMN_NAME": "encashable",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "0",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "leave_types",
+      "COLUMN_NAME": "color",
+      "COLUMN_TYPE": "varchar(20)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "'#4f8ef7'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "leave_types",
+      "COLUMN_NAME": "active",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "leave_types",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "leave_types",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "on update current_timestamp()",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "master_settings",
+      "COLUMN_NAME": "setting_key",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "master_settings",
+      "COLUMN_NAME": "setting_value",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "master_settings",
+      "COLUMN_NAME": "category",
+      "COLUMN_TYPE": "enum('GENERAL','ATTENDANCE','BIOMETRICS','SECURITY')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "'GENERAL'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "master_settings",
+      "COLUMN_NAME": "description",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "master_settings",
+      "COLUMN_NAME": "updated_by",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "master_settings",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "on update current_timestamp()",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "ot_records",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "bigint(20) unsigned",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "auto_increment",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "ot_records",
+      "COLUMN_NAME": "emp_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "ot_records",
+      "COLUMN_NAME": "ot_date",
+      "COLUMN_TYPE": "date",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "ot_records",
+      "COLUMN_NAME": "shift_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "ot_records",
+      "COLUMN_NAME": "scheduled_hours",
+      "COLUMN_TYPE": "decimal(4,2)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "8.00",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "ot_records",
+      "COLUMN_NAME": "actual_hours",
+      "COLUMN_TYPE": "decimal(4,2)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "8.00",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "ot_records",
+      "COLUMN_NAME": "ot_hours",
+      "COLUMN_TYPE": "decimal(4,2)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "0.00",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "ot_records",
+      "COLUMN_NAME": "ot_multiplier",
+      "COLUMN_TYPE": "decimal(4,2)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "1.50",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "ot_records",
+      "COLUMN_NAME": "ot_rate_type",
+      "COLUMN_TYPE": "enum('STANDARD_DAY','WEEKLY_OFF','PUBLIC_HOLIDAY')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "'STANDARD_DAY'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "ot_records",
+      "COLUMN_NAME": "status",
+      "COLUMN_TYPE": "enum('PENDING','APPROVED','REJECTED','COMP_OFF')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "'PENDING'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "ot_records",
+      "COLUMN_NAME": "approved_by",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "ot_records",
+      "COLUMN_NAME": "approved_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "ot_records",
+      "COLUMN_NAME": "comments",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "ot_records",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "ot_records",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "on update current_timestamp()",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "public_holidays",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "bigint(20) unsigned",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "auto_increment",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "public_holidays",
+      "COLUMN_NAME": "title",
+      "COLUMN_TYPE": "varchar(120)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "public_holidays",
+      "COLUMN_NAME": "holiday_date",
+      "COLUMN_TYPE": "date",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "public_holidays",
+      "COLUMN_NAME": "holiday_type",
+      "COLUMN_TYPE": "enum('MANDATORY','RESTRICTED','COMPANY_DECLARED')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "'MANDATORY'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "public_holidays",
+      "COLUMN_NAME": "applicable_state",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "'Karnataka'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "public_holidays",
+      "COLUMN_NAME": "applicable_location",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "'All Locations'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "public_holidays",
+      "COLUMN_NAME": "description",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "public_holidays",
+      "COLUMN_NAME": "is_recurring",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "0",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "public_holidays",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "public_holidays",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "on update current_timestamp()",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shifts",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shifts",
+      "COLUMN_NAME": "name",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shifts",
+      "COLUMN_NAME": "code",
+      "COLUMN_TYPE": "varchar(20)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "UNI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shifts",
+      "COLUMN_NAME": "start_time",
+      "COLUMN_TYPE": "time",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shifts",
+      "COLUMN_NAME": "end_time",
+      "COLUMN_TYPE": "time",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shifts",
+      "COLUMN_NAME": "break_start",
+      "COLUMN_TYPE": "time",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shifts",
+      "COLUMN_NAME": "break_end",
+      "COLUMN_TYPE": "time",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shifts",
+      "COLUMN_NAME": "break_mins",
+      "COLUMN_TYPE": "int(10) unsigned",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "60",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shifts",
+      "COLUMN_NAME": "early_in_mins",
+      "COLUMN_TYPE": "int(10) unsigned",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "30",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shifts",
+      "COLUMN_NAME": "late_grace_mins",
+      "COLUMN_TYPE": "int(10) unsigned",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "15",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shifts",
+      "COLUMN_NAME": "early_out_mins",
+      "COLUMN_TYPE": "int(10) unsigned",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "15",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shifts",
+      "COLUMN_NAME": "min_half_day_hrs",
+      "COLUMN_TYPE": "decimal(4,2)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "4.00",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shifts",
+      "COLUMN_NAME": "min_full_day_hrs",
+      "COLUMN_TYPE": "decimal(4,2)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "8.00",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shifts",
+      "COLUMN_NAME": "is_night_shift",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "0",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shifts",
+      "COLUMN_NAME": "color",
+      "COLUMN_TYPE": "varchar(20)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "'#00d4aa'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shifts",
+      "COLUMN_NAME": "active",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shifts",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shifts",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "on update current_timestamp()",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shift_calendar_days",
+      "COLUMN_NAME": "cal_id",
+      "COLUMN_TYPE": "bigint(20) unsigned",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "auto_increment",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shift_calendar_days",
+      "COLUMN_NAME": "cal_date",
+      "COLUMN_TYPE": "date",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "UNI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shift_calendar_days",
+      "COLUMN_NAME": "day_type",
+      "COLUMN_TYPE": "enum('WORK','WEEKLY_OFF','HOLIDAY','HALF_DAY')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "'WORK'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shift_calendar_days",
+      "COLUMN_NAME": "default_shift_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shift_calendar_days",
+      "COLUMN_NAME": "title",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shift_calendar_days",
+      "COLUMN_NAME": "is_recurring",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "0",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shift_calendar_days",
+      "COLUMN_NAME": "updated_by",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shift_calendar_days",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "on update current_timestamp()",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shift_groups",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shift_groups",
+      "COLUMN_NAME": "name",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shift_groups",
+      "COLUMN_NAME": "code",
+      "COLUMN_TYPE": "varchar(20)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "UNI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shift_groups",
+      "COLUMN_NAME": "rotation_type",
+      "COLUMN_TYPE": "enum('FIXED','WEEKLY','BI_WEEKLY','MONTHLY')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "'FIXED'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shift_groups",
+      "COLUMN_NAME": "description",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shift_groups",
+      "COLUMN_NAME": "color",
+      "COLUMN_TYPE": "varchar(20)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "'#4f8ef7'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shift_groups",
+      "COLUMN_NAME": "shifts_sequence",
+      "COLUMN_TYPE": "longtext",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shift_groups",
+      "COLUMN_NAME": "active",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shift_groups",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shift_groups",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "on update current_timestamp()",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shift_group_members",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "bigint(20) unsigned",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "auto_increment",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shift_group_members",
+      "COLUMN_NAME": "group_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shift_group_members",
+      "COLUMN_NAME": "emp_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shift_group_members",
+      "COLUMN_NAME": "start_date",
+      "COLUMN_TYPE": "date",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shift_group_members",
+      "COLUMN_NAME": "active",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shift_group_members",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shift_roster",
+      "COLUMN_NAME": "roster_id",
+      "COLUMN_TYPE": "bigint(20) unsigned",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "auto_increment",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shift_roster",
+      "COLUMN_NAME": "emp_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shift_roster",
+      "COLUMN_NAME": "roster_date",
+      "COLUMN_TYPE": "date",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shift_roster",
+      "COLUMN_NAME": "shift_id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shift_roster",
+      "COLUMN_NAME": "day_type",
+      "COLUMN_TYPE": "enum('WORK','WEEKLY_OFF','HOLIDAY','LEAVE','OUTDOOR')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "'WORK'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shift_roster",
+      "COLUMN_NAME": "source",
+      "COLUMN_TYPE": "enum('DEFAULT','GROUP_ROTATION','MANUAL_OVERRIDE')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "'DEFAULT'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shift_roster",
+      "COLUMN_NAME": "note",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shift_roster",
+      "COLUMN_NAME": "assigned_by",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shift_roster",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "shift_roster",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "on update current_timestamp()",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "token_blacklist",
+      "COLUMN_NAME": "token_hash",
+      "COLUMN_TYPE": "char(64)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "token_blacklist",
+      "COLUMN_NAME": "expires_at",
+      "COLUMN_TYPE": "bigint(20) unsigned",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "bigint(20) unsigned",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "auto_increment",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "username",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "UNI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "username_hash",
+      "COLUMN_TYPE": "char(64)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "UNI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "username_display",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "password_hash",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "role",
+      "COLUMN_TYPE": "enum('ADMIN','HR','EMPLOYEE','USER','DEVICE')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "'USER'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "active",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "on update current_timestamp()",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "work_codes",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "work_codes",
+      "COLUMN_NAME": "code",
+      "COLUMN_TYPE": "varchar(20)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "UNI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "work_codes",
+      "COLUMN_NAME": "name",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "work_codes",
+      "COLUMN_NAME": "category",
+      "COLUMN_TYPE": "enum('BILLABLE_PROJECT','CLIENT_ONSITE','INTERNAL_OPS','TRAINING_LD','FACILITY_MAINT')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "'BILLABLE_PROJECT'",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "work_codes",
+      "COLUMN_NAME": "description",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "work_codes",
+      "COLUMN_NAME": "billing_rate_multiplier",
+      "COLUMN_TYPE": "decimal(4,2)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "1.00",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "work_codes",
+      "COLUMN_NAME": "ot_eligible",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "work_codes",
+      "COLUMN_NAME": "active",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "work_codes",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "work_codes",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "on update current_timestamp()",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "_schema_version",
+      "COLUMN_NAME": "version",
+      "COLUMN_TYPE": "int(10) unsigned",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "COLUMN_DEFAULT": null,
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "_schema_version",
+      "COLUMN_NAME": "applied_at",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "current_timestamp()",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    },
+    {
+      "TABLE_NAME": "_schema_version",
+      "COLUMN_NAME": "description",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "",
+      "COLUMN_COMMENT": ""
+    }
+  ],
+  "foreign_keys": [
+    {
+      "TABLE_NAME": "ot_records",
+      "COLUMN_NAME": "emp_id",
+      "CONSTRAINT_NAME": "fk_ot_emp",
+      "REFERENCED_TABLE_NAME": "employees",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "shift_calendar_days",
+      "COLUMN_NAME": "default_shift_id",
+      "CONSTRAINT_NAME": "fk_cal_shift",
+      "REFERENCED_TABLE_NAME": "shifts",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "attendance",
+      "COLUMN_NAME": "emp_id",
+      "CONSTRAINT_NAME": "fk_attendance_employee",
+      "REFERENCED_TABLE_NAME": "employees",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "branches",
+      "COLUMN_NAME": "geofence_id",
+      "CONSTRAINT_NAME": "fk_branches_geofence",
+      "REFERENCED_TABLE_NAME": "geofences",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "branch_id",
+      "CONSTRAINT_NAME": "fk_emp_branch",
+      "REFERENCED_TABLE_NAME": "branches",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "company_id",
+      "CONSTRAINT_NAME": "fk_emp_company",
+      "REFERENCED_TABLE_NAME": "companies",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "department_id",
+      "CONSTRAINT_NAME": "fk_emp_dept",
+      "REFERENCED_TABLE_NAME": "departments",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "designation_id",
+      "CONSTRAINT_NAME": "fk_emp_designation",
+      "REFERENCED_TABLE_NAME": "designations",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "employment_type_id",
+      "CONSTRAINT_NAME": "fk_emp_employment_type",
+      "REFERENCED_TABLE_NAME": "employment_types",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "geofence_id",
+      "CONSTRAINT_NAME": "fk_emp_geofence",
+      "REFERENCED_TABLE_NAME": "geofences",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "employees",
+      "COLUMN_NAME": "primary_shift_id",
+      "CONSTRAINT_NAME": "fk_emp_shift",
+      "REFERENCED_TABLE_NAME": "shifts",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "employee_cohort_groups",
+      "COLUMN_NAME": "leader_emp_id",
+      "CONSTRAINT_NAME": "fk_emp_cohort_group_leader",
+      "REFERENCED_TABLE_NAME": "employees",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "biometric_devices",
+      "COLUMN_NAME": "branch_id",
+      "CONSTRAINT_NAME": "fk_biometric_devices_branch",
+      "REFERENCED_TABLE_NAME": "branches",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "designations",
+      "COLUMN_NAME": "dept_id",
+      "CONSTRAINT_NAME": "fk_designations_dept",
+      "REFERENCED_TABLE_NAME": "departments",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "departments",
+      "COLUMN_NAME": "head_emp_id",
+      "CONSTRAINT_NAME": "fk_dept_head",
+      "REFERENCED_TABLE_NAME": "employees",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "departments",
+      "COLUMN_NAME": "parent_dept_id",
+      "CONSTRAINT_NAME": "fk_dept_parent",
+      "REFERENCED_TABLE_NAME": "departments",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "shift_group_members",
+      "COLUMN_NAME": "emp_id",
+      "CONSTRAINT_NAME": "fk_grp_member_emp",
+      "REFERENCED_TABLE_NAME": "employees",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "shift_group_members",
+      "COLUMN_NAME": "group_id",
+      "CONSTRAINT_NAME": "fk_grp_member_group",
+      "REFERENCED_TABLE_NAME": "shift_groups",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "employee_cohort_members",
+      "COLUMN_NAME": "emp_id",
+      "CONSTRAINT_NAME": "fk_cohort_member_emp",
+      "REFERENCED_TABLE_NAME": "employees",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "employee_cohort_members",
+      "COLUMN_NAME": "group_id",
+      "CONSTRAINT_NAME": "fk_cohort_member_group",
+      "REFERENCED_TABLE_NAME": "employee_cohort_groups",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "cost_centers",
+      "COLUMN_NAME": "company_id",
+      "CONSTRAINT_NAME": "fk_cost_centers_company",
+      "REFERENCED_TABLE_NAME": "companies",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "cost_centers",
+      "COLUMN_NAME": "dept_id",
+      "CONSTRAINT_NAME": "fk_cost_centers_dept",
+      "REFERENCED_TABLE_NAME": "departments",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "shift_roster",
+      "COLUMN_NAME": "emp_id",
+      "CONSTRAINT_NAME": "fk_roster_emp",
+      "REFERENCED_TABLE_NAME": "employees",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "shift_roster",
+      "COLUMN_NAME": "shift_id",
+      "CONSTRAINT_NAME": "fk_roster_shift",
+      "REFERENCED_TABLE_NAME": "shifts",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "department_shifts",
+      "COLUMN_NAME": "dept_id",
+      "CONSTRAINT_NAME": "fk_dept_shifts_dept",
+      "REFERENCED_TABLE_NAME": "departments",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "department_shifts",
+      "COLUMN_NAME": "default_shift_id",
+      "CONSTRAINT_NAME": "fk_dept_shifts_shift",
+      "REFERENCED_TABLE_NAME": "shifts",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "divisions",
+      "COLUMN_NAME": "company_id",
+      "CONSTRAINT_NAME": "fk_divisions_company",
+      "REFERENCED_TABLE_NAME": "companies",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "divisions",
+      "COLUMN_NAME": "head_emp_id",
+      "CONSTRAINT_NAME": "fk_divisions_head",
+      "REFERENCED_TABLE_NAME": "employees",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "employee_outdoor_entries",
+      "COLUMN_NAME": "emp_id",
+      "CONSTRAINT_NAME": "fk_od_emp",
+      "REFERENCED_TABLE_NAME": "employees",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "employee_transfers",
+      "COLUMN_NAME": "emp_id",
+      "CONSTRAINT_NAME": "fk_transfers_emp",
+      "REFERENCED_TABLE_NAME": "employees",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "employee_leave_entries",
+      "COLUMN_NAME": "emp_id",
+      "CONSTRAINT_NAME": "fk_leave_emp",
+      "REFERENCED_TABLE_NAME": "employees",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "employee_leave_entries",
+      "COLUMN_NAME": "leave_type_id",
+      "CONSTRAINT_NAME": "fk_leave_type",
+      "REFERENCED_TABLE_NAME": "leave_types",
+      "REFERENCED_COLUMN_NAME": "id"
+    }
+  ]
+}
