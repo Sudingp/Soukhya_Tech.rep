@@ -126,6 +126,18 @@ function openMenuDrawer(section) {
               <div class="menu-list-item" onclick="closeInfoDrawer(); openDeptShiftsModal()">
                 <span class="menu-icon">🔄</span> <span class="menu-text">Departments Shifts</span>
               </div>
+              <div class="menu-list-item" onclick="closeInfoDrawer(); openDivisionsModal()">
+                <span class="menu-icon">🏢</span> <span class="menu-text">Divisions & Units</span>
+              </div>
+              <div class="menu-list-item" onclick="closeInfoDrawer(); openCostCentersModal()">
+                <span class="menu-icon">💰</span> <span class="menu-text">Cost Centers</span>
+              </div>
+              <div class="menu-list-item" onclick="closeInfoDrawer(); openDesignationsModal()">
+                <span class="menu-icon">👔</span> <span class="menu-text">Designations</span>
+              </div>
+              <div class="menu-list-item" onclick="closeInfoDrawer(); openBranchesModal()">
+                <span class="menu-icon">📍</span> <span class="menu-text">Branches & Locations</span>
+              </div>
               <div class="menu-list-item" onclick="closeInfoDrawer(); openPublicHolidaysModal()">
                 <span class="menu-icon">🏖️</span> <span class="menu-text">Public Holidays</span>
               </div>

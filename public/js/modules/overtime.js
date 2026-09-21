@@ -8,11 +8,14 @@ async function openLeaveEntriesModal() {
   if (!modal) return;
   modal.style.display = 'flex';
 
-  if (cachedLeaveTypes.length === 0) {
+  const types = window.cachedLeaveTypes || cachedLeaveTypes || [];
+  if (types.length === 0) {
     try {
       const ltRes = await api('/leave-types');
-      if (ltRes && ltRes.success && Array.isArray(ltRes.data?.leaveTypes)) {
-        cachedLeaveTypes = ltRes.data.leaveTypes;
+      const fetched = ltRes?.leaveTypes || ltRes?.leave_types || ltRes?.data?.leaveTypes || [];
+      if (ltRes && ltRes.success && Array.isArray(fetched)) {
+        cachedLeaveTypes = fetched;
+        window.cachedLeaveTypes = fetched;
       }
     } catch (_) {}
   }
@@ -28,10 +31,11 @@ function closeLeaveEntriesModal() {
 
 function populateLeaveFilterDropdowns() {
   const empSel = document.getElementById('le-emp-filter');
+  const emps = (window.state && window.state.employees) || window.EMP || [];
   if (empSel) {
     const prevVal = empSel.value;
     empSel.innerHTML = '<option value="">All Employees</option>';
-    (state.employees || []).forEach(e => {
+    emps.forEach(e => {
       const opt = document.createElement('option');
       opt.value = e.id;
       opt.textContent = `${e.name} (${e.id})`;
@@ -41,10 +45,11 @@ function populateLeaveFilterDropdowns() {
   }
 
   const ltSel = document.getElementById('le-type-filter');
+  const ltList = window.cachedLeaveTypes || cachedLeaveTypes || [];
   if (ltSel) {
     const prevVal = ltSel.value;
     ltSel.innerHTML = '<option value="">All Leave Types</option>';
-    cachedLeaveTypes.forEach(lt => {
+    ltList.forEach(lt => {
       const opt = document.createElement('option');
       opt.value = lt.id;
       opt.textContent = `${lt.name} (${lt.code})`;
@@ -80,8 +85,11 @@ async function loadLeaveEntriesGrid(page = 1) {
 
   try {
     const res = await api(`/leave-entries?${params.toString()}`);
-    if (res && res.success && res.data) {
-      const { entries, total, limit } = res.data;
+    if (res && res.success) {
+      const data = res.data || res;
+      const entries = data.entries || [];
+      const total = data.total !== undefined ? data.total : entries.length;
+      const limit = data.limit || 25;
       renderLeaveEntriesTable(entries);
 
       const totalPages = Math.ceil(total / limit) || 1;
@@ -141,16 +149,10 @@ function renderLeaveEntriesTable(entries) {
 }
 
 function resetLeaveFilters() {
-  const ef = document.getElementById('le-emp-filter');
-  const tf = document.getElementById('le-type-filter');
-  const sf = document.getElementById('le-status-filter');
-  const sd = document.getElementById('le-start-date');
-  const ed = document.getElementById('le-end-date');
-  if (ef) ef.value = '';
-  if (tf) tf.value = '';
-  if (sf) sf.value = '';
-  if (sd) sd.value = '';
-  if (ed) ed.value = '';
+  ['le-emp-filter', 'le-type-filter', 'le-status-filter', 'le-start-date', 'le-end-date'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
   loadLeaveEntriesGrid(1);
 }
 
@@ -160,9 +162,10 @@ async function openApplyLeaveModal() {
   m.style.display = 'flex';
 
   const empSel = document.getElementById('la-emp-id');
+  const emps = (window.state && window.state.employees) || window.EMP || [];
   if (empSel) {
     empSel.innerHTML = '<option value="">Select Employee...</option>';
-    (state.employees || []).forEach(e => {
+    emps.forEach(e => {
       const opt = document.createElement('option');
       opt.value = e.id;
       opt.textContent = `${e.name} (${e.id}) - ${e.department || 'Operations'}`;
@@ -171,9 +174,10 @@ async function openApplyLeaveModal() {
   }
 
   const ltSel = document.getElementById('la-type-id');
+  const ltList = window.cachedLeaveTypes || cachedLeaveTypes || [];
   if (ltSel) {
     ltSel.innerHTML = '<option value="">Select Leave Type...</option>';
-    cachedLeaveTypes.forEach(lt => {
+    ltList.forEach(lt => {
       const opt = document.createElement('option');
       opt.value = lt.id;
       opt.textContent = `${lt.name} (${lt.code}) - ${lt.annual_quota_days}d Quota`;
@@ -198,11 +202,15 @@ async function populateHolidayDropdownForLeave() {
   const hSel = document.getElementById('la-holiday-id');
   if (!hSel) return;
 
-  if (!cachedPublicHolidays || cachedPublicHolidays.length === 0) {
+  let holidays = window.cachedPublicHolidays || cachedPublicHolidays || [];
+  if (holidays.length === 0) {
     try {
       const res = await api('/public-holidays?year=2026');
-      if (res && res.success && Array.isArray(res.data?.holidays)) {
-        cachedPublicHolidays = res.data.holidays;
+      const hList = res?.holidays || res?.data?.holidays || [];
+      if (res && res.success && Array.isArray(hList)) {
+        holidays = hList;
+        window.cachedPublicHolidays = holidays;
+        cachedPublicHolidays = holidays;
       }
     } catch (_) {}
   }

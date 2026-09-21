@@ -197,8 +197,10 @@ async function loadLeaveTypesGrid() {
 
   try {
     const res = await api('/leave-types');
-    if (res && res.success && Array.isArray(res.data?.leaveTypes)) {
-      cachedLeaveTypes = res.data.leaveTypes;
+    const types = res?.leaveTypes || res?.leave_types || res?.data?.leaveTypes || res?.data?.leave_types || (Array.isArray(res) ? res : []);
+    if (res && res.success && Array.isArray(types)) {
+      cachedLeaveTypes = types;
+      window.cachedLeaveTypes = types;
       renderLeaveTypesTable(cachedLeaveTypes);
       if (countLabel) countLabel.textContent = `Total Leave Types: ${cachedLeaveTypes.length} (Statutory & Custom)`;
     } else {

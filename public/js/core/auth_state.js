@@ -28,6 +28,14 @@ let COMPANIES = [
   { name: 'GC', short: 'GC' },
   { name: 'Rail Infrastructure Development Company Ltd', short: 'KRIDE' }
 ];
+
+const state = {
+  get employees() { return typeof EMP !== 'undefined' && Array.isArray(EMP) ? EMP : []; },
+  get attendance() { return typeof ATT !== 'undefined' && Array.isArray(ATT) ? ATT : []; },
+  get companies() { return typeof COMPANIES !== 'undefined' && Array.isArray(COMPANIES) ? COMPANIES : []; }
+};
+window.state = state;
+
 let companySortField = 'name';
 let companySortAsc = true;
 let companyPage = 1;

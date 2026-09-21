@@ -19,10 +19,11 @@ function closeOutdoorEntriesModal() {
 
 function populateOutdoorFilterDropdowns() {
   const empSel = document.getElementById('od-emp-filter');
+  const emps = (window.state && window.state.employees) || window.EMP || [];
   if (empSel) {
     const prevVal = empSel.value;
     empSel.innerHTML = '<option value="">All Employees</option>';
-    (state.employees || []).forEach(e => {
+    emps.forEach(e => {
       const opt = document.createElement('option');
       opt.value = e.id;
       opt.textContent = `${e.name} (${e.id})`;
@@ -56,8 +57,11 @@ async function loadOutdoorEntriesGrid(page = 1) {
 
   try {
     const res = await api(`/outdoor-entries?${params.toString()}`);
-    if (res && res.success && res.data) {
-      const { entries, total, limit } = res.data;
+    if (res && res.success) {
+      const data = res.data || res;
+      const entries = data.entries || [];
+      const total = data.total !== undefined ? data.total : entries.length;
+      const limit = data.limit || 25;
       renderOutdoorEntriesTable(entries);
 
       const totalPages = Math.ceil(total / limit) || 1;
@@ -153,9 +157,10 @@ function openApplyOutdoorModal() {
   m.style.display = 'flex';
 
   const empSel = document.getElementById('oda-emp-id');
+  const emps = (window.state && window.state.employees) || window.EMP || [];
   if (empSel) {
     empSel.innerHTML = '<option value="">Select Employee...</option>';
-    (state.employees || []).forEach(e => {
+    emps.forEach(e => {
       const opt = document.createElement('option');
       opt.value = e.id;
       opt.textContent = `${e.name} (${e.id}) - ${e.department || 'Operations'}`;

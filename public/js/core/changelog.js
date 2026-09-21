@@ -219,6 +219,9 @@ async function apiFetch(path, opts = {}) {
       } catch {
         retryData = { success: retry.ok, status: retry.status };
       }
+      if (retryData && typeof retryData === 'object' && !retryData.data) {
+        retryData.data = { ...retryData };
+      }
       return retryData;
     }
 
@@ -233,6 +236,23 @@ async function apiFetch(path, opts = {}) {
       data = await res.json();
     } catch {
       data = { success: res.ok, status: res.status };
+    }
+
+    if (data && typeof data === 'object') {
+      if (!data.data) data.data = { ...data };
+      if (data.departments && !data.data.departments) data.data.departments = data.departments;
+      if (data.holidays && !data.data.holidays) data.data.holidays = data.holidays;
+      if (data.leaveTypes && !data.data.leaveTypes) data.data.leaveTypes = data.leaveTypes;
+      if (data.leave_types && !data.data.leave_types) data.data.leave_types = data.leave_types;
+      if (data.shifts && !data.data.shifts) data.data.shifts = data.shifts;
+      if (data.configs && !data.data.department_shifts) data.data.department_shifts = data.configs;
+      if (data.policies && !data.data.department_shifts) data.data.department_shifts = data.policies;
+      if (data.entries && !data.data.entries) data.data.entries = data.entries;
+      if (data.divisions && !data.data.divisions) data.data.divisions = data.divisions;
+      if (data.cost_centers && !data.data.cost_centers) data.data.cost_centers = data.cost_centers;
+      if (data.designations && !data.data.designations) data.data.designations = data.designations;
+      if (data.branches && !data.data.branches) data.data.branches = data.branches;
+      if (data.companies && !data.data.companies) data.data.companies = data.companies;
     }
 
     // Cache successful GET responses in client-side LRU Cache with TTL

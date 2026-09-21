@@ -30,8 +30,10 @@ async function loadDepartments() {
 
   try {
     const res = await api('/departments');
-    if (res && res.success && Array.isArray(res.data?.departments)) {
-      cachedDepartments = res.data.departments;
+    const depts = res?.departments || res?.data?.departments || (Array.isArray(res) ? res : []);
+    if (res && res.success && Array.isArray(depts)) {
+      cachedDepartments = depts;
+      window.cachedDepartments = depts;
       renderDepartmentsTable(cachedDepartments);
       if (countLabel) countLabel.textContent = `Total Departments: ${cachedDepartments.length}`;
     } else {
@@ -96,12 +98,10 @@ async function populateDepartmentHeadDropdown(selectedHeadId = '') {
   select.innerHTML = '<option value="">None / Unassigned</option>';
 
   try {
-    let emps = S.employees;
+    let emps = (window.state && window.state.employees) || window.EMP || [];
     if (!emps || emps.length === 0) {
-      const res = await api('/employees');
-      if (res && res.success && Array.isArray(res.data?.employees)) {
-        emps = res.data.employees;
-      }
+      const res = await api('/employees?size=500');
+      emps = res?.employees || res?.data?.employees || [];
     }
     if (Array.isArray(emps)) {
       emps.forEach(emp => {
@@ -232,17 +232,22 @@ async function loadDeptShifts() {
   if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--mu)">Loading department shifts configuration...</td></tr>';
 
   try {
-    if (!activeShiftsCache || activeShiftsCache.length === 0) {
+    let shifts = (window.activeShiftsCache && window.activeShiftsCache.length) ? window.activeShiftsCache : [];
+    if (shifts.length === 0) {
       const sRes = await api('/shifts');
-      if (sRes && sRes.success && Array.isArray(sRes.data?.shifts)) {
-        activeShiftsCache = sRes.data.shifts;
+      const shiftsList = sRes?.shifts || sRes?.data?.shifts || (Array.isArray(sRes) ? sRes : []);
+      if (sRes && sRes.success && Array.isArray(shiftsList)) {
+        shifts = shiftsList;
+        window.activeShiftsCache = shiftsList;
       }
     }
 
     const res = await api('/department-shifts');
-    if (res && res.success && Array.isArray(res.data?.department_shifts)) {
-      cachedDeptShifts = res.data.department_shifts;
-      renderDeptShiftsTable(cachedDeptShifts, activeShiftsCache);
+    const deptShifts = res?.department_shifts || res?.configs || res?.policies || res?.data?.department_shifts || [];
+    if (res && res.success && Array.isArray(deptShifts)) {
+      cachedDeptShifts = deptShifts;
+      window.cachedDeptShifts = deptShifts;
+      renderDeptShiftsTable(cachedDeptShifts, shifts);
     } else {
       if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--er)">Failed to load department shifts.</td></tr>';
     }
@@ -386,8 +391,10 @@ async function loadPublicHolidays() {
 
   try {
     const res = await api(`/public-holidays?year=${year}`);
-    if (res && res.success && Array.isArray(res.data?.holidays)) {
-      cachedPublicHolidays = res.data.holidays;
+    const holidays = res?.holidays || res?.data?.holidays || (Array.isArray(res) ? res : []);
+    if (res && res.success && Array.isArray(holidays)) {
+      cachedPublicHolidays = holidays;
+      window.cachedPublicHolidays = holidays;
       filterHolidaysTable();
       
       const total = cachedPublicHolidays.length;

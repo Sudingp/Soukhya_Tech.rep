@@ -66,7 +66,7 @@ router.delete('/departments/:id', authenticate, requireRoles('ADMIN'), async (re
 router.get('/department-shifts', authenticate, async (req, res) => {
   try {
     const policies = await stmts.getDepartmentShiftPolicies.all();
-    res.json({ success: true, count: policies.length, configs: policies, policies });
+    res.json({ success: true, count: policies.length, configs: policies, policies, department_shifts: policies });
   } catch (err) {
     res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message }, request_id: req.id });
   }
