@@ -180,7 +180,7 @@ async function init() {
     populateDateDropdowns('r-exp-end-grp', '2030-12-31');
 
     // Populate company selects
-    updateCompanySelects();
+    if (typeof updateCompanySelects === 'function') updateCompanySelects();
 
     // Start real-time database synchronization
     initRealtimeSync();

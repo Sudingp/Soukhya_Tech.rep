@@ -446,3 +446,32 @@ function renderPublicHolidaysTable(holidays) {
     } else {
       typeBadge = '<span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3); font-size:10.5px">Company</span>';
     }
+
+    return `
+      <tr style="border-bottom:1px solid var(--br); transition:background 0.15s">
+        <td style="padding:9px 10px; font-weight:700; font-family:var(--mo); color:var(--tx)">
+          ${dateFormatted}
+        </td>
+        <td style="padding:9px 10px; color:${isWeekend ? '#ef4444' : 'var(--tx)'}; font-weight:600">
+          ${dayName} ${isWeekend ? '<span style="font-size:10px; color:#ef4444">(Weekend)</span>' : ''}
+        </td>
+        <td style="padding:9px 10px; font-weight:600; color:var(--tx)">
+          ${escapeHtml(h.title)}
+        </td>
+        <td style="padding:9px 10px; text-align:center">
+          ${typeBadge}
+        </td>
+        <td style="padding:9px 10px; color:var(--mu); font-size:11px">
+          ${escapeHtml(h.state || 'Karnataka')}
+        </td>
+        <td style="padding:9px 10px; color:var(--mu); font-size:11px">
+          ${escapeHtml(h.description || 'Gazetted Holiday under N.I. Act')}
+        </td>
+        <td style="padding:9px 10px; text-align:right">
+          <button class="btn bsm" style="font-size:11px; padding:2px 8px; margin-right:4px" onclick="openEditHolidayModal(${h.id})">✏️</button>
+          <button class="btn bsm" style="font-size:11px; padding:2px 8px; color:var(--err); border-color:var(--err)" onclick="deleteHolidayPrompt(${h.id}, '${escapeHtml(h.title)}')">🗑️</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}

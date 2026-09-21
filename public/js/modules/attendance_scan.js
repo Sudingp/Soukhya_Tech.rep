@@ -188,10 +188,11 @@ async function updateStats() {
     document.getElementById('sall').textContent = ATT.length;
 
     // Populate Roster Status stats
-    document.getElementById('s-active').textContent = res.status_counts.active;
-    document.getElementById('s-hibernate').textContent = res.status_counts.hibernate;
-    document.getElementById('s-leave').textContent = res.status_counts.on_leave;
-    document.getElementById('s-resigned').textContent = res.status_counts.resigned;
+    const sc = res.status_counts || {};
+    document.getElementById('s-active').textContent = sc.active ?? res.presentToday ?? res.present_today ?? 0;
+    document.getElementById('s-hibernate').textContent = sc.hibernate ?? 0;
+    document.getElementById('s-leave').textContent = sc.on_leave ?? 0;
+    document.getElementById('s-resigned').textContent = sc.resigned ?? 0;
 
     // Initialize/Update interactive charts
     updateCharts(res);

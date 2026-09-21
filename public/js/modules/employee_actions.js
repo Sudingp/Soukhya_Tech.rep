@@ -441,3 +441,35 @@ function findInReport() {
     notify(`Text "${query}" not found in report.`, 'wn');
     return;
   }
+
+  nodesToReplace.forEach(node => {
+    const val = node.nodeValue;
+    const parent = node.parentNode;
+    const regex = new RegExp(`(${escapeRegExp(query)})`, 'gi');
+    const html = val.replace(regex, '<mark style="background:yellow; color:black">$1</mark>');
+    
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    
+    while (tempDiv.firstChild) {
+      parent.insertBefore(tempDiv.firstChild, node);
+    }
+    parent.removeChild(node);
+  });
+
+  notify(`Found matches for "${query}".`, 'ok');
+}
+
+function removeHighlights(container) {
+  const marks = container.querySelectorAll('mark');
+  marks.forEach(mark => {
+    const parent = mark.parentNode;
+    const textNode = document.createTextNode(mark.textContent);
+    parent.replaceChild(textNode, mark);
+    parent.normalize();
+  });
+}
+
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
