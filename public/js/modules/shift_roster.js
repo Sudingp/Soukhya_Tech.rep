@@ -475,8 +475,8 @@ function renderPublicHolidaysTable(holidays) {
           ${escapeHtml(h.description || 'Gazetted Holiday under N.I. Act')}
         </td>
         <td style="padding:9px 10px; text-align:right">
-          <button class="btn bsm" style="font-size:11px; padding:2px 8px; margin-right:4px" onclick="openEditHolidayModal(${h.id})">✏️</button>
-          <button class="btn bsm" style="font-size:11px; padding:2px 8px; color:var(--err); border-color:var(--err)" onclick="deleteHolidayPrompt(${h.id}, '${escapeHtml(h.title)}')">🗑️</button>
+          <button class="btn bsm admin-action" style="font-size:11px; padding:2px 8px; margin-right:4px" onclick="openEditHolidayModal(${h.id})">✏️</button>
+          <button class="btn bsm admin-action" style="font-size:11px; padding:2px 8px; color:var(--err); border-color:var(--err)" onclick="deleteHolidayPrompt(${h.id}, '${escapeHtml(h.title)}')">🗑️</button>
         </td>
       </tr>
     `;

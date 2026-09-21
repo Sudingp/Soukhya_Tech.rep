@@ -102,7 +102,10 @@ router.get('/recent', authenticate, async (req, res) => {
 
 const handleGetLogs = async (req, res) => {
   try {
-    const { page, size, limit, startDate, endDate, emp_id, status, dept } = req.query;
+    let { page, size, limit, startDate, endDate, emp_id, status, dept } = req.query;
+    if (req.user?.role === 'USER' && req.user?.emp_id) {
+      emp_id = req.user.emp_id;
+    }
     const result = await stmts.getAttendanceLogs.all({
       page: parseInt(page, 10) || 1,
       size: parseInt(limit || size, 10) || 20,

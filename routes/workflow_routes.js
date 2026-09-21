@@ -169,7 +169,10 @@ router.delete('/leave-types/:id', authenticate, requireRoles('ADMIN'), async (re
 // ── Leave Entries & Balances ──
 router.get('/leave-entries', authenticate, async (req, res) => {
   try {
-    const { emp_id, status, page, size, limit } = req.query;
+    let { emp_id, status, page, size, limit } = req.query;
+    if (req.user?.role === 'USER' && req.user?.emp_id) {
+      emp_id = req.user.emp_id;
+    }
     const result = await stmts.getLeaveEntries.all({
       emp_id, status,
       page: parseInt(page, 10) || 1,
@@ -231,7 +234,10 @@ router.get('/leave-balances/:emp_id', authenticate, handleGetBalances);
 // ── Outdoor / On-Duty Entries ──
 router.get('/outdoor-entries', authenticate, async (req, res) => {
   try {
-    const { emp_id, status, page, size, limit } = req.query;
+    let { emp_id, status, page, size, limit } = req.query;
+    if (req.user?.role === 'USER' && req.user?.emp_id) {
+      emp_id = req.user.emp_id;
+    }
     const result = await stmts.getOutdoorEntries.all({
       emp_id, status,
       page: parseInt(page, 10) || 1,

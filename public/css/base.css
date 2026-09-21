@@ -258,7 +258,11 @@ body {
 }
 
 /* ── Role-Based Access Control ── */
-body.user-mode .admin-only {
+body.user-mode .admin-only,
+body.user-mode .admin-action {
+  display: none !important;
+}
+body:not(.user-mode) .user-only {
   display: none !important;
 }
 

@@ -52,7 +52,8 @@
 
     <!-- Secondary Navigation / Menu Bar -->
     <div id="menu-bar">
-      <button class="mbtn on" onclick="showTab('dbd', this)">Dashboard</button>
+      <!-- Admin / HR Navigation -->
+      <button class="mbtn on admin-only" onclick="showTab('dbd', this)">Dashboard</button>
       <button class="mbtn admin-only" onclick="openMenuDrawer('masters')">Masters</button>
       <button class="mbtn admin-only" onclick="openMenuDrawer('devices')">Device Management</button>
       <button class="mbtn admin-only" onclick="openMenuDrawer('utilities')">Utilities</button>
@@ -63,6 +64,15 @@
       <button class="mbtn admin-only" onclick="openMenuDrawer('audit')">Audit Logs</button>
       <button class="mbtn admin-only" onclick="openMenuDrawer('db-settings')">Database Settings</button>
       <button class="mbtn admin-only" onclick="openMenuDrawer('password')">Change Password</button>
+
+      <!-- Employee Self-Service (ESS) Options for User Mode -->
+      <button class="mbtn user-only" onclick="openShiftCalendarModal()">📅 My Schedule</button>
+      <button class="mbtn user-only" onclick="openLeaveEntriesModal()">📝 Leave & Balances</button>
+      <button class="mbtn user-only" onclick="openOutdoorEntriesModal()">🚶 Outdoor Duty</button>
+      <button class="mbtn user-only" onclick="openAttendanceLogModal()">🕒 Attendance History</button>
+      <button class="mbtn user-only" onclick="openPublicHolidaysModal()">🏖️ Holidays 2026</button>
+
+      <!-- Shared Navigation -->
       <button class="mbtn" onclick="openChangelogModal()">✨ What's New</button>
       <button class="mbtn" onclick="openMenuDrawer('about')">About</button>
       <button class="mbtn log-off" onclick="doLogOff()">Log Off</button>
@@ -1588,7 +1598,7 @@
           </div>
         </div>
         <div style="display:flex; align-items:center; gap:8px">
-          <button type="button" class="btn bsm" style="border-color:var(--ac); color:var(--ac)" onclick="openShiftCalendarPatternModal()">⚡ Apply Weekly Off Pattern</button>
+          <button type="button" class="btn bsm admin-action" style="border-color:var(--ac); color:var(--ac)" onclick="openShiftCalendarPatternModal()">⚡ Apply Weekly Off Pattern</button>
           <button class="modal-close-x" onclick="closeShiftCalendarModal()">✕</button>
         </div>
       </div>
@@ -2210,9 +2220,9 @@
           </div>
         </div>
         <div style="display:flex; align-items:center; gap:8px">
-          <button type="button" class="btn bsm" style="border-color:#f59e0b; color:#f59e0b" onclick="importKarnatakaGazetteHolidays()">⚡ Import Karnataka Gazette</button>
-          <button type="button" class="btn bsm" style="border-color:var(--ac); color:var(--ac)" onclick="syncHolidaysWithShiftCalendar()">🔄 Sync to Shift Calendar</button>
-          <button type="button" class="btn btnp bsm" onclick="openAddHolidayModal()">+ Add Holiday</button>
+          <button type="button" class="btn bsm admin-action" style="border-color:#f59e0b; color:#f59e0b" onclick="importKarnatakaGazetteHolidays()">⚡ Import Karnataka Gazette</button>
+          <button type="button" class="btn bsm admin-action" style="border-color:var(--ac); color:var(--ac)" onclick="syncHolidaysWithShiftCalendar()">🔄 Sync to Shift Calendar</button>
+          <button type="button" class="btn btnp bsm admin-action" onclick="openAddHolidayModal()">+ Add Holiday</button>
           <button class="modal-close-x" onclick="closePublicHolidaysModal()">✕</button>
         </div>
       </div>
@@ -2586,7 +2596,7 @@
           </div>
         </div>
         <div style="display:flex; align-items:center; gap:10px">
-          <button type="button" class="btn btnp bsm" onclick="openRegularizeAttendanceModal()">+ Regularize Punch</button>
+          <button type="button" class="btn btnp bsm admin-action" onclick="openRegularizeAttendanceModal()">+ Regularize Punch</button>
           <button type="button" class="btn bsm" onclick="exportAttendanceLogCsv()">📥 Export CSV</button>
           <button class="modal-close-x" onclick="closeAttendanceLogModal()">✕</button>
         </div>

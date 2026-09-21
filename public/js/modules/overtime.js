@@ -67,7 +67,8 @@ async function loadLeaveEntriesGrid(page = 1) {
 
   if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:24px; color:var(--mu)">Loading leave entries...</td></tr>';
 
-  const emp_id = document.getElementById('le-emp-filter')?.value || '';
+  const isAdmin = ['ADMIN', 'HR'].includes(currentUser?.role) || !document.body.classList.contains('user-mode');
+  let emp_id = document.getElementById('le-emp-filter')?.value || (!isAdmin && currentUser?.emp_id ? currentUser.emp_id : '');
   const leave_type_id = document.getElementById('le-type-filter')?.value || '';
   const status = document.getElementById('le-status-filter')?.value || '';
   const start_date = document.getElementById('le-start-date')?.value || '';
@@ -139,10 +140,10 @@ function renderLeaveEntriesTable(entries) {
         <td style="padding:10px; font-size:11px; color:var(--mu)">${le.approved_by ? `<div style="color:var(--tx)">By: <strong>${escapeHtml(le.approved_by)}</strong></div>` : ''}${le.comments ? `<div style="font-style:italic">"${escapeHtml(le.comments)}"</div>` : '-'}</td>
         <td style="padding:10px; text-align:right; white-space:nowrap">
           ${le.status === 'PENDING' ? `
-            <button class="btn bsm" style="font-size:10.5px; padding:2px 6px; color:#10b981; border-color:#10b981; margin-right:4px" onclick="updateLeaveEntryStatus('${le.id}', 'APPROVED')">✓ Approve</button>
-            <button class="btn bsm" style="font-size:10.5px; padding:2px 6px; color:#ef4444; border-color:#ef4444; margin-right:4px" onclick="updateLeaveEntryStatus('${le.id}', 'REJECTED')">✕ Reject</button>
+            <button class="btn bsm admin-action" style="font-size:10.5px; padding:2px 6px; color:#10b981; border-color:#10b981; margin-right:4px" onclick="updateLeaveEntryStatus('${le.id}', 'APPROVED')">✓ Approve</button>
+            <button class="btn bsm admin-action" style="font-size:10.5px; padding:2px 6px; color:#ef4444; border-color:#ef4444; margin-right:4px" onclick="updateLeaveEntryStatus('${le.id}', 'REJECTED')">✕ Reject</button>
           ` : ''}
-          <button class="btn bsm" style="font-size:10.5px; padding:2px 6px; color:var(--err); border-color:var(--err)" onclick="deleteLeaveEntryAction('${le.id}')">🗑️</button>
+          <button class="btn bsm admin-action" style="font-size:10.5px; padding:2px 6px; color:var(--err); border-color:var(--err)" onclick="deleteLeaveEntryAction('${le.id}')">🗑️</button>
         </td>
       </tr>`;
   }).join('');

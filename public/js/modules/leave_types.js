@@ -41,7 +41,8 @@ async function loadOutdoorEntriesGrid(page = 1) {
 
   if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:24px; color:var(--mu)">Loading outdoor duty entries...</td></tr>';
 
-  const emp_id = document.getElementById('od-emp-filter')?.value || '';
+  const isAdmin = ['ADMIN', 'HR'].includes(currentUser?.role) || !document.body.classList.contains('user-mode');
+  let emp_id = document.getElementById('od-emp-filter')?.value || (!isAdmin && currentUser?.emp_id ? currentUser.emp_id : '');
   const status = document.getElementById('od-status-filter')?.value || '';
   const start_date = document.getElementById('od-start-date')?.value || '';
   const end_date = document.getElementById('od-end-date')?.value || '';
@@ -129,10 +130,10 @@ function renderOutdoorEntriesTable(entries) {
         <td style="padding:10px; text-align:center">${statusBadge}</td>
         <td style="padding:10px; text-align:right; white-space:nowrap">
           ${od.status === 'PENDING' ? `
-            <button class="btn bsm" style="font-size:10.5px; padding:2px 6px; color:#10b981; border-color:#10b981; margin-right:4px" onclick="updateOutdoorEntryStatus('${od.id}', 'APPROVED')">✓ Approve</button>
-            <button class="btn bsm" style="font-size:10.5px; padding:2px 6px; color:#ef4444; border-color:#ef4444; margin-right:4px" onclick="updateOutdoorEntryStatus('${od.id}', 'REJECTED')">✕ Reject</button>
+            <button class="btn bsm admin-action" style="font-size:10.5px; padding:2px 6px; color:#10b981; border-color:#10b981; margin-right:4px" onclick="updateOutdoorEntryStatus('${od.id}', 'APPROVED')">✓ Approve</button>
+            <button class="btn bsm admin-action" style="font-size:10.5px; padding:2px 6px; color:#ef4444; border-color:#ef4444; margin-right:4px" onclick="updateOutdoorEntryStatus('${od.id}', 'REJECTED')">✕ Reject</button>
           ` : ''}
-          <button class="btn bsm" style="font-size:10.5px; padding:2px 6px; color:var(--err); border-color:var(--err)" onclick="deleteOutdoorEntryAction('${od.id}')">🗑️</button>
+          <button class="btn bsm admin-action" style="font-size:10.5px; padding:2px 6px; color:var(--err); border-color:var(--err)" onclick="deleteOutdoorEntryAction('${od.id}')">🗑️</button>
         </td>
       </tr>
     `;

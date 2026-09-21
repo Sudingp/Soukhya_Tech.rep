@@ -110,7 +110,7 @@ function populateAttendanceLogDeptFilter() {
   if (!sel) return;
   const current = sel.value;
   sel.innerHTML = '<option value="">All Departments</option>';
-  const depts = state.departments || [];
+  const depts = (window.state && window.state.departments) || window.cachedDepartments || [];
   depts.forEach(d => {
     const opt = document.createElement('option');
     opt.value = d.name;
@@ -124,7 +124,7 @@ function populateRegularizeEmployeeDropdown() {
   const sel = document.getElementById('reg-emp-id');
   if (!sel) return;
   sel.innerHTML = '<option value="">Select Employee...</option>';
-  const emps = state.employees || [];
+  const emps = (window.state && window.state.employees) || window.EMP || [];
   emps.forEach(e => {
     const opt = document.createElement('option');
     opt.value = e.id;
@@ -155,7 +155,11 @@ async function loadAttendanceLogStats() {
 
 async function loadAttendanceLogGrid(page = 1) {
   currentAttLogPage = page;
-  const search = document.getElementById('attlog-search')?.value.trim() || '';
+  const isAdmin = ['ADMIN', 'HR'].includes(currentUser?.role) || !document.body.classList.contains('user-mode');
+  let search = document.getElementById('attlog-search')?.value.trim() || '';
+  if (!isAdmin && currentUser?.emp_id && !search) {
+    search = currentUser.emp_id;
+  }
   const startDate = document.getElementById('attlog-start-date')?.value || '';
   const endDate = document.getElementById('attlog-end-date')?.value || '';
   const dept = document.getElementById('attlog-dept-filter')?.value || '';
@@ -230,7 +234,7 @@ function renderAttendanceLogRows(logs) {
           ${safeNotes}
         </td>
         <td style="padding:8px 12px; text-align:center">
-          <button type="button" class="btn bsm" style="padding:2px 6px; font-size:10.5px" onclick="openRegularizeAttendanceModal(${l.att_id}, '${safeEmpId}', '${l.timestamp}', '${l.status}')">✏️ Regularize</button>
+          <button type="button" class="btn bsm admin-action" style="padding:2px 6px; font-size:10.5px" onclick="openRegularizeAttendanceModal(${l.att_id}, '${safeEmpId}', '${l.timestamp}', '${l.status}')">✏️ Regularize</button>
         </td>
       </tr>
     `;
