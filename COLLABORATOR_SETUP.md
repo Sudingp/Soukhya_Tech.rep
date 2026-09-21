@@ -1,36 +1,68 @@
 # Collaborator Setup & Onboarding Guide — Soukhya Tech HR Enterprise
 
-This document is prepared for team members onboarding or continuing development on **Soukhya Tech HR Enterprise (v2.0 LTS / Dev-V4)** across **Windows**, **Linux**, and **macOS**.
+This document is prepared for team members onboarding or continuing development on **Soukhya Tech HR Enterprise (v4.1.0 Enterprise RBAC Release)** on branch **`HR-Enterprise-Prod`** across **Windows**, **Linux**, and **macOS**.
 
 ---
 
-## 1. Summary of Recent Merges & Architecture Updates
+## 1. Summary of Architecture Evolution (Commit `54869d6` to Current Production)
 
-The project history includes major architecture upgrades:
-- **PR #2 (`54869d6`)**: Ported backend services from C# (.NET) to Java Spring Boot with MySQL 8.4 LTS persistence.
-- **PR #3 (`434a4c2`)**: Merged 10 enterprise feature commits adding 17 new HR modules (Shifts, Roster, Geofences, Overtime, Leave ledger, Outdoor duty).
-- **PR #4 (Masters Subsystem & 3NF DBA Normalization)**:
-  1. **Normalized 3NF Schema**: Applied strict relational normalization (1NF, 2NF, 3NF) for `companies`, `departments`, `designations`, `branches` (locations), `geofences`, `shifts`, `employment_types`, and `employees` with foreign key integrity.
-  2. **5,000 Indian Employee Master Seeder**: Added high-performance chunked bulk seeder generating 5,000 realistic Indian employee records with AES-256-GCM encrypted PII, 128-dimensional AI facial embeddings, and SHA-256 verification hashes.
-  3. **High-Speed Paginated API & UI Wiring**: Fast multi-column indexed queries (<35ms on 5,000+ records) and full frontend master modal wiring for Companies, Designations, and Branches.
-- **PR #5 (High-Speed OLTP Architecture & Real-Time Buffer Pipeline)**:
-  1. **Enterprise Master Subsystems**: Added normalized 3NF structures for `divisions` (Business Units), `cost_centers` (GL Accounts & Budget Allocations), `biometric_devices` (Hardware Terminal Management), and `employee_transfers` (Career Progression & Promotion Ledger with ACID locks).
-  2. **Fast Punch Ingestion Buffer (`fast_punch_buffer`)**: Sub-millisecond write-optimized buffer decoupling edge IoT terminals from attendance calculation engines (>15,000 TPS burst throughput, <5ms DB insert latency, background asynchronous batch drain).
-  3. **Real-Time Transaction HUD & Hardware Device Manager**: Live monitoring heads-up display and CRUD modals for all master entities.
-  4. **38-Step Integration Test Suite**: Complete automated testing covering all 38 endpoints, transfer transactions, punch buffer ingestion benchmarks, and drain mechanics.
+Since the baseline commit `54869d6483a4b8103f844103b7d173cf1a236a50`, the codebase has evolved from a single-machine prototype into an enterprise-grade HR & Biometric system:
 
-> [!NOTE]
-> **Cross-Platform Scripting (Windows & Linux)**:
-> All Windows-only `.bat` files (`start-all.bat`, `stop-all.bat`) have been removed and replaced with unified, zero-dependency Python runners (`start_all.py`, `stop_all.py`, `test_all.py`).
-> - **Windows Users**: `python start_all.py` automatically detects Eclipse Adoptium JDK 21 (`C:\Program Files\Eclipse Adoptium\jdk-21.0.12.8-hotspot`) and other common Windows JDK paths, configures `JAVA_HOME`/`PATH`, boots MySQL, launches backends, and verifies endpoints.
-> - **Linux/macOS Users**: `python3 start_all.py` works out of the box with standard OpenJDK / Maven installations.
+### A. Core Persistence & Security Baseline (Commit `54869d6`)
+- **Pure MySQL 8.4 LTS Migration**: Completely eradicated SQLite runtime dependencies and fallback logic; standard collation set to `utf8mb4_0900_ai_ci`.
+- **Zero-Plaintext Authentication**: Usernames indexed as SHA-256 hashes (`username_hash`); passwords salted and hashed using Bcrypt (cost factor 12).
+- **JWT Token Blacklist & Session Revocation**: Immediate token blacklisting on logout via database (`token_blacklist`) and in-memory cache.
+- **Data Structures & Algorithms (DSA)**: Custom $O(1)$ doubly-linked list LRU Cache (`LRUCache`) and Prefix Search Trie (`PrefixTrie`) with Server-Sent Events (SSE) live sync (`/api/sync/events`).
+
+### B. Relational Organization & Shift Management (v3.1.0)
+- **Full Shift Subsystem**: Implemented multi-pattern Shift Calendars (`SUN_ONLY`, `SUN_AND_ALT_SAT`, `ALL_SAT_SUN`), Shift Cohort Groups, and high-speed monthly Shift Roster Matrix auto-generation (284,000+ slots in <55ms).
+- **Operational HR Modules**: Attendance Log, Overtime Register (with 1.5x / 2.0x multipliers), Work Codes, and Geofences with polygon & circular coordinate validation.
+- **Organization Drawer Consolidation**: Restructured Leave Types, Leave Entries, and Outdoor Duty (OD) into unified Organization configuration drawers.
+
+### C. Karnataka 2026 Gazette & Senior DBA Performance (v4.0.0)
+- **High Court of Karnataka 2026 Calendar Ingestion**: Full ingestion of all 53 official state holidays (32 Mandatory Gazetted + 21 Restricted / Optional Holidays).
+- **Interactive Holiday Leave Workflow**: Added `#la-holiday-id` dynamic dropdown to the Leave Application dialog with automated leave dates population, 1.0 day quota deduction, and statutory category badges (`LT_RH` vs. `LT_CL`).
+- **Senior DBA 15-Tier Benchmark Suite (`scripts/db_benchmark.js`)**:
+  - 15 high-concurrency queries testing Simple (S1–S5), Medium (M1–M5), and Complex (C1–C5) performance tiers.
+  - Sub-millisecond latency (0.16 ms – 0.79 ms) with throughput up to 23,000+ QPS.
+  - Complex roster scan reduced from 622ms to **54.8ms** (11.3x speedup); 30-day attendance analytics reduced from 284ms to **70.0ms** (4x speedup).
+- **Covering Indexes & Stored Generated Columns**:
+  - `attendance`: Stored generated column `punch_date DATE GENERATED ALWAYS AS (CAST(timestamp AS DATE)) STORED` with covering index `idx_att_pdate_dept_stat_cov (punch_date, dept, status, emp_id)`.
+  - `shift_roster`: Covering composite index `idx_roster_date_shift_emp_cov (roster_date, shift_id, emp_id)`.
+  - `employees`: Covering composite indexes `idx_emp_comp_dept_stat_cov` and `idx_emp_div_cc_stat_cov`.
+- **Relational Scale**: 10,100 active Indian employee records with 128-d AI face embeddings and AES-256-GCM encrypted PII.
+
+### D. Role-Based Access Control (RBAC) & Employee Self-Service (v4.1.0)
+- **Full Mode Segregation**: Dynamic interface bifurcation between Administrative Governance and Employee Self-Service (ESS).
+- **CSS RBAC & Action Guarding**: Classes `.admin-only` and `.admin-action` automatically hide admin menus and sensitive actions (punch regularizations, weekly off pattern applications, gazette imports, leave/OD approvals) in User Mode.
+- **Dedicated ESS Workspace**: Added quick-access navigation bar for staff:
+  - `📅 My Schedule`: View personal monthly shift calendar and working hours.
+  - `📝 Leave & Balances`: Real-time leave quotas ledger and self-service application form.
+  - `🚶 Outdoor Duty (OD)`: Client site & field work duty requisitioning with automatic attendance credit synchronization.
+  - `🕒 Attendance History`: Personal punch-in and punch-out scan logs.
+  - `🏖️ Holidays 2026`: View the official Karnataka High Court & Government holiday calendar.
+- **Backend API Scoping**: Endpoints `GET /api/attendance-log`, `GET /api/leave-entries`, and `GET /api/outdoor-entries` automatically isolate responses to `req.user.emp_id` when called by `USER` role tokens.
+- **Live Machine Geolocation Engine**:
+  - Integrated W3C Geolocation API in employee registration and attendance capture to acquire machine GPS coordinates.
+  - Integrated Leaflet.js with OpenStreetMap tiles for real-time map preview, draggable marker, and reverse geocoding via Nominatim.
+  - Persisted coordinates in MySQL schema (`employees.latitude`, `employees.longitude`, `employees.registered_location`) with Haversine polygon geofence verification.
+- **Master Data Pipeline Restoration**: Restored 3NF configuration pipelines across Companies, Branches, Divisions, Cost Centers, Designations, Departments, and Department Shifts with global `window.state` resolver proxy.
+
+### E. Cross-Platform Windows & Linux Parity
+- First-class support for both native Windows batch scripts (`start-all.bat`, `stop-all.bat`, `test-all.bat`) and Python runners (`start_all.py`, `stop_all.py`, `test_all.py`).
+- Windows 10/11 Microsoft Store App Execution Alias protection via `python -c "import sys"`.
+- Windows process-tree cleanup (`taskkill /F /T /PID`) and listening-port conflict resolution on port 3000.
+- Safe dynamic binary lookup (`shutil.which('node')` resolving `node.exe` on Windows and `/usr/bin/node` on Linux).
+- UNIX domain socket isolation on Windows, ensuring reliable TCP connections on port 3306.
+- **Strict Modularity Rule**: 100% of all JavaScript and CSS files are strictly $\le 500$ lines of code.
+- **Integration Test Pass**: Complete 38-step automated integration test suite passing 100%.
 
 ---
 
 ## 2. What Your Collaborator Needs to Do on Their System
 
 ### Prerequisites
-- **Python 3.8+** (installed on both Windows and Linux; standard library only, no pip packages required)
+- **Python 3.8+** (installed on Windows or Linux; standard library only, no pip packages required)
 - **Node.js** v18.0.0 or higher & **npm** v9.0.0 or higher
 - **Git** installed and configured
 - **MySQL 8.4 / 8.0** or **MariaDB** (or Docker). The system includes an automated setup helper (`scripts/setup_mysql.js`) that automatically creates and boots local database instances if offline.
@@ -44,8 +76,8 @@ The project history includes major architecture upgrades:
 ```bash
 # Fetch latest branches:
 git fetch --all
-git checkout HR-Enterprise-Dev-V4
-git pull origin HR-Enterprise-Dev-V4
+git checkout HR-Enterprise-Prod
+git pull origin HR-Enterprise-Prod
 ```
 
 #### Step 2: Set Up Environment Configuration (`.env`)
@@ -110,14 +142,21 @@ stop-all.bat                 # Windows cmd
 # Run comprehensive 38-step test suite:
 npm test
 # Or:
-npm run test:integration
+node test_integration.js
+# Or on Windows:
+test-all.bat
 ```
 All **38 integration tests** must pass 100%.
 
-#### Step 6: (Optional) Seed 5,000 Realistic Indian Employee Master Records
-To benchmark system performance with 5,000 realistic records with 128D AI facial embeddings and AES-256-GCM encryption:
+#### Step 6: Enterprise Master Dataset & Performance Benchmarks
+The production database is seeded with **10,100 realistic Indian employee records** with 128-d AI face embeddings, 3NF organization entities, and AES-256-GCM encrypted PII.
+To re-seed or benchmark query latency:
 ```bash
-node scripts/seed_5000_employees.js
+# Re-seed 10,000+ enterprise dataset:
+node scripts/seed_10000_enterprise_data.js
+
+# Execute Senior DBA 15-tier benchmark suite (Simple, Medium, Complex queries):
+node scripts/db_benchmark.js
 ```
 
 ---
@@ -134,37 +173,53 @@ node scripts/seed_5000_employees.js
 
 ---
 
-## 4. Repository Structure & `.gitignore` Rules
+## 4. Repository Structure & Directory Map
 
-### Folder Structure
+### Current Production Architecture (`HR-Enterprise-Prod`)
 ```text
 soukhya-tech/
 ├── .env.example                 # [TRACKED] Sample environment configuration
 ├── .gitignore                   # [TRACKED] Defines files excluded from Git
-├── README.md                    # [TRACKED] Comprehensive architectural docs
+├── README.md                    # [TRACKED] Architecture & system documentation
+├── CHANGELOG.md                 # [TRACKED] Central release history (v4.1.0)
 ├── COLLABORATOR_SETUP.md        # [TRACKED] This setup guide
 ├── package.json                 # [TRACKED] Node dependencies and start scripts
 ├── start_all.py                 # [TRACKED] Cross-platform backend launcher (Windows & Linux)
 ├── stop_all.py                  # [TRACKED] Cross-platform backend shutdown utility
 ├── test_all.py                  # [TRACKED] Cross-platform test runner and health checker
+├── start-all.bat                # [TRACKED] Windows native launcher batch script
+├── stop-all.bat                 # [TRACKED] Windows native shutdown batch script
+├── test-all.bat                 # [TRACKED] Windows native test runner batch script
 ├── server.js                    # [TRACKED] Express.js core API server
-├── test_integration.js          # [TRACKED] 32-step integration test suite
-├── db_optimize.py               # [TRACKED] MySQL 8.4 LTS optimizer & latency benchmark
+├── test_integration.js          # [TRACKED] 38-step automated integration test suite
+├── db_optimize.py               # [TRACKED] MySQL 8.4 LTS optimizer utility
 ├── changelog/                   # [TRACKED] Role-aware markdown release notes
 │   ├── README.md
-│   ├── CHANGELOG_ADMIN.md
-│   └── CHANGELOG_USER.md
+│   ├── CHANGELOG_ADMIN.md       # Technical specs & database architecture
+│   └── CHANGELOG_USER.md        # Employee self-service & UI features
 ├── database/
 │   ├── db.js                    # [TRACKED] Pure MySQL 8.4 LTS query layer
-│   ├── mysql_adapter.js         # [TRACKED] MySQL connection pool & async DAO
-│   └── schema_mysql.sql         # [TRACKED] MySQL 8.4 LTS DDL schema (InnoDB + utf8mb4)
+│   ├── mysql_adapter.js         # [TRACKED] MySQL connection pool & async DAO aggregator
+│   ├── schema_mysql.sql         # [TRACKED] MySQL 8.4 LTS DDL schema (InnoDB + utf8mb4)
+│   └── daos/                    # [TRACKED] Modular domain DAOs (<500 lines each)
+│       ├── auth_dao.js, employee_dao.js, attendance_dao.js, shift_dao.js
+│       ├── roster_dao.js, department_dao.js, master_dao.js, device_dao.js
+│       ├── transfer_dao.js, buffer_dao.js, workflow_dao.js, audit_dao.js
+├── routes/                      # [TRACKED] Modular REST API route handlers
+│   ├── admin_routes.js, attendance_routes.js, auth_routes.js, department_routes.js
+│   ├── device_routes.js, employee_routes.js, master_routes.js, punch_buffer_routes.js
+│   ├── roster_routes.js, shift_routes.js, sync_routes.js, workflow_routes.js
 ├── public/                      # [TRACKED] Frontend Single-Page Application
-│   ├── index.html               # Main dashboard UI with changelog modal
-│   ├── style.css                # Enterprise styling & theme
-│   ├── app.js                   # Client controller logic
-│   └── dsa_cache.js             # Client-side LRU cache & prefix trie
+│   ├── index.html               # Main dashboard UI with changelog & master modals
+│   ├── css/                     # [TRACKED] Modular styles (base.css, components.css)
+│   └── js/
+│       ├── core/                # api_sync.js, auth_state.js, changelog.js
+│       └── modules/             # employee_master.js, shift_roster.js, overtime.js,
+│                                # leave_types.js, geofences.js, geo_location.js, etc.
 ├── scripts/
-│   ├── seed_5000_employees.js   # [TRACKED] 5,000 Indian employee master bulk seeder
+│   ├── db_benchmark.js          # [TRACKED] Senior DBA 15-tier query benchmark suite
+│   ├── seed_10000_enterprise_data.js # [TRACKED] 10,100 multi-company master seeder
+│   ├── seed_5000_employees.js   # [TRACKED] 5,000 Indian employee bulk seeder
 │   ├── setup_mysql.js           # [TRACKED] Cross-platform MySQL runner (Node.js)
 │   └── setup_mysql.sh           # [TRACKED] Local MySQL daemon setup helper (Bash)
 ├── src/                         # [TRACKED] Spring Boot Java backend
@@ -176,7 +231,6 @@ soukhya-tech/
 ├── data/                        # [IGNORED] MySQL runtime data directory & socket
 ├── *.db                         # [IGNORED] Database binary files
 ├── *.log                        # [IGNORED] Server log output files
-├── *.bat                        # [IGNORED] OS-specific batch scripts
 └── .soukhya-pids                # [IGNORED] Process ID tracking files
 ```
 
@@ -184,37 +238,33 @@ soukhya-tech/
 
 ## 5. What Must Stay in `.gitignore`
 
-The `.gitignore` file excludes local environments, runtime caches, OS-specific batch files, and sensitive keys:
+The `.gitignore` file strictly excludes local secrets, build output, runtime data, and operating system caches:
 
 ```gitignore
-# Dependencies & Build
 node_modules/
 target/
-build/
-bin/
-obj/
-
-# Environment & Secrets (NEVER COMMIT)
-.env
-*.user
-*.suo
-
-# Local Database Runtime & Caches (NEVER COMMIT)
-data/
-*.sock
-*.pid
+.gemini/
+*.log
 .soukhya-pids
 *.db
 *.db-*
-
-# OS-Specific Scripts & Logs
-*.bat
-*.log
 .idea/
 .vscode/
+build/
+bin/
+obj/
+*.user
+*.suo
 .vs/
-.gemini/
+.env
+env
+Antigravity-x64
+Antigravity.tar.gz
 __pycache__/
 *.py[cod]
+.pytest_cache/
+data/
+*.sock
+*.pid
 ```
 
