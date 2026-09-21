@@ -91,7 +91,7 @@ async function pollDbVersion() {
 
 async function refreshEmployeesFromDB() {
   const empRes = await apiFetch('/api/employees');
-  if (empRes && empRes.success) {
+  if (empRes && empRes.success && Array.isArray(empRes.employees)) {
     EMP = empRes.employees.map(e => ({
       ...e,
       descriptor: new Float32Array(e.descriptor)
@@ -112,18 +112,21 @@ async function refreshEmployeesFromDB() {
 async function refreshAttendanceFromDB() {
   const attRes = await apiFetch('/api/attendance');
   if (attRes && attRes.success) {
-    ATT = attRes.records.map(r => ({
-      empId:  r.emp_id,
-      name:   r.name,
-      dept:   r.dept,
-      role:   r.role,
-      ts:     r.timestamp,
-      status: r.status,
-      att_id: r.att_id
-    }));
-    renderLog();
-    updateStats();
-    updateDbdStats();
+    const attRows = attRes.attendance || attRes.attendance_logs || attRes.records;
+    if (Array.isArray(attRows)) {
+      ATT = attRows.map(r => ({
+        empId:  r.emp_id,
+        name:   r.name,
+        dept:   r.dept,
+        role:   r.role,
+        ts:     r.timestamp,
+        status: r.status,
+        att_id: r.att_id
+      }));
+      renderLog();
+      updateStats();
+      updateDbdStats();
+    }
   }
 }
 
@@ -221,7 +224,7 @@ async function loadFromDB() {
 
   // Load employees
   const empRes = await apiGet('/api/employees?size=10000');
-  if (empRes && empRes.success) {
+  if (empRes && empRes.success && Array.isArray(empRes.employees)) {
     EMP = empRes.employees.map(e => ({
       ...e,
       // Restore Float32Array from plain array stored as JSON
@@ -243,8 +246,9 @@ async function loadFromDB() {
 
   // Load attendance records
   const attRes = await apiGet('/api/attendance');
-  if (attRes.success) {
-    ATT = attRes.records.map(r => ({
+  const attRows = attRes && attRes.success && (attRes.attendance || attRes.attendance_logs || attRes.records);
+  if (Array.isArray(attRows)) {
+    ATT = attRows.map(r => ({
       empId:  r.emp_id,
       name:   r.name,
       dept:   r.dept,
