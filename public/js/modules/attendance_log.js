@@ -253,27 +253,28 @@ async function runGeofenceVerificationTest() {
       body: JSON.stringify({ latitude: lat, longitude: lon })
     });
 
-    if (res && res.success) {
-      const data = res.data;
-      if (data.is_valid && data.matched_geofence) {
+    if (res && (res.success || res.is_valid !== undefined)) {
+      const data = res.data || res;
+      if (data && data.is_valid && data.matched_geofence) {
         const mg = data.matched_geofence;
         resBox.innerHTML = `
           <div style="color:var(--ok); font-weight:700; margin-bottom:4px">✓ INSIDE VALID GEOFENCE</div>
           <div>Matched Zone: <strong>${escapeHtml(mg.name)}</strong> (${escapeHtml(mg.code)})</div>
-          <div>Distance from Zone Center: <strong>${mg.distance_meters}m</strong> (Allowed Radius: ${mg.radius_meters}m)</div>
-          <div>Enforcement: <strong>${mg.enforcement_mode}</strong></div>
+          <div>Distance from Zone Center: <strong>${mg.distance_meters || 0}m</strong> (Allowed Radius: ${mg.radius_meters}m)</div>
+          <div>Enforcement: <strong>${mg.enforcement_mode || 'STRICT'}</strong></div>
         `;
       } else {
-        const nearest = (data.all_zones || []).sort((a, b) => a.distance_meters - b.distance_meters)[0];
+        const zones = (data && Array.isArray(data.all_zones)) ? data.all_zones : [];
+        const nearest = zones.slice().sort((a, b) => (a.distance_meters || 0) - (b.distance_meters || 0))[0];
         resBox.innerHTML = `
           <div style="color:var(--er); font-weight:700; margin-bottom:4px">❌ OUTSIDE ALL ACTIVE GEOFENCES</div>
           <div>Nearest Zone: <strong>${escapeHtml(nearest?.name || 'None')}</strong></div>
-          <div>Distance: <strong>${nearest?.distance_meters || '—'}m</strong> away (Radius: ${nearest?.radius_meters || '—'}m)</div>
+          <div>Distance: <strong>${nearest?.distance_meters !== undefined ? nearest.distance_meters + 'm away' : '—'}</strong> (Radius: ${nearest?.radius_meters || '—'}m)</div>
           <div style="color:var(--wn); margin-top:4px">Punches from these coordinates will be flagged or rejected according to zone policy.</div>
         `;
       }
     } else {
-      resBox.innerHTML = `<span style="color:var(--er)">Verification failed: ${res?.error?.message}</span>`;
+      resBox.innerHTML = `<span style="color:var(--er)">Verification failed: ${escapeHtml(res?.error?.message || res?.error || 'Server error')}</span>`;
     }
   } catch (err) {
     resBox.innerHTML = `<span style="color:var(--er)">Error: ${err.message}</span>`;

@@ -318,6 +318,7 @@ router.post('/geofences/verify-coords', authenticate, async (req, res) => {
     const lon = parseFloat(longitude);
     const geofences = await stmts.getAllGeofences.all();
     let matched = null;
+    const all_zones = [];
     for (const g of geofences) {
       if (g.active === 0 || g.active === false) continue;
       const gLat = parseFloat(g.latitude);
@@ -328,13 +329,15 @@ router.post('/geofences/verify-coords', authenticate, async (req, res) => {
       const Δφ = ((gLat - lat) * Math.PI) / 180;
       const Δλ = ((gLon - lon) * Math.PI) / 180;
       const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-      const dist = 6371e3 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      if (dist <= radius) {
-        matched = g;
-        break;
+      const dist = Math.round(6371e3 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+      const zoneWithDist = { ...g, distance_meters: dist, radius_meters: radius };
+      all_zones.push(zoneWithDist);
+      if (dist <= radius && !matched) {
+        matched = zoneWithDist;
       }
     }
-    res.json({ success: true, is_valid: !!matched, matched_geofence: matched });
+    const respPayload = { is_valid: !!matched, matched_geofence: matched, all_zones };
+    res.json({ success: true, ...respPayload, data: respPayload });
   } catch (err) {
     res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message }, request_id: req.id });
   }

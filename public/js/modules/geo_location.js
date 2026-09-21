@@ -170,13 +170,14 @@ async function verifyGeofenceProximity(lat, lon) {
   if (!geofenceBadge) return;
   try {
     const res = await apiPost('/api/geofences/verify-coords', { latitude: lat, longitude: lon });
-    if (res && res.success) {
-      if (res.is_valid && res.matched_geofence) {
+    const data = res?.data || res;
+    if (data && (res?.success || data.is_valid !== undefined)) {
+      if (data.is_valid && data.matched_geofence) {
         geofenceBadge.style.display = 'inline-flex';
         geofenceBadge.className = 'badge';
         geofenceBadge.style.background = 'rgba(16,185,129,0.15)';
         geofenceBadge.style.color = '#10b981';
-        geofenceBadge.innerHTML = `🛡️ Inside ${escapeHtml(res.matched_geofence.name)} Zone (${res.matched_geofence.radius_meters}m)`;
+        geofenceBadge.innerHTML = `🛡️ Inside ${escapeHtml(data.matched_geofence.name)} Zone (${data.matched_geofence.radius_meters}m)`;
         
         // Auto-select geofence dropdown if present
         const gSelect = document.getElementById('r-geofence');
