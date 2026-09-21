@@ -46,6 +46,9 @@ function showTab(id, btn) {
     renderEmployeeGrid();
     updateEmpListFilterDropdowns();
   }
+  if (id === 'reg') {
+    if (typeof initLiveGeoLocation === 'function') initLiveGeoLocation();
+  }
   if (id !== 'att' && aStream) stopAttCam();
 }
 

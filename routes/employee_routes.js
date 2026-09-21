@@ -27,10 +27,13 @@ const employeeSchema = Joi.object({
   email: Joi.string().allow('', null).optional(),
   card_number: Joi.string().allow('', null).optional(),
   primary_shift_id: Joi.string().allow('', null).optional(),
+  location: Joi.string().allow('', null).optional(),
+  latitude: Joi.number().allow(null).optional(),
+  longitude: Joi.number().allow(null).optional(),
   descriptor: Joi.alternatives().try(Joi.array(), Joi.string()).optional(),
   descriptor_hash: Joi.string().allow('', null).optional(),
   image: Joi.string().allow('', null).optional()
-});
+}).unknown(true);
 
 router.get('/', authenticate, async (req, res) => {
   try {

@@ -74,6 +74,10 @@ function resetRegForm() {
   const p = document.getElementById('cprev');
   if (p) p.style.display = 'none';
   
+  if (document.getElementById('r-lat')) document.getElementById('r-lat').value = '';
+  if (document.getElementById('r-lon')) document.getElementById('r-lon').value = '';
+  if (typeof acquireCurrentLocation === 'function') acquireCurrentLocation({ silent: true });
+  
   notify('Registration form cleared.', 'wn');
 }
 
@@ -282,6 +286,8 @@ async function doRegister() {
       grade,
       team,
       location: loc,
+      latitude: parseFloat(document.getElementById('r-lat')?.value) || null,
+      longitude: parseFloat(document.getElementById('r-lon')?.value) || null,
       employment_type: empType,
       category,
       holiday_group: holidayGroup,
@@ -333,6 +339,8 @@ async function doRegister() {
       grade,
       team,
       location: loc,
+      latitude: parseFloat(document.getElementById('r-lat')?.value) || null,
+      longitude: parseFloat(document.getElementById('r-lon')?.value) || null,
       employmentType: empType,
       category,
       holidayGroup,

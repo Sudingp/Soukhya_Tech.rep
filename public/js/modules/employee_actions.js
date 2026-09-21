@@ -48,18 +48,31 @@ function showOtherDetails(id) {
   const emp = EMP.find(e => e.id === id);
   if (!emp) return;
 
+  const lat = emp.latitude || 12.9716;
+  const lon = emp.longitude || 77.5946;
+  const hasCoords = !!(emp.latitude && emp.longitude);
+
   const html = `
     <div style="font-family:var(--sa); font-size:12px; line-height:1.6">
-      <div style="font-size:14px; font-weight:600; margin-bottom:12px; color:var(--ac)">Organizational Tree Details</div>
+      <div style="font-size:14px; font-weight:600; margin-bottom:12px; color:var(--ac)">Organizational & Geolocation Details</div>
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px">
-        <div><strong>Sub Department:</strong> ${emp.subDepartment || 'None'}</div>
+        <div><strong>Sub Department:</strong> ${emp.subDepartment || emp.sub_department || 'None'}</div>
         <div><strong>Division:</strong> ${emp.division || 'None'}</div>
         <div><strong>Grade:</strong> ${emp.grade || 'G1'}</div>
         <div><strong>Team:</strong> ${emp.team || 'None'}</div>
         <div><strong>Location:</strong> ${emp.location || 'HQ - Bangalore'}</div>
-        <div><strong>Employment Type:</strong> ${emp.employmentType || 'Permanent'}</div>
-        <div><strong>Holiday Group:</strong> ${emp.holidayGroup || 'None'}</div>
+        <div><strong>Employment Type:</strong> ${emp.employmentType || emp.employment_type || 'Permanent'}</div>
+        <div><strong>Holiday Group:</strong> ${emp.holidayGroup || emp.holiday_group || 'None'}</div>
         <div><strong>Geofence Zone:</strong> ${emp.geofence || 'None'}</div>
+      </div>
+      <div style="background:var(--s2); border:1px solid var(--br); border-radius:6px; padding:10px; margin-top:8px">
+        <div style="font-weight:600; color:var(--ac); margin-bottom:6px; display:flex; justify-content:space-between; align-items:center">
+          <span>📍 Machine Coordinates:</span>
+          <button class="btn bsm" onclick="openGeoRadarModal(${lat}, ${lon}, '${escapeHtml(emp.name)}')">🗺️ View Map</button>
+        </div>
+        <div style="font-family:var(--mo); font-size:11px; color:var(--tx)">
+          Lat: ${Number(lat).toFixed(6)}° N | Lon: ${Number(lon).toFixed(6)}° E ${hasCoords ? '<span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; font-size:9px">LOCKED</span>' : ''}
+        </div>
       </div>
     </div>`;
 

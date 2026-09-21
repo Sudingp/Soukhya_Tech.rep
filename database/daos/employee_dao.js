@@ -38,10 +38,11 @@ class EmployeeDAO {
              e.company_id, e.department_id, e.designation_id, e.branch_id,
              e.employment_type_id, e.primary_shift_id, e.geofence_id,
              e.gender, e.date_of_joining, e.phone_no, e.email, e.card_number,
-             e.reporting_to, e.division, e.grade, e.team, e.location,
-             e.employment_type, e.category, e.created_at, e.updated_at,
-             c.name as company_name, d.name as department_name, des.name as designation_name,
-             b.name as branch_name
+              e.reporting_to, e.division, e.grade, e.team, e.location,
+              e.latitude, e.longitude,
+              e.employment_type, e.category, e.created_at, e.updated_at,
+              c.name as company_name, d.name as department_name, des.name as designation_name,
+              b.name as branch_name
       FROM employees e
       LEFT JOIN companies c ON e.company_id = c.id
       LEFT JOIN departments d ON e.department_id = d.id
@@ -103,7 +104,9 @@ class EmployeeDAO {
 
   async insertEmployee(emp) {
     const pool = await this.getPool();
+    const crypto = require('crypto');
     const descStr = typeof emp.descriptor === 'string' ? emp.descriptor : JSON.stringify(emp.descriptor || []);
+    const descHash = emp.descriptor_hash || crypto.createHash('sha256').update(descStr || emp.id).digest('hex');
     await pool.execute(`
       INSERT INTO employees (
         id, name, department, role, descriptor, descriptor_hash, image, status,
@@ -112,17 +115,17 @@ class EmployeeDAO {
         employment_type_id, primary_shift_id, geofence_id, gender, date_of_joining,
         date_of_confirmation, last_working_day, aadhaar_number, pan_number,
         card_number, phone_no, email, reporting_to, device_code, sub_department,
-        division, grade, team, location, employment_type, category, holiday_group,
+        division, grade, team, location, latitude, longitude, employment_type, category, holiday_group,
         shift_group, shift_roster, geofence, device_expiry_rule_applicable,
         verification_type, expiry_start_date, expiry_end_date, version, updated_by,
         created_at, updated_at
       ) VALUES (
         ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?,
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?,
         NOW(), NOW()
       )
     `, [
-      emp.id, emp.name, emp.department || 'Engineering', emp.role || 'Staff', descStr, emp.descriptor_hash || null,
+      emp.id, emp.name, emp.department || 'Engineering', emp.role || 'Staff', descStr, descHash,
       emp.image || null, emp.status || 'Active', emp.hibernate_start_date || null, emp.hibernate_end_date || null,
       emp.hibernate_reason || null, emp.company || 'SOUKHYA', emp.company_id || null, emp.department_id || null,
       emp.designation || null, emp.designation_id || null, emp.branch_id || null, emp.employment_type_id || null,
@@ -130,10 +133,11 @@ class EmployeeDAO {
       emp.date_of_confirmation || null, emp.last_working_day || null, emp.aadhaar_number || null,
       emp.pan_number || null, emp.card_number || null, emp.phone_no || null, emp.email || null,
       emp.reporting_to || null, emp.device_code || null, emp.sub_department || null, emp.division || null,
-      emp.grade || null, emp.team || null, emp.location || null, emp.employment_type || null,
-      emp.category || null, emp.holiday_group || null, emp.shift_group || null, emp.shift_roster || null,
-      emp.geofence || null, emp.device_expiry_rule_applicable ? 1 : 0, emp.verification_type || null,
-      emp.expiry_start_date || null, emp.expiry_end_date || null, emp.updated_by || 'system'
+      emp.grade || null, emp.team || null, emp.location || null, emp.latitude || null, emp.longitude || null,
+      emp.employment_type || null, emp.category || null, emp.holiday_group || null, emp.shift_group || null,
+      emp.shift_roster || null, emp.geofence || null, emp.device_expiry_rule_applicable ? 1 : 0,
+      emp.verification_type || null, emp.expiry_start_date || null, emp.expiry_end_date || null,
+      emp.updated_by || 'system'
     ]);
     return this.getEmployeeById(emp.id);
   }
@@ -155,6 +159,9 @@ class EmployeeDAO {
         designation_id = COALESCE(?, designation_id),
         branch_id = COALESCE(?, branch_id),
         primary_shift_id = COALESCE(?, primary_shift_id),
+        location = COALESCE(?, location),
+        latitude = COALESCE(?, latitude),
+        longitude = COALESCE(?, longitude),
         phone_no = COALESCE(?, phone_no),
         email = COALESCE(?, email),
         card_number = COALESCE(?, card_number),
@@ -164,6 +171,7 @@ class EmployeeDAO {
       emp.name || null, emp.department || null, emp.role || null, descStr, emp.descriptor_hash || null,
       emp.image || null, emp.status || null, emp.company_id || null, emp.department_id || null,
       emp.designation_id || null, emp.branch_id || null, emp.primary_shift_id || null,
+      emp.location || null, emp.latitude || null, emp.longitude || null,
       emp.phone_no || null, emp.email || null, emp.card_number || null,
       emp.id
     ]);

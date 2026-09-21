@@ -7,6 +7,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css?v=2.0.2" />
+  <!-- OpenStreetMap Leaflet Mapping Engine (Open Source) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js" defer></script>
   <!-- Load Chart.js CDN for interactive analytics -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -439,6 +442,60 @@
                 <div class="modal-actions-right">
                   <button class="btn btnp bsm" id="rcap-lnk" onclick="doRegister()">Save</button>
                   <button class="btn bsm" onclick="resetRegForm()">Close</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- ── LIVE GEOLOCATION & MACHINE LOCATION MAPPING ── -->
+            <div class="card mt" style="border:1px solid rgba(0,212,170,0.35); background:linear-gradient(180deg, rgba(22,27,39,0.95), rgba(16,21,31,0.98))">
+              <div class="ct" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px">
+                <div style="display:flex; align-items:center; gap:8px">
+                  <span style="font-size:18px">📍</span>
+                  <span style="font-weight:700; color:var(--tx)">Live Machine Geolocation &amp; OpenStreetMap Radar</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:6px">
+                  <span id="geo-status-badge" class="badge" style="background:rgba(245,158,11,0.15); color:#f59e0b; border:1px solid rgba(245,158,11,0.3)">📡 Acquiring GPS...</span>
+                  <span id="geo-zone-badge" class="badge" style="display:none"></span>
+                </div>
+              </div>
+
+              <!-- Coords Summary HUD -->
+              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:8px; margin-bottom:12px">
+                <div style="background:var(--s2); border:1px solid var(--br); border-radius:6px; padding:8px 12px">
+                  <div style="font-size:10px; color:var(--mu); font-family:var(--mo)">LATITUDE</div>
+                  <div id="geo-lat-display" style="font-size:13px; font-weight:700; color:var(--ac); font-family:var(--mo)">--.------°</div>
+                </div>
+                <div style="background:var(--s2); border:1px solid var(--br); border-radius:6px; padding:8px 12px">
+                  <div style="font-size:10px; color:var(--mu); font-family:var(--mo)">LONGITUDE</div>
+                  <div id="geo-lon-display" style="font-size:13px; font-weight:700; color:var(--ac); font-family:var(--mo)">--.------°</div>
+                </div>
+                <div style="background:var(--s2); border:1px solid var(--br); border-radius:6px; padding:8px 12px">
+                  <div style="font-size:10px; color:var(--mu); font-family:var(--mo)">GPS ACCURACY</div>
+                  <div id="geo-acc-display" style="font-size:13px; font-weight:700; color:#4f8ef7; font-family:var(--mo)">--</div>
+                </div>
+              </div>
+
+              <!-- Reverse-Geocoded Address -->
+              <div style="background:rgba(0,0,0,0.25); border:1px solid var(--br); border-radius:6px; padding:8px 12px; margin-bottom:12px; font-size:11px; color:var(--tx); display:flex; align-items:center; gap:6px">
+                <span style="color:var(--ac)">📌 Address:</span>
+                <span id="geo-addr-display" style="color:var(--mu); overflow:hidden; text-overflow:ellipsis; white-space:nowrap">Fetching reverse-geocoded machine address via OpenStreetMap...</span>
+              </div>
+
+              <!-- Interactive Leaflet Map -->
+              <div id="reg-live-map" style="height:210px; width:100%; border-radius:8px; border:1px solid var(--br); box-shadow:inset 0 0 10px rgba(0,0,0,0.5); z-index:1; margin-bottom:12px"></div>
+
+              <!-- Hidden inputs bound to employee form registration -->
+              <input type="hidden" id="r-lat" value="" />
+              <input type="hidden" id="r-lon" value="" />
+
+              <!-- Geolocation Action Controls -->
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px">
+                <div style="display:flex; gap:6px">
+                  <button type="button" class="btn bsm" onclick="acquireCurrentLocation()">🎯 Lock Machine Position</button>
+                  <button type="button" class="btn bsm" id="btn-toggle-tracking" onclick="toggleLiveTracking()">🔄 Auto-Track Machine</button>
+                </div>
+                <div style="font-size:11px; color:var(--mu)">
+                  * Drag pin or click map to calibrate registration coordinates
                 </div>
               </div>
             </div>
@@ -4594,6 +4651,22 @@
   </div>
 </div>
 
+<!-- ── FULLSCREEN GEOLOCATION RADAR MODAL (OpenStreetMap Leaflet) ── -->
+<div id="geo-radar-modal" class="modal-overlay" style="display:none; z-index:9999;">
+  <div class="modal-box animate-zoom" style="max-width:960px; width:95%; max-height:90vh; display:flex; flex-direction:column; border:1px solid var(--br); box-shadow:0 24px 64px rgba(0,0,0,0.85)">
+    <div class="modal-hdr" style="display:flex; justify-content:space-between; align-items:center; padding:14px 20px; background:linear-gradient(135deg, #161b27, #1a2234)">
+      <div>
+        <span class="modal-title" id="geo-radar-title" style="font-size:15px; font-weight:700">📍 Live Geolocation Radar</span>
+        <div id="geo-radar-meta" style="font-size:11px; color:var(--mu)">OpenStreetMap GPS Satellite Engine</div>
+      </div>
+      <button class="modal-close-x" onclick="closeGeoRadarModal()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:16px; flex:1; display:flex; flex-direction:column">
+      <div id="radar-modal-map" style="height:480px; width:100%; border-radius:8px; border:1px solid var(--br); z-index:1"></div>
+    </div>
+  </div>
+</div>
+
 <script src="dsa_cache.js?v=2.0.2"></script>
 <!-- Core Modules -->
 <script src="js/core/auth_state.js?v=2.0.2"></script>
@@ -4626,6 +4699,7 @@
 <script src="js/modules/outdoor.js?v=2.0.2"></script>
 <script src="js/modules/org_masters.js?v=2.0.2"></script>
 <script src="js/modules/devices_buffer.js?v=2.0.2"></script>
+<script src="js/modules/geo_location.js?v=2.0.2"></script>
 <!-- Application Bootstrap -->
 <script src="app.js?v=2.0.2"></script>
 </body>
