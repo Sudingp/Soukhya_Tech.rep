@@ -82,6 +82,9 @@ npm run start:all
 # Or directly via Python:
 python start_all.py          # Windows
 python3 start_all.py         # Linux / macOS
+
+# Or on Windows via native batch runner:
+start-all.bat                # Windows cmd / double-click
 ```
 
 To stop all services cleanly:
@@ -90,6 +93,8 @@ npm run stop:all
 # Or:
 python stop_all.py           # Windows
 python3 stop_all.py          # Linux / macOS
+# Or on Windows:
+stop-all.bat                 # Windows cmd
 ```
 
 - Open your browser to: **`http://localhost:3000`**

@@ -18,18 +18,18 @@ if not exist ".env" (
     )
 )
 
-:: Step 2: Check if Python 3 is available
-where python >nul 2>&1
+:: Step 2: Check if Python 3 is available (avoids Microsoft Store dummy alias)
+python -c "import sys" >nul 2>&1
 if %ERRORLEVEL% equ 0 (
-    echo [INFO] Python detected. Launching unified cross-platform runner start_all.py...
+    echo [INFO] Python 3 detected. Launching unified cross-platform runner start_all.py...
     echo.
     python start_all.py %*
     goto :end
 )
 
-where py >nul 2>&1
+py -3 -c "import sys" >nul 2>&1
 if %ERRORLEVEL% equ 0 (
-    echo [INFO] Python launcher (py) detected. Launching start_all.py...
+    echo [INFO] Python launcher (py -3) detected. Launching start_all.py...
     echo.
     py -3 start_all.py %*
     goto :end
@@ -79,6 +79,14 @@ if %ERRORLEVEL% equ 0 (
 )
 
 :: Step 3d: Launch Node.js Express Server
+echo [INFO] Checking port 3000 availability...
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":3000 "') do (
+    if "%%a" neq "0" (
+        echo [INFO] Releasing occupied port 3000 (PID: %%a)...
+        taskkill /F /T /PID %%a >nul 2>&1
+    )
+)
+
 echo [INFO] Starting Node.js Express Server on port 3000...
 echo [INFO] Access Application UI at: http://localhost:3000
 echo.

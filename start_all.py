@@ -114,7 +114,7 @@ def ensure_mysql():
     setup_script = os.path.join(SCRIPT_DIR, 'scripts', 'setup_mysql.js')
     if os.path.exists(setup_script):
         log_info("Verifying MySQL database service...")
-        node_cmd = 'node.cmd' if sys.platform.startswith('win') else 'node'
+        node_cmd = shutil.which('node') or 'node'
         try:
             res = subprocess.run([node_cmd, setup_script], cwd=SCRIPT_DIR)
             if res.returncode == 0:
@@ -307,14 +307,15 @@ def main():
         node_modules = os.path.join(node_dir, 'node_modules')
         if not os.path.exists(node_modules):
             log_info("node_modules directory missing. Running npm install...")
-            npm_cmd = 'npm.cmd' if sys.platform.startswith('win') else 'npm'
-            subprocess.run([npm_cmd, 'install'], cwd=node_dir)
+            npm_cmd = shutil.which('npm') or ('npm.cmd' if sys.platform.startswith('win') else 'npm')
+            subprocess.run([npm_cmd, 'install'], cwd=node_dir, shell=sys.platform.startswith('win'))
 
         node_env = os.environ.copy()
         node_env['PORT'] = str(NODE_PORT)
         node_log = open(os.path.join(SCRIPT_DIR, '.soukhya-node.log'), 'w', encoding='utf-8')
 
-        node_proc = subprocess.Popen(['node', 'server.js'], cwd=node_dir, env=node_env, stdout=node_log, stderr=subprocess.STDOUT)
+        node_bin = shutil.which('node') or 'node'
+        node_proc = subprocess.Popen([node_bin, 'server.js'], cwd=node_dir, env=node_env, stdout=node_log, stderr=subprocess.STDOUT)
         PROCESSES.append((node_proc, "Node.js"))
         write_pid(node_proc.pid, "node")
 
@@ -333,24 +334,25 @@ def main():
 
         if not jars or not os.path.exists(jars[0]):
             log_info("Target JAR not found. Compiling Java package (mvn clean package -DskipTests)...")
-            res = subprocess.run([mvn_cmd, 'clean', 'package', '-DskipTests'], cwd=java_dir)
+            res = subprocess.run([mvn_cmd, 'clean', 'package', '-DskipTests'], cwd=java_dir, shell=sys.platform.startswith('win'))
             if res.returncode != 0:
                 log_warn("Maven package build returned non-zero code.")
             jars = glob.glob(os.path.join(java_dir, 'target', 'faceattendance-*.jar'))
             jars = [j for j in jars if not j.endswith('.original')]
 
         java_log = open(os.path.join(SCRIPT_DIR, '.soukhya-java.log'), 'w', encoding='utf-8')
+        java_bin = shutil.which('java') or 'java'
         if jars and os.path.exists(jars[0]):
             jar_path = jars[0]
             log_info(f"Launching {os.path.basename(jar_path)} on port {JAVA_PORT}...")
-            java_proc = subprocess.Popen(['java', '-jar', jar_path, f'--server.port={JAVA_PORT}'], cwd=java_dir, stdout=java_log, stderr=subprocess.STDOUT)
+            java_proc = subprocess.Popen([java_bin, '-jar', jar_path, f'--server.port={JAVA_PORT}'], cwd=java_dir, stdout=java_log, stderr=subprocess.STDOUT)
         else:
             log_info(f"Launching via {mvn_cmd} spring-boot:run on port {JAVA_PORT}...")
             java_proc = subprocess.Popen([
                 mvn_cmd, 'spring-boot:run',
                 '-Dspring-boot.run.mainClass=com.soukhyatech.faceattendance.FaceAttendanceApplication',
                 f'-Dspring-boot.run.jvmArguments=-Dserver.port={JAVA_PORT}'
-            ], cwd=java_dir, stdout=java_log, stderr=subprocess.STDOUT)
+            ], cwd=java_dir, stdout=java_log, stderr=subprocess.STDOUT, shell=sys.platform.startswith('win'))
 
         PROCESSES.append((java_proc, "Java Spring Boot"))
         write_pid(java_proc.pid, "java")

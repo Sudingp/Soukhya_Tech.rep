@@ -67,11 +67,27 @@ async function tryDocker() {
 async function tryNativeDaemon() {
   if (process.platform === 'win32') {
     // Attempt starting standard Windows MySQL services if installed
-    const services = ['MySQL84', 'MySQL80', 'MySQL', 'MariaDB'];
+    const services = ['MySQL84', 'MySQL80', 'MySQL', 'MariaDB', 'wampmysqld64', 'wampmysqld'];
     for (const svc of services) {
       if (runCmdSilent(`net start ${svc}`)) {
         logOk(`Started Windows service: ${svc}`);
-        break;
+        return true;
+      }
+    }
+    // Check common binary install paths on Windows (XAMPP, MySQL Server)
+    const winBins = [
+      'C:\\xampp\\mysql\\bin\\mysqld.exe',
+      'D:\\xampp\\mysql\\bin\\mysqld.exe',
+      'C:\\Program Files\\MySQL\\MySQL Server 8.4\\bin\\mysqld.exe',
+      'C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysqld.exe'
+    ];
+    for (const bin of winBins) {
+      if (fs.existsSync(bin)) {
+        try {
+          spawn(bin, ['--console'], { detached: true, stdio: 'ignore' }).unref();
+          logOk(`Started MySQL daemon from: ${bin}`);
+          return true;
+        } catch {}
       }
     }
   } else {

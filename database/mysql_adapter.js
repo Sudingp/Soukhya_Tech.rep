@@ -37,9 +37,11 @@ class MySQLAdapter {
       dateStrings: true
     };
 
-    const localSock = path.resolve(__dirname, '..', 'data', 'mysql', 'mysql.sock');
-    if (fs.existsSync(localSock)) {
-      this.config.socketPath = localSock;
+    if (process.platform !== 'win32') {
+      const localSock = path.resolve(__dirname, '..', 'data', 'mysql', 'mysql.sock');
+      if (fs.existsSync(localSock)) {
+        this.config.socketPath = localSock;
+      }
     }
 
     this.pool = null;

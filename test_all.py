@@ -11,6 +11,7 @@ import json
 import urllib.request
 import urllib.error
 import subprocess
+import shutil
 import time
 
 # Bypass proxy for localhost / loopback calls
@@ -313,7 +314,7 @@ def run_node_integration_suite():
         print()
         log_info("═════════════════════════════════════════════════════════════")
         log_info(" Running Full 38-Step Node.js Integration Test Suite        ")
-        node_cmd = 'node.cmd' if sys.platform.startswith('win') else 'node'
+        node_cmd = shutil.which('node') or 'node'
         res = subprocess.run([node_cmd, integ_script], cwd=SCRIPT_DIR)
         if res.returncode == 0:
             log_ok("Complete 38-Step Integration Test Suite passed (100%).")
