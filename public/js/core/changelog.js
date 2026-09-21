@@ -213,7 +213,13 @@ async function apiFetch(path, opts = {}) {
         Authorization: `Bearer ${freshToken}`
       };
       const retry = await fetch(API + path, { ...opts, headers: retryHeaders });
-      return retry.json();
+      let retryData;
+      try {
+        retryData = await retry.json();
+      } catch {
+        retryData = { success: retry.ok, status: retry.status };
+      }
+      return retryData;
     }
 
     // Capture and index server ETag
@@ -222,7 +228,12 @@ async function apiFetch(path, opts = {}) {
       eTags.set(path, responseETag);
     }
 
-    const data = await res.json();
+    let data;
+    try {
+      data = await res.json();
+    } catch {
+      data = { success: res.ok, status: res.status };
+    }
 
     // Cache successful GET responses in client-side LRU Cache with TTL
     if (method === 'GET' && res.ok && clientCache) {
@@ -240,6 +251,18 @@ async function apiFetch(path, opts = {}) {
   }
 }
 
+async function api(path, opts = {}) {
+  let url = path;
+  if (!url.startsWith('/api/') && url !== '/api') {
+    url = '/api' + (url.startsWith('/') ? url : '/' + url);
+  }
+  const fetchOpts = { ...opts };
+  if (fetchOpts.body && typeof fetchOpts.body === 'object') {
+    fetchOpts.body = JSON.stringify(fetchOpts.body);
+  }
+  return apiFetch(url, fetchOpts);
+}
+
 const apiGet    = (path, useCache = true) => {
   if (useCache && clientCache && clientCache.has(path)) {
     return Promise.resolve(clientCache.get(path));
@@ -249,3 +272,10 @@ const apiGet    = (path, useCache = true) => {
 const apiPost   = (path, body)   => apiFetch(path, { method: 'POST',   body: JSON.stringify(body) });
 const apiPut    = (path, body)   => apiFetch(path, { method: 'PUT',    body: JSON.stringify(body) });
 const apiDelete = (path)         => apiFetch(path, { method: 'DELETE' });
+
+window.api = api;
+window.apiFetch = apiFetch;
+window.apiGet = apiGet;
+window.apiPost = apiPost;
+window.apiPut = apiPut;
+window.apiDelete = apiDelete;

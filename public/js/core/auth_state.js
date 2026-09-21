@@ -66,6 +66,8 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
+window.escapeHtml = escapeHtml;
+window.escapeHTML = escapeHtml;
 
 async function ensureAuth() {
   const saved = localStorage.getItem('authToken');
@@ -76,8 +78,9 @@ async function ensureAuth() {
       });
       if (meResp.ok) {
         const meData = await meResp.json();
-        if (meData.success && meData.data) {
-          currentUser = meData.data;
+        const userObj = meData.data?.user || meData.data || meData.user;
+        if (meData.success && userObj) {
+          currentUser = userObj;
           applyRoleUI(currentUser.role);
           return saved;
         }
@@ -86,6 +89,36 @@ async function ensureAuth() {
       console.warn('[AUTH] Token verification error:', e);
     }
     localStorage.removeItem('authToken');
+  }
+
+  // Attempt seamless silent token refresh if refresh token exists
+  const refreshToken = localStorage.getItem('authRefreshToken');
+  if (refreshToken) {
+    try {
+      const refResp = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken })
+      });
+      if (refResp.ok) {
+        const refData = await refResp.json();
+        const newAccess = refData.data?.access_token || refData.access_token;
+        if (refData.success && newAccess) {
+          localStorage.setItem('authToken', newAccess);
+          const newRefresh = refData.data?.refresh_token || refData.refresh_token;
+          if (newRefresh) localStorage.setItem('authRefreshToken', newRefresh);
+          const userObj = refData.data?.user || refData.user;
+          if (userObj) {
+            currentUser = userObj;
+            applyRoleUI(currentUser.role);
+          }
+          return newAccess;
+        }
+      }
+    } catch (e) {
+      console.warn('[AUTH] Token refresh failed:', e);
+    }
+    localStorage.removeItem('authRefreshToken');
   }
 
   // Not logged in: hide loading screen so login modal is displayed clearly
@@ -136,9 +169,17 @@ async function handleLoginFormSubmit(e) {
       throw new Error(data.error?.message || 'Invalid username or password');
     }
 
-    localStorage.setItem('authToken', data.data.access_token);
-    if (data.data.refresh_token) localStorage.setItem('authRefreshToken', data.data.refresh_token);
-    currentUser = { username: data.data.username, role: data.data.role };
+    const userObj = data.data?.user || data.user || data.data || {};
+    localStorage.setItem('authToken', data.data?.access_token || data.access_token);
+    if (data.data?.refresh_token || data.refresh_token) {
+      localStorage.setItem('authRefreshToken', data.data?.refresh_token || data.refresh_token);
+    }
+    currentUser = {
+      id: userObj.id,
+      username: userObj.username || username,
+      role: userObj.role || (username === 'admin' ? 'ADMIN' : 'USER'),
+      emp_id: userObj.emp_id
+    };
 
     document.getElementById('login-modal').style.display = 'none';
     applyRoleUI(currentUser.role);
@@ -272,9 +313,17 @@ async function doSwitchMode() {
       throw new Error(data.error?.message || 'Invalid username or password');
     }
 
-    localStorage.setItem('authToken', data.data.access_token);
-    if (data.data.refresh_token) localStorage.setItem('authRefreshToken', data.data.refresh_token);
-    currentUser = { username: data.data.username, role: data.data.role };
+    const userObj = data.data?.user || data.user || data.data || {};
+    localStorage.setItem('authToken', data.data?.access_token || data.access_token);
+    if (data.data?.refresh_token || data.refresh_token) {
+      localStorage.setItem('authRefreshToken', data.data?.refresh_token || data.refresh_token);
+    }
+    currentUser = {
+      id: userObj.id,
+      username: userObj.username || username,
+      role: userObj.role || (username === 'admin' ? 'ADMIN' : 'USER'),
+      emp_id: userObj.emp_id
+    };
 
     closeSwitchModeModal();
     applyRoleUI(currentUser.role);
