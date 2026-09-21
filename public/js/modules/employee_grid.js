@@ -88,12 +88,14 @@ window.closeChangelogModal = closeChangelogModal;
 window.switchChangelogTab = switchChangelogTab;
 window.toggleChangelogPref = toggleChangelogPref;
 
-// Master Settings Modal Helpers
-window.openMasterSettingsModal = openMasterSettingsModal;
-window.closeMasterSettingsModal = closeMasterSettingsModal;
-window.switchMasterSettingsTab = switchMasterSettingsTab;
-window.saveMasterSettings = saveMasterSettings;
-window.resetMasterSettingsDefaults = resetMasterSettingsDefaults;
+// Master Settings Modal Helpers (deferred — defined in shift_master.js loaded later)
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof openMasterSettingsModal === 'function') window.openMasterSettingsModal = openMasterSettingsModal;
+  if (typeof closeMasterSettingsModal === 'function') window.closeMasterSettingsModal = closeMasterSettingsModal;
+  if (typeof switchMasterSettingsTab === 'function') window.switchMasterSettingsTab = switchMasterSettingsTab;
+  if (typeof saveMasterSettings === 'function') window.saveMasterSettings = saveMasterSettings;
+  if (typeof resetMasterSettingsDefaults === 'function') window.resetMasterSettingsDefaults = resetMasterSettingsDefaults;
+});
 
 // Shift Details Modal Helpers
 window.openShiftDetailsModal = openShiftDetailsModal;

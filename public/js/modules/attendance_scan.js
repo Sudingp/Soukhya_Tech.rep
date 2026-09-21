@@ -267,8 +267,9 @@ function updateCharts(stats) {
   // 2. Bar Chart: Hibernate count by Department
   const deptCtx = document.getElementById('deptChart')?.getContext('2d');
   if (deptCtx) {
-    const labels = stats.dept_hibernate_counts.map(d => d.department);
-    const data = stats.dept_hibernate_counts.map(d => d.count);
+    const deptData = Array.isArray(stats.dept_hibernate_counts) ? stats.dept_hibernate_counts : [];
+    const labels = deptData.map(d => d.department);
+    const data = deptData.map(d => d.count);
     
     if (deptChart) {
       deptChart.data.labels = labels.length ? labels : ['None'];
@@ -313,8 +314,9 @@ function updateCharts(stats) {
   // 3. Area Trend Chart: Monthly Hibernate Entry Trends
   const trendCtx = document.getElementById('trendChart')?.getContext('2d');
   if (trendCtx) {
-    const labels = stats.monthly_hibernate_trend.map(t => t.month);
-    const data = stats.monthly_hibernate_trend.map(t => t.count);
+    const trendData = Array.isArray(stats.monthly_hibernate_trend) ? stats.monthly_hibernate_trend : [];
+    const labels = trendData.map(t => t.month);
+    const data = trendData.map(t => t.count);
 
     if (trendChart) {
       trendChart.data.labels = labels.length ? labels : ['No Data'];
