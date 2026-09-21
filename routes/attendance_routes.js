@@ -73,6 +73,23 @@ router.post('/', async (req, res) => {
   }
 });
 
+// GET /api/attendance — Return recent attendance records
+router.get('/', authenticate, async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit || req.query.size, 10) || 20;
+    const rows = await stmts.getRecentAttendance.all(limit);
+    res.json({
+      success: true,
+      total: rows.length,
+      count: rows.length,
+      attendance: rows,
+      attendance_logs: rows
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message }, request_id: req.id });
+  }
+});
+
 router.get('/recent', authenticate, async (req, res) => {
   try {
     const limit = parseInt(req.query.limit, 10) || 10;

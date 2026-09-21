@@ -202,6 +202,7 @@ async function loadCompaniesFromAPI() {
     console.warn('[LOAD COMPANIES]', e.message);
   }
 }
+window.loadCompaniesFromAPI = loadCompaniesFromAPI;
 
 async function saveCompanyModal() {
   const idxVal = document.getElementById('comp-edit-index').value;

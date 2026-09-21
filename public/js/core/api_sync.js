@@ -193,7 +193,31 @@ async function init() {
 // ── Load all data from DB on startup ──────────
 async function loadFromDB() {
   // Load companies
-  await loadCompaniesFromAPI();
+  if (typeof loadCompaniesFromAPI === 'function') {
+    await loadCompaniesFromAPI();
+  } else if (typeof window !== 'undefined' && typeof window.loadCompaniesFromAPI === 'function') {
+    await window.loadCompaniesFromAPI();
+  } else {
+    try {
+      const compRes = await apiFetch('/api/companies');
+      if (compRes && compRes.success && Array.isArray(compRes.companies)) {
+        COMPANIES = compRes.companies.map(c => ({
+          id: c.id,
+          code: c.code,
+          name: c.name,
+          short: c.short_name || c.short || c.code,
+          short_name: c.short_name || c.short || c.code,
+          address: c.address,
+          city: c.city,
+          employee_count: c.employee_count || 0,
+          active: c.active
+        }));
+        if (typeof updateCompanySelects === 'function') updateCompanySelects();
+      }
+    } catch (e) {
+      console.warn('[LOAD COMPANIES FALLBACK]', e.message);
+    }
+  }
 
   // Load employees
   const empRes = await apiGet('/api/employees?size=10000');
