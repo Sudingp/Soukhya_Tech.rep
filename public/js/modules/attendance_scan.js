@@ -234,11 +234,12 @@ function updateCharts(stats) {
     console.warn('[CHARTS] Chart.js library is not available.');
     return;
   }
+  window._lastStats = stats;
 
-  // Curated Harmonies Theme Color tokens
-  const textClr = '#dde2f0';
-  const gridClr = '#2d3650';
-  const tooltipBg = '#1e2438';
+  const isDark = document.body ? document.body.classList.contains('dark-mode') : false;
+  const textClr = isDark ? '#dde2f0' : '#0f172a';
+  const gridClr = isDark ? '#2d3650' : '#cbd5e1';
+  const tooltipBg = isDark ? '#1e2438' : '#ffffff';
 
   // 1. Doughnut Chart: Roster Distribution %
   const rosterCtx = document.getElementById('rosterChart')?.getContext('2d');
@@ -248,6 +249,10 @@ function updateCharts(stats) {
     
     if (rosterChart) {
       rosterChart.data.datasets[0].data = chartData;
+      rosterChart.data.datasets[0].borderColor = isDark ? '#161b27' : '#ffffff';
+      if (rosterChart.options?.plugins?.legend?.labels) {
+        rosterChart.options.plugins.legend.labels.color = textClr;
+      }
       rosterChart.update();
     } else {
       rosterChart = new Chart(rosterCtx, {
@@ -298,6 +303,9 @@ function updateCharts(stats) {
     if (deptChart) {
       deptChart.data.labels = labels.length ? labels : ['None'];
       deptChart.data.datasets[0].data = data.length ? data : [0];
+      if (deptChart.options?.scales?.x?.ticks) deptChart.options.scales.x.ticks.color = textClr;
+      if (deptChart.options?.scales?.y?.ticks) deptChart.options.scales.y.ticks.color = textClr;
+      if (deptChart.options?.scales?.y?.grid) deptChart.options.scales.y.grid.color = gridClr;
       deptChart.update();
     } else {
       deptChart = new Chart(deptCtx, {
@@ -345,6 +353,9 @@ function updateCharts(stats) {
     if (trendChart) {
       trendChart.data.labels = labels.length ? labels : ['No Data'];
       trendChart.data.datasets[0].data = data.length ? data : [0];
+      if (trendChart.options?.scales?.x?.ticks) trendChart.options.scales.x.ticks.color = textClr;
+      if (trendChart.options?.scales?.y?.ticks) trendChart.options.scales.y.ticks.color = textClr;
+      if (trendChart.options?.scales?.y?.grid) trendChart.options.scales.y.grid.color = gridClr;
       trendChart.update();
     } else {
       trendChart = new Chart(trendCtx, {
@@ -385,6 +396,8 @@ function updateCharts(stats) {
     }
   }
 }
+window.updateCharts = updateCharts;
+
 
 // ── Reset & Seed DB Trigger ───────────────────
 async function resetSeedDatabase() {

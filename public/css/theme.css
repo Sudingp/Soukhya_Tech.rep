@@ -1,0 +1,259 @@
+/* public/css/theme.css — Dual Light & Dark Theme System (<500 lines) */
+
+/* ── Light Mode (System Default) ── */
+:root,
+html.light-mode,
+body.light-mode {
+  --bg:          #f1f5f9;
+  --s1:          #ffffff;
+  --s2:          #f8fafc;
+  --s3:          #e2e8f0;
+  --br:          #cbd5e1;
+  --ac:          #0d9488;
+  --ac-tx:       #ffffff;
+  --ac2:         #2563eb;
+  --tx:          #0f172a;
+  --mu:          #64748b;
+  --ok:          #059669;
+  --warn:        #d97706;
+  --err:         #dc2626;
+  --shadow-sm:   0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md:   0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg:   0 12px 24px -4px rgba(0, 0, 0, 0.12), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --modal-ov:    rgba(15, 23, 42, 0.65);
+  --mo:          'IBM Plex Mono', monospace;
+  --sa:          'IBM Plex Sans', sans-serif;
+}
+
+/* ── Dark Mode Overrides ── */
+html.dark-mode,
+body.dark-mode {
+  --bg:          #0d1117;
+  --s1:          #161b27;
+  --s2:          #1e2438;
+  --s3:          #252d42;
+  --br:          #2d3650;
+  --ac:          #00d4aa;
+  --ac-tx:       #000000;
+  --ac2:         #4f8ef7;
+  --tx:          #dde2f0;
+  --mu:          #8892b0;
+  --ok:          #10b981;
+  --warn:        #f0a500;
+  --err:         #ef4444;
+  --shadow-sm:   0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md:   0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg:   0 24px 64px rgba(0, 0, 0, 0.75);
+  --modal-ov:    rgba(13, 17, 23, 0.85);
+}
+
+/* ── Theme Toggle Button (Login Modal & Application Header) ── */
+.theme-toggle-btn {
+  background: var(--s2);
+  color: var(--tx);
+  border: 1px solid var(--br);
+  border-radius: 4px;
+  padding: 4px 9px;
+  font-size: 11px;
+  font-family: var(--sa);
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+  white-space: nowrap;
+}
+
+.theme-toggle-btn:hover {
+  background: var(--s3);
+  border-color: var(--ac);
+  color: var(--ac);
+  transform: translateY(-1px);
+}
+
+.theme-toggle-btn:active {
+  transform: translateY(0);
+}
+
+.theme-toggle-btn .theme-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.theme-toggle-btn .theme-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+/* ── Modal Overrides for Theme Consistency ── */
+.modal-overlay {
+  background: var(--modal-ov) !important;
+}
+
+.modal-box {
+  background: var(--s1) !important;
+  border-color: var(--br) !important;
+  color: var(--tx) !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+.modal-body {
+  background: var(--s1) !important;
+  color: var(--tx) !important;
+}
+
+.modal-ftr {
+  background: var(--s2) !important;
+  border-top: 1px solid var(--br) !important;
+}
+
+body.dark-mode .modal-hdr,
+body.dark-mode .login-hdr {
+  background: linear-gradient(135deg, #161b27, #1e2438) !important;
+  border-bottom: 1px solid var(--br) !important;
+}
+
+body:not(.dark-mode) .modal-hdr,
+body.light-mode .modal-hdr,
+body:not(.dark-mode) .login-hdr,
+body.light-mode .login-hdr {
+  background: linear-gradient(135deg, #f8fafc, #f1f5f9) !important;
+  border-bottom: 1px solid var(--br) !important;
+}
+
+/* ── Primary Action Button Text Contrast ── */
+.btnp {
+  color: var(--ac-tx, #ffffff) !important;
+}
+body.dark-mode .btnp {
+  color: #000000 !important;
+}
+
+/* ── Light Mode Specific Polish ── */
+body:not(.dark-mode) .card,
+body.light-mode .card {
+  box-shadow: var(--shadow-sm);
+}
+
+body:not(.dark-mode) #hdr,
+body.light-mode #hdr {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+body:not(.dark-mode) .mode-badge.admin,
+body.light-mode .mode-badge.admin {
+  background: rgba(13, 148, 136, 0.12);
+  color: var(--ac);
+  border: 1px solid rgba(13, 148, 136, 0.35);
+}
+
+body:not(.dark-mode) .mode-badge.user,
+body.light-mode .mode-badge.user {
+  background: rgba(37, 99, 235, 0.12);
+  color: var(--ac2);
+  border: 1px solid rgba(37, 99, 235, 0.35);
+}
+
+body:not(.dark-mode) .btn-hdr-switch,
+body.light-mode .btn-hdr-switch {
+  background: var(--s2);
+  color: var(--tx);
+  border-color: var(--br);
+}
+
+body:not(.dark-mode) .btn-hdr-switch:hover,
+body.light-mode .btn-hdr-switch:hover {
+  background: var(--s3);
+  color: var(--ac);
+  border-color: var(--ac);
+}
+
+body:not(.dark-mode) .btn-hdr-logout,
+body.light-mode .btn-hdr-logout {
+  background: rgba(220, 38, 38, 0.08);
+  color: #dc2626;
+  border-color: rgba(220, 38, 38, 0.25);
+}
+
+body:not(.dark-mode) .btn-hdr-logout:hover,
+body.light-mode .btn-hdr-logout:hover {
+  background: rgba(220, 38, 38, 0.18);
+  color: #b91c1c;
+  border-color: #dc2626;
+}
+
+body:not(.dark-mode) .btn-hdr-changelog,
+body.light-mode .btn-hdr-changelog {
+  background: linear-gradient(135deg, rgba(13, 148, 136, 0.1), rgba(37, 99, 235, 0.1));
+  color: var(--ac);
+  border: 1px solid rgba(13, 148, 136, 0.4);
+}
+
+body:not(.dark-mode) .btn-hdr-changelog:hover,
+body.light-mode .btn-hdr-changelog:hover {
+  background: linear-gradient(135deg, rgba(13, 148, 136, 0.18), rgba(37, 99, 235, 0.18));
+  border-color: var(--ac);
+}
+
+/* ── Dark Mode Adaptations for ESSL Grid Pages & Containers ── */
+body.dark-mode #tab-dbd,
+body.dark-mode #tab-company,
+body.dark-mode #tab-employee-list,
+body.dark-mode .essl-page-container {
+  background: var(--bg) !important;
+  color: var(--tx) !important;
+}
+
+body.dark-mode .essl-page-container strong {
+  color: var(--tx) !important;
+}
+
+body.dark-mode .essl-page-container span {
+  color: var(--mu);
+}
+
+body.dark-mode .essl-page-container table {
+  background: var(--s1) !important;
+  color: var(--tx) !important;
+  border: 1px solid var(--br) !important;
+}
+
+body.dark-mode .essl-page-container tr,
+body.dark-mode .essl-page-container th,
+body.dark-mode .essl-page-container td {
+  border-color: var(--br) !important;
+}
+
+body.dark-mode .essl-page-container th,
+body.dark-mode .essl-page-container tr[style*="background:#e0e8f5"],
+body.dark-mode .essl-page-container tr[style*="background: #e0e8f5"] {
+  background: var(--s3) !important;
+  color: var(--tx) !important;
+}
+
+body.dark-mode .essl-page-container tr:hover td {
+  background: var(--s2) !important;
+}
+
+body.dark-mode .essl-page-container div[style*="background:#f4f7f6"],
+body.dark-mode .essl-page-container div[style*="background:#f0f4fa"],
+body.dark-mode .essl-page-container div[style*="background: #f4f7f6"],
+body.dark-mode .essl-page-container div[style*="background: #f0f4fa"],
+body.dark-mode .essl-page-container div[style*="background:#fff"],
+body.dark-mode .essl-page-container div[style*="background: #fff"],
+body.dark-mode .essl-page-container div[style*="background:#ffffff"],
+body.dark-mode .essl-page-container div[style*="background: #ffffff"] {
+  background: var(--s2) !important;
+  border-color: var(--br) !important;
+  color: var(--tx) !important;
+}
+
+body.dark-mode .essl-page-container select,
+body.dark-mode .essl-page-container input {
+  background: var(--s1) !important;
+  border: 1px solid var(--br) !important;
+  color: var(--tx) !important;
+}

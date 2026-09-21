@@ -8,21 +8,39 @@
 }
 
 :root {
+  --bg:   #f1f5f9;
+  --s1:   #ffffff;
+  --s2:   #f8fafc;
+  --s3:   #e2e8f0;
+  --br:   #cbd5e1;
+  --ac:   #0d9488;
+  --ac-tx: #ffffff;
+  --ac2:  #2563eb;
+  --tx:   #0f172a;
+  --mu:   #64748b;
+  --ok:   #059669;
+  --warn: #d97706;
+  --err:  #dc2626;
+  --mo:   'IBM Plex Mono', monospace;
+  --sa:   'IBM Plex Sans', sans-serif;
+}
+
+body.dark-mode {
   --bg:   #0d1117;
   --s1:   #161b27;
   --s2:   #1e2438;
   --s3:   #252d42;
   --br:   #2d3650;
   --ac:   #00d4aa;
+  --ac-tx: #000000;
   --ac2:  #4f8ef7;
   --tx:   #dde2f0;
-  --mu:   #6b7691;
+  --mu:   #8892b0;
   --ok:   #10b981;
   --warn: #f0a500;
   --err:  #ef4444;
-  --mo:   'IBM Plex Mono', monospace;
-  --sa:   'IBM Plex Sans', sans-serif;
 }
+
 
 body {
   background: var(--bg);

@@ -4,7 +4,28 @@ All notable changes across architecture, database, API layer, frontend modules, 
 
 ---
 
+## [4.2.0] - 2026-09-22 (Branch: `HR-Enterprise-Prod`)
+
+### 🌓 Enterprise Dual Theme Engine (Light Mode Default & Dark Mode)
+- **Universal Dual Theme System Across Entire Application**:
+  - Full-featured **Light Mode (System Default)** and **Dark Mode** support applying uniformly across all screens, headers, secondary menu bars, tabs, modals, tables, forms, inputs, stat cards, accordion drawers, and the authentication portal.
+  - Set **Light Mode as the default** theme on cold boot and first visit across all client devices and sessions.
+  - Clean CSS token architecture in `public/css/theme.css` and `public/css/base.css` with semantic CSS variables (`--bg`, `--s1`, `--s2`, `--s3`, `--br`, `--ac`, `--ac-tx`, `--ac2`, `--tx`, `--mu`, `--ok`, `--warn`, `--err`, shadows, and overlays).
+  - High-contrast accessibility compliance (WCAG AA): deep slate typography (`#0f172a`) on clean slate canvas (`#f1f5f9`) in Light Mode, and crisp cyber neon palette in Dark Mode.
+- **Login Portal & In-App UI Theme Toggles**:
+  - **Login Page Theme Toggle (`#login-theme-toggle`)**: Users can toggle between Light and Dark mode directly on the login screen prior to entering credentials; the choice applies instantly and persists into the authenticated workspace.
+  - **Application UI Header Toggle (`#app-theme-toggle`)**: Users can switch theme modes dynamically at any point from the top header navigation with immediate visual updates.
+- **Instant Persistence & Zero-FOUC Architecture**:
+  - Theme choices persist permanently across page refreshes, tab switches, and browser sessions via `localStorage` key `soukhya_theme`.
+  - Injected early `<head>` initialization script to set DOM root classes before CSS layout occurs, completely preventing Flash of Unstyled Content (FOUC).
+- **Dynamic Chart.js & Container Theme Adaptation**:
+  - Real-time theme synchronization for interactive analytics (`rosterChart`, `deptChart`, `trendChart`), adjusting axis ticks, grid lines, tooltips, and segment borders on the fly.
+  - Full dark-mode inversion support for enterprise ESSL grid containers, tables, and pagination controls.
+
+---
+
 ## [4.1.0] - 2026-09-21 (Branch: `HR-Enterprise-Prod`)
+
 
 ### 🛡️ Administrator & Technical Perspective
 - **Role-Based Access Control (RBAC) Segregation & Privilege Hardening**:

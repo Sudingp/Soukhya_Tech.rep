@@ -391,3 +391,94 @@ function closeUserMgmtModal() {
   const modal = document.getElementById('user-mgmt-modal');
   if (modal) modal.style.display = 'none';
 }
+
+// ══════════════════════════════════════════════
+// 🌓 Theme Controller (Light Mode Default & Dark Mode)
+// ══════════════════════════════════════════════
+function getSavedTheme() {
+  try {
+    const t = localStorage.getItem('soukhya_theme');
+    return t === 'dark' ? 'dark' : 'light';
+  } catch (e) {
+    return 'light';
+  }
+}
+
+function updateThemeToggleUI(isDark) {
+  const toggleBtns = [
+    document.getElementById('app-theme-toggle'),
+    document.getElementById('login-theme-toggle')
+  ];
+
+  toggleBtns.forEach(btn => {
+    if (!btn) return;
+    const iconSpan = btn.querySelector('.theme-icon');
+    const labelSpan = btn.querySelector('.theme-label');
+
+    if (isDark) {
+      if (iconSpan) iconSpan.textContent = '☀️';
+      if (labelSpan) labelSpan.textContent = 'Light Mode';
+      btn.title = 'Switch to Light Mode';
+      btn.setAttribute('aria-label', 'Switch to Light Mode');
+    } else {
+      if (iconSpan) iconSpan.textContent = '🌙';
+      if (labelSpan) labelSpan.textContent = 'Dark Mode';
+      btn.title = 'Switch to Dark Mode';
+      btn.setAttribute('aria-label', 'Switch to Dark Mode');
+    }
+  });
+}
+
+function applyTheme(theme, notifyUser = false) {
+  const isDark = theme === 'dark';
+  const root = document.documentElement;
+  const body = document.body;
+
+  const addClass = isDark ? 'dark-mode' : 'light-mode';
+  const remClass = isDark ? 'light-mode' : 'dark-mode';
+  root.classList.add(addClass);
+  root.classList.remove(remClass);
+  if (body) {
+    body.classList.add(addClass);
+    body.classList.remove(remClass);
+  }
+
+
+  try {
+    localStorage.setItem('soukhya_theme', isDark ? 'dark' : 'light');
+  } catch (e) {}
+
+  updateThemeToggleUI(isDark);
+
+  if (window._lastStats && typeof window.updateCharts === 'function') {
+    try {
+      window.updateCharts(window._lastStats);
+    } catch (e) {}
+  }
+
+  if (notifyUser && typeof notify === 'function') {
+    notify(isDark ? 'Switched to Dark Mode 🌙' : 'Switched to Light Mode ☀️', 'ok');
+  }
+}
+
+function toggleAppTheme() {
+  const current = getSavedTheme();
+  const next = current === 'dark' ? 'light' : 'dark';
+  applyTheme(next, true);
+}
+
+function initTheme() {
+  const theme = getSavedTheme();
+  applyTheme(theme, false);
+}
+
+initTheme();
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => initTheme());
+}
+
+window.getSavedTheme = getSavedTheme;
+window.applyTheme = applyTheme;
+window.toggleAppTheme = toggleAppTheme;
+window.initTheme = initTheme;
+

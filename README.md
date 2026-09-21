@@ -51,8 +51,14 @@ An enterprise-grade, high-concurrency workforce management and neural face recog
   - Statutory leave policies (CL, SL, EL/PL, Maternity), fiscal quota balance ledgers, multi-level approval hierarchies, Outdoor Duty (OD) field requisitions, and automated overtime multipliers (1.5x / 2.0x).
 - **100% Cross-Platform Native Parity**:
   - Tested and verified identically on **Linux (Ubuntu/Debian)** and **Windows (10/11 CMD/PowerShell)** with dedicated `.bat` scripts and pure standard-library Python 3 runners.
+- **🌓 Enterprise Dual Theme Engine (Light Mode Default & Dark Mode)**:
+  - Universal dual theme support across all tabs, modals, tables, forms, cards, and drawers.
+  - Light Mode enabled by default on cold boots; user preferences persisted seamlessly in `localStorage`.
+  - Independent interactive theme toggles located on both the Authentication Login Portal and the Application Header UI.
+  - Real-time dynamic Chart.js color updates, WCAG AA compliance, and zero-FOUC early DOM initialization.
 
 ---
+
 
 ## 📝 Release Changelogs
 
